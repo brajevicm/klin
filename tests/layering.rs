@@ -1476,6 +1476,54 @@ fn local_extends_recognition_uses_the_nearest_paths_object() {
     );
 }
 
+const OWN_PATHS: &str = r#""compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"]}}"#;
+
+fn an_alias_from_model_to_view(tree: &Tree, config: &str) -> harness::Run {
+    tree.write("klin.json", WEB);
+    tree.write("tsconfig.json", config);
+    tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    tree.run(&["check", "layering"])
+}
+
+#[test]
+fn a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends() {
+    for extends in ["package/config", "./config/base"] {
+        let tree = Tree::new();
+        tree.write(
+            "config/base.json",
+            r#"{"compilerOptions":{"baseUrl":"elsewhere","paths":{"@/*":["other/*"]}},"include":["nothing"]}"#,
+        );
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(r#"{{"extends":"{extends}",{OWN_PATHS},"include":["**/*.ts"],"exclude":[]}}"#),
+        );
+        assert_eq!(run.code, 1, "{extends}: {}", run.out);
+        assert!(
+            run.says("model → view") && !run.says("local paths alias"),
+            "{extends}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots() {
+    for roots in [r#""include":["**/*.ts"]"#, r#""exclude":[]"#] {
+        let tree = Tree::new();
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(r#"{{"extends":"package/config",{OWN_PATHS},{roots}}}"#),
+        );
+        assert_eq!(run.code, 0, "{roots}: {}", run.out);
+        assert!(
+            run.says("REVIEW:") && run.says("local paths alias"),
+            "{roots}: {}",
+            run.out
+        );
+    }
+}
+
 #[test]
 fn openstock_style_recursive_roots_prove_typescript_sources() {
     let roots = r#""include":["next-env.d.ts","**/*.ts","**/*.tsx",".next/types/**/*.ts"]"#;

@@ -5362,7 +5362,8 @@ the base, and its finding names the current path, so a move into another layer
 is new debt and a move inside a layer is held.
 
 TypeScript explicit `compilerOptions.paths` aliases are local dependencies.
-One conventional ancestor `tsconfig.json`, with no extends or references,
+One conventional ancestor `tsconfig.json`, with no references and either no
+extends or its own `compilerOptions.paths` and `compilerOptions.baseUrl`,
 proves an exact or single-`*` alias only for a proven project root and when
 its single target reduces to
 exactly one held TypeScript module under the relative candidate rule. JSONC
@@ -5401,7 +5402,12 @@ resolution incompleteness. One exception follows TypeScript, which tries
 normal package lookup after the paths targets: when a rule's target names
 no file the tree holds and the specifier is a valid package name, such as
 `react` or `@scope/pkg`, the import is external. A specifier that cannot name
-a package, such as `@/missing`, stays a hole. Multiple/nested or alternate tsconfigs, extends,
+a package, such as `@/missing`, stays a hole. A config that extends another
+and writes both its own `paths` and `baseUrl` proves its aliases, because
+TypeScript takes those two values from the child alone. Under extends, an
+`include` or `exclude` the child does not write comes from the parent, so the
+child proves a root only when it writes both. Multiple/nested or alternate
+tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
 bounded, to recognize local names only. The nearest defined paths object
@@ -5441,7 +5447,9 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `multiple_extends_do_not_supply_inherited_alias_names` and
 `a_config_only_edit_changes_root_proof_for_an_unchanged_import`,
 `output_and_dot_sources_need_explicit_files_for_root_proof` and
-`local_extends_recognition_uses_the_nearest_paths_object` in
+`local_extends_recognition_uses_the_nearest_paths_object`,
+`a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends`
+and `own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in

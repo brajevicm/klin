@@ -348,14 +348,18 @@ impl Config {
                 .and_then(|path| joined(directory(file), path))
                 .map(Anchor::BaseUrl),
         };
+        let inherits = value.get("extends").is_some();
+        let own_paths = ["/compilerOptions/paths", "/compilerOptions/baseUrl"]
+            .iter()
+            .all(|pointer| value.pointer(pointer).is_some());
         Self {
             directory: directory(file).to_string(),
             anchor,
             rules: rules(file, parsed),
-            roots: Roots::read(file, value),
+            roots: Roots::read(file, value, inherits),
             uncertain: !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
                 || value.is_null()
-                || value.get("extends").is_some()
+                || inherits && !own_paths
                 || value.get("references").is_some(),
         }
     }
@@ -386,7 +390,7 @@ enum RootPattern {
 }
 
 impl Roots {
-    fn read(file: &str, value: &Value) -> Self {
+    fn read(file: &str, value: &Value, inherits: bool) -> Self {
         let directory = directory(file);
         let files = value
             .get("files")
@@ -406,11 +410,13 @@ impl Roots {
             },
             unknown: false,
         };
-        let include = value.get("include").map_or(Some(default_include), |value| {
-            root_patterns(directory, value)
-        });
+        let include = value
+            .get("include")
+            .map_or((!inherits).then_some(default_include), |value| {
+                root_patterns(directory, value)
+            });
         let mut exclude = value.get("exclude").map_or(
-            Some(RootPatterns {
+            (!inherits).then_some(RootPatterns {
                 matching: Vec::new(),
                 unknown: false,
             }),
