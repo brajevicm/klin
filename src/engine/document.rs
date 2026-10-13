@@ -305,6 +305,8 @@ impl Counts {
 /// One row of the document's capabilities. Spec 11.7.
 struct Capability {
     name: String,
+    /// The catalogue check the row runs, which for a `sarif` entry is not its name.
+    check: &'static str,
     kind: &'static str,
     placement: &'static [&'static str],
     state: State,
@@ -322,6 +324,7 @@ impl Capability {
     fn active(gate: &Gate, axes: Axes, records: &Records) -> Capability {
         Capability {
             name: gate.name.clone(),
+            check: gate.check.name,
             kind: gate.check.kind(),
             placement: gate.check.placement.names(),
             state: State::Active,
@@ -340,6 +343,7 @@ impl Capability {
     fn inapplicable(check: &catalogue::Row, named: Option<Axes>) -> Capability {
         Capability {
             name: check.name.to_string(),
+            check: check.name,
             kind: check.kind(),
             placement: check.placement.names(),
             state: State::NotApplicable,
@@ -357,6 +361,7 @@ impl Capability {
     fn lost(axes: Axes, accepted: u64) -> Capability {
         Capability {
             name: MEASUREMENT_LOST.to_string(),
+            check: MEASUREMENT_LOST,
             kind: "built-in",
             placement: &["stop", "check"],
             state: State::Active,
@@ -440,12 +445,18 @@ impl Measured {
     }
 }
 
-/// One capability as `setup` reports it: how many findings it holds as the floor, and how many
-/// files it measured of the ones it found where it counts files. Spec 11.2.
+/// One capability as `setup` reports it: the findings the ratchet passed, which are the floor,
+/// the ones it did not, and how many files it measured of the ones it found where it counts
+/// files. Spec 11.2.
 pub struct Floor {
     pub gate: String,
+    /// The catalogue check the gate runs, which for a `sarif` entry is not its name.
+    pub check: &'static str,
     pub runs: bool,
-    pub findings: usize,
+    /// Whether a hole left the gate's measurement incomplete, so its floor is not known.
+    pub incomplete: bool,
+    pub held: usize,
+    pub failing: usize,
     pub coverage: Option<(usize, usize)>,
 }
 
@@ -458,6 +469,8 @@ pub struct CheckDocument {
     axes: Axes,
     /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
     stopped: bool,
+    /// The checks a person set to `false`, which the document lists nowhere. Spec 11.2.
+    excluded: Vec<(String, &'static str)>,
     capabilities: Vec<Capability>,
     findings: Vec<Finding>,
     notes: Vec<Note>,
@@ -543,30 +556,38 @@ impl CheckDocument {
             .push(Problem::of_run(fault.kind, &fault.error.to_string()));
     }
 
-    /// What `setup` says the run holds as its floor: each capability in the run's order, with the
-    /// findings the ratchet passed and the ones it did not, and what it measured of what it found.
-    /// The run's error where one stopped it before any capability measured. Spec 11.2.
+    /// What `setup` says the run holds as its floor: each capability in the run's order, then
+    /// each check a person set to `false`. The first error of the run, a check's included, where
+    /// one kept any capability from measuring, because then no floor is known. Spec 11.2.
     pub fn floor(&self) -> Result<Vec<Floor>, String> {
-        if let Some(problem) = self
-            .problems
-            .iter()
-            .find(|p| self.stopped && p.check.is_none())
-        {
-            return Err(problem.message.clone());
+        if let Some(problem) = self.problems.first() {
+            return Err(match &problem.check {
+                Some(check) => format!("{check}: {}", problem.message),
+                None => problem.message.clone(),
+            });
         }
-        Ok(self
-            .capabilities
-            .iter()
-            .map(|row| Floor {
-                gate: row.name.clone(),
-                runs: matches!(row.state, State::Active),
-                findings: row.held.map_or(0, |held| held as usize) + self.failing(&row.name),
-                coverage: row
-                    .coverage
-                    .as_ref()
-                    .map(|counts| (counts.measured, counts.found)),
-            })
-            .collect())
+        let ran = self.capabilities.iter().map(|row| Floor {
+            gate: row.name.clone(),
+            check: row.check,
+            runs: matches!(row.state, State::Active),
+            incomplete: row.incomplete == Some(true),
+            held: row.held.map_or(0, |held| held as usize),
+            failing: self.failing(&row.name),
+            coverage: row
+                .coverage
+                .as_ref()
+                .map(|counts| (counts.measured, counts.found)),
+        });
+        let excluded = self.excluded.iter().map(|(gate, check)| Floor {
+            gate: gate.clone(),
+            check,
+            runs: false,
+            incomplete: false,
+            held: 0,
+            failing: 0,
+            coverage: None,
+        });
+        Ok(ran.chain(excluded).collect())
     }
 
     fn failing(&self, gate: &str) -> usize {
@@ -973,6 +994,14 @@ impl CheckDocument {
 
     /// The rows of the capabilities that do not apply, which a whole run lists. Spec 11.7.
     fn not_applicable(&mut self, plan: &Plan) {
+        self.excluded = plan
+            .excluded
+            .iter()
+            .filter_map(|name| {
+                let check = catalogue::CATALOGUE.iter().find(|row| row.name == name)?;
+                Some((name.clone(), check.name))
+            })
+            .collect();
         self.capabilities.extend(
             plan.needs_a_section
                 .iter()

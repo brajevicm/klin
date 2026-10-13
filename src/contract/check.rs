@@ -851,7 +851,16 @@ impl Sink<'_> {
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
-pub type Count = fn(&Project) -> Result<usize, Error>;
+/// What a check's selection comes to in a tree: how many it judges, or why it can judge none
+/// until a person settles its section, as a run of it would refuse. Spec 11.6.
+pub enum Count {
+    Selected(usize),
+    Unsettled(String),
+}
+
+/// A check's count of what it judges, of one entry where `klin policy` names one, such as a
+/// convention.
+pub type Counter = fn(&Project, Option<&str>) -> Result<Count, Error>;
 
 /// What a check counts when `klin policy` says what it judges. Spec 11.6.
 #[derive(Clone, Copy)]
@@ -892,7 +901,7 @@ impl Unit {
 pub struct Judges {
     pub unit: Unit,
     /// The size of the selection in this tree, and `None` for a check only a run can count.
-    pub count: Option<Count>,
+    pub count: Option<Counter>,
     /// Why an Automatic check does not apply to a tree that lacks its facts.
     pub absent: &'static str,
 }

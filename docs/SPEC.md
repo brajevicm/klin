@@ -1725,18 +1725,31 @@ exits 2, also under `--json`.
   names any other file is an invocation error, and `setup` writes nothing.
 - Prints what it changed and what it left as it was.
 - In a repository whose root holds a `klin.json` after the writes, ends with
-  a baseline that a whole `klin check` measures
-  after the writes: one line that counts, by check and in the words of
-  `klin report`, the findings the tree holds, which the Stop holds as its
-  floor, and one line that names each check that judges nothing in this
-  tree. An active check that measured no file prints as
-  `NAME (0 of N files judged)` with the files it found, and a check that
-  does not run prints as `NAME (off)`. A count is of findings, the ratchet's
-  unit, so one file's escapes of one kind count once. A run that stops on an
-  error prints `klin holds no floor yet:` with the error in place of both
-  lines, and the exit code stays 0. Pinned by
-  `setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing` and
-  `setup_says_when_the_floor_holds_nothing` in `tests/install.rs`.
+  a baseline that a whole `klin check` measures after the writes:
+  - `klin now holds today's debt as the floor:` with the findings the
+    ratchet passed, which the base or an accepted entry holds, counted by
+    check in the words of `klin report`. The gates of one check, such as
+    every `sarif` entry, count together.
+  - `Not in the floor, so these still fail klin check:` with the findings
+    the ratchet did not pass, new or worsened, counted the same way. The
+    line is left out when there are none.
+  - `Only new problems block. Blind spots here:` with each check that
+    judges nothing in this tree. An active check that measured no file prints
+    as `NAME (0 of N files judged)` with the files it found, one a hole left
+    incomplete prints as `NAME (incomplete)`, and one that does not run,
+    a check a person set to `false` included, prints as `NAME (off)`.
+
+  A count is of findings, the ratchet's unit, so one file's escapes of one
+  kind count once. A run with any error, a run-scope error or one gate's,
+  prints `klin holds no floor yet:` with the first error in place of the
+  three lines, because no floor is known, and the exit code stays 0. Pinned
+  by `setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing`,
+  `setup_says_when_the_floor_holds_nothing`,
+  `setup_names_a_finding_the_base_does_not_hold_apart_from_the_floor`,
+  `setup_claims_no_floor_when_one_check_could_not_run`,
+  `setup_names_a_check_a_person_set_to_false_as_off`,
+  `setup_counts_the_findings_of_every_sarif_entry_together` and
+  `setup_names_an_incomplete_check_as_a_blind_spot` in `tests/install.rs`.
 - Exit 0 on success. Exit 2 on an invalid invocation or a write it could
   not make.
 
@@ -1855,9 +1868,15 @@ Section 13.2.
   `judges: the files its report names, which only a run counts`. A capability
   that does not run prints `judges: 0 OF, because REASON`: the facts its
   Automatic activation lacks, `it runs only under a section a person writes`,
-  or `a person set it to false`. Pinned by
-  `policy_names_what_each_check_judges_and_why_one_does_not_apply` and
-  `policy_counts_what_a_check_measures` in `tests/policy.rs`.
+  or `a person set it to false`. A section a run would refuse until a person
+  settles it, such as a convention whose language or pattern klin cannot
+  read, prints `judges: no file until a person settles this:` with the
+  refusal, and its JSON `count` is null. `klin policy conventions NAME`
+  counts only the files that convention judges. Pinned by
+  `policy_names_what_each_check_judges_and_why_one_does_not_apply`,
+  `policy_counts_what_a_check_measures`,
+  `policy_judges_no_convention_file_while_one_convention_is_unsettled` and
+  `policy_of_one_convention_counts_only_its_files` in `tests/policy.rs`.
 - A tree where no capability runs still has a policy: `klin policy` lists
   each capability with the state that keeps it from running, and exits 0.
 - A whole `policy` also prints the build policy, pinned or derived from the
@@ -2028,8 +2047,9 @@ state, judges {count, of, reason}, values [{key, entry, value, provenance,
 rule, description}], limitations}]`, `build`, `accepted`, `state_dir`.
 
 `judges` is what the capability judges in this tree, as section 11.6 counts
-it: `count` is null where only a run counts it, `of` names what is counted,
-and `reason` is null for a capability that runs.
+it: `count` is null where only a run counts it or a person must settle the
+section first, `of` names what is counted, and `reason` is null for a
+capability that runs and judges, and holds the refusal of an unsettled one.
 
 A value's `value` is typed as a pinned one would be. A `built-in` value
 carries its words for a person in `description`, and its `value` is null

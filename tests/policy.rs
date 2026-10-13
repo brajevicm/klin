@@ -726,3 +726,54 @@ fn policy_counts_what_a_check_measures() {
     }
     assert!(compared.len() >= 6, "{compared:?}");
 }
+
+/// A convention a person must settle leaves the section unable to run, so `policy` says it
+/// judges no file until then, as `klin check conventions` refuses to run. Review 5500533966.
+#[test]
+fn policy_judges_no_convention_file_while_one_convention_is_unsettled() {
+    let tree = tree(
+        r#"{"conventions": {
+          "no-bad": { "code": "fn (", "remedy": "Write a pattern klin can read." },
+          "no-todo": { "text": "TODO", "remedy": "Do it." }
+        }}"#,
+    );
+
+    let run = tree.run(&["policy", "conventions"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let conventions = block(&run.out, "conventions — runs");
+    assert!(
+        conventions.contains("judges: no file until a person settles this:"),
+        "{}",
+        run.out
+    );
+    let json = tree.run(&["policy", "--json", "conventions"]).json();
+    assert_eq!(
+        capability(&json, "conventions")["judges"]["count"],
+        Value::Null
+    );
+}
+
+/// `policy conventions NAME` counts the files that one convention judges. Review 5500533966.
+#[test]
+fn policy_of_one_convention_counts_only_its_files() {
+    let tree = tree(
+        r#"{"conventions": {
+          "no-unwrap": { "text": "unwrap", "in": "src/lib.rs", "remedy": "Handle it." },
+          "no-todo": { "text": "TODO", "remedy": "Do it." }
+        }}"#,
+    );
+    tree.write("src/other.rs", CLEAN);
+
+    let one = tree.run(&["policy", "conventions", "no-unwrap"]);
+    assert_eq!(one.code, 0, "{}", one.out);
+    let conventions = block(&one.out, "conventions — runs");
+    assert!(
+        conventions.contains("judges: 1 file in this tree"),
+        "{}",
+        one.out
+    );
+    let json = tree
+        .run(&["policy", "--json", "conventions", "no-unwrap"])
+        .json();
+    assert_eq!(capability(&json, "conventions")["judges"]["count"], 1);
+}

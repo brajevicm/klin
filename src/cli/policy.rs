@@ -5,7 +5,7 @@ use serde_json::{Map, Value, json};
 
 use crate::config;
 use crate::contract;
-use crate::contract::check::{Activation, Derivation, Told, Unit};
+use crate::contract::check::{Activation, Count, Derivation, Told, Unit};
 use crate::contract::project::Project;
 use crate::engine::plan::{Gate, Plan, State};
 use crate::engine::{catalogue, render};
@@ -157,40 +157,52 @@ enum Judged {
     Idle(Unit, &'static str),
     /// An integration, whose report names the files only a run reads.
     OnlyARunCounts(Unit),
+    /// A capability whose section a person must settle before a run judges any file.
+    Unsettled(Unit, String),
 }
 
 impl Judged {
-    fn running(check: &catalogue::Row, project: &Project) -> Result<Judged, Fault> {
+    fn running(
+        check: &catalogue::Row,
+        project: &Project,
+        entry: Option<&str>,
+    ) -> Result<Judged, Fault> {
         let unit = check.judges.unit;
-        Ok(match check.judges.count {
-            Some(count) => Judged::Selected(
-                count(project).map_err(fault(ErrorKind::Configuration))?,
-                unit,
-            ),
-            None => Judged::OnlyARunCounts(unit),
-        })
+        let Some(count) = check.judges.count else {
+            return Ok(Judged::OnlyARunCounts(unit));
+        };
+        Ok(
+            match count(project, entry).map_err(fault(ErrorKind::Configuration))? {
+                Count::Selected(count) => Judged::Selected(count, unit),
+                Count::Unsettled(why) => Judged::Unsettled(unit, why),
+            },
+        )
     }
 
     fn line(&self) -> String {
-        match *self {
+        match self {
             Judged::Selected(count, unit) => {
-                format!("judges: {count} {} in this tree", unit.count(count))
+                format!("judges: {count} {} in this tree", unit.count(*count))
             }
             Judged::Idle(unit, reason) => format!("judges: 0 {}, because {reason}", unit.name()),
             Judged::OnlyARunCounts(unit) => format!(
                 "judges: the {} its report names, which only a run counts",
                 unit.name()
             ),
+            Judged::Unsettled(_, why) => {
+                format!("judges: no file until a person settles this: {why}")
+            }
         }
     }
 
     fn json(&self) -> Value {
-        let (count, unit, reason) = match *self {
-            Judged::Selected(count, unit) => (Some(count), unit, None),
-            Judged::Idle(unit, reason) => (Some(0), unit, Some(reason)),
+        let (count, of, reason) = match self {
+            Judged::Selected(count, unit) => (Some(*count), unit, None),
+            Judged::Idle(unit, reason) => (Some(0), unit, Some(reason.to_string())),
             Judged::OnlyARunCounts(unit) => (None, unit, None),
+            Judged::Unsettled(unit, why) => (None, unit, Some(why.clone())),
         };
-        json!({ "count": count, "of": unit.name(), "reason": reason })
+        json!({ "count": count, "of": of.name(), "reason": reason })
     }
 }
 
@@ -410,7 +422,7 @@ fn capability<'a>(
         name: &gate.name,
         check,
         state: State::Active,
-        judges: Judged::running(check, project)?,
+        judges: Judged::running(check, project, args.entry.as_deref())?,
         lines,
         values,
         limitations,

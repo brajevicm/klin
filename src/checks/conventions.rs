@@ -14,7 +14,7 @@ use serde_json::Value;
 
 use crate::config::file::Config;
 use crate::config::key::{self};
-use crate::contract::check::{Context, Counted, Line, Plain, Sink, Told};
+use crate::contract::check::{Context, Count, Counted, Line, Plain, Sink, Told};
 use crate::contract::holes;
 use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
@@ -43,19 +43,18 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// How many files this gate judges in the working tree: each one a convention applies to and
-/// reads. A convention whose language or pattern a person must settle judges nothing, and
-/// `policy` explains it in place of failing. Spec 11.6.
-pub fn judges(project: &Project) -> Result<usize, Error> {
+/// How many files this gate judges in the working tree, or those of the one convention `entry`
+/// names: each one a convention applies to and reads. A convention whose language or pattern a
+/// person must settle keeps the run from judging any, so the count says why. Spec 11.6.
+pub fn judges(project: &Project, entry: Option<&str>) -> Result<Count, Error> {
     let config = &project.config;
-    let conventions = conventions(config, project.moves())?;
+    let mut conventions = conventions(config, project.moves())?;
+    conventions.retain(|convention| entry.is_none_or(|named| convention.name == named));
     let places = walked(config, project.tree())?;
-    let rules: Vec<Rule> = conventions
-        .iter()
-        .filter(|convention| !convention.gone())
-        .filter_map(|convention| resolved(convention, &places).ok())
-        .collect();
-    Ok(rules::judged(&rules, &places))
+    Ok(match every_rule(config, &conventions, &places) {
+        Ok(rules) => Count::Selected(rules::judged(&rules, &places)),
+        Err(why) => Count::Unsettled(why.to_string()),
+    })
 }
 
 /// Every convention that measures anything resolved, or the first one whose language or

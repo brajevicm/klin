@@ -1599,3 +1599,125 @@ fn setup_says_when_the_floor_holds_nothing() {
         run.out
     );
 }
+
+/// A finding the comparison base does not hold is not part of the floor: setup names it apart,
+/// as still failing `klin check`. Review 5500533966, #587.
+#[test]
+fn setup_names_a_finding_the_base_does_not_hold_apart_from_the_floor() {
+    let tree = Tree::new();
+    tree.write(
+        "src/lib.rs",
+        "pub fn g(x: Option<i32>) -> i32 {\n    x.unwrap_or(0)\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        "pub fn g(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin now holds today's debt as the floor: nothing, no check found a problem."),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Not in the floor, so these still fail klin check: 1 escape hatch."),
+        "{}",
+        run.out
+    );
+}
+
+/// A check that could not measure its inputs leaves no floor to claim, even where the other
+/// checks completed. Review 5500533966, #587.
+#[test]
+fn setup_claims_no_floor_when_one_check_could_not_run() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.write("docs/notes.md", "Notes.\n");
+    tree.write("klin.json", r#"{"complexity": {"in": "docs"}}"#);
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin holds no floor yet: complexity: "),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("klin now holds"), "{}", run.out);
+}
+
+/// A check a person set to `false` judges nothing, so it is a blind spot. Review 5500533966.
+#[test]
+fn setup_names_a_check_a_person_set_to_false_as_off() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.write("klin.json", r#"{"escapes": false, "stubs": false}"#);
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("escapes (off)"), "{}", run.out);
+    assert!(run.says("stubs (off)"), "{}", run.out);
+}
+
+/// Two `sarif` entries share the words a report gives scanner findings, so setup counts them
+/// together and words the total once. Review 5500533966.
+#[test]
+fn setup_counts_the_findings_of_every_sarif_entry_together() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [
+            {"name": "eslint", "report": "eslint.sarif", "run": "cp eslint.in eslint.sarif"},
+            {"name": "ruff", "report": "ruff.sarif", "run": "cp ruff.in ruff.sarif"}
+        ]}"#,
+    );
+    tree.write("src/a.ts", "one\ntwo\nthree\n");
+    tree.base();
+    tree.write("src/a.ts", "ONE\nTWO\nthree\n");
+    let result = |line: u64| {
+        format!(
+            r#"{{"ruleId": "r{line}", "message": {{"text": "m"}}, "locations": [{{"physicalLocation": {{"artifactLocation": {{"uri": "src/a.ts"}}, "region": {{"startLine": {line}}}}}}}]}}"#
+        )
+    };
+    let report = |results: &[String]| {
+        format!(
+            r#"{{"version": "2.1.0", "runs": [{{"tool": {{"driver": {{"name": "t"}}}}, "results": [{}]}}]}}"#,
+            results.join(", ")
+        )
+    };
+    tree.write("eslint.in", &report(&[result(1)]));
+    tree.write("ruff.in", &report(&[result(1), result(2)]));
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("Not in the floor, so these still fail klin check: 3 scanner findings."),
+        "{}",
+        run.out
+    );
+}
+
+/// A check whose measurement is incomplete holds no known floor, so setup names it as a blind
+/// spot. A report older than the change it should describe is one. Review 5500533966.
+#[test]
+fn setup_names_an_incomplete_check_as_a_blind_spot() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif"}]}"#,
+    );
+    tree.write("src/a.ts", "one\n");
+    tree.write(
+        "eslint.sarif",
+        r#"{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "t"}}, "results": []}]}"#,
+    );
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("eslint (incomplete)"), "{}", run.out);
+}

@@ -15,11 +15,19 @@ pub fn said(root: &Path, out: &mut String) {
             return;
         }
     };
+    let held = counted(&floor, |row| row.held);
     let _ = writeln!(
         out,
         "klin now holds today's debt as the floor: {}.",
-        held(&floor)
+        held.as_deref()
+            .unwrap_or("nothing, no check found a problem")
     );
+    if let Some(failing) = counted(&floor, |row| row.failing) {
+        let _ = writeln!(
+            out,
+            "Not in the floor, so these still fail klin check: {failing}."
+        );
+    }
     let _ = writeln!(
         out,
         "Only new problems block. Blind spots here: {}.",
@@ -27,46 +35,45 @@ pub fn said(root: &Path, out: &mut String) {
     );
 }
 
-/// Each check's findings in the tree, held at the base or new against it, in a person's words,
-/// with the checks that share words counted together.
-fn held(floor: &[Floor]) -> String {
-    let mut counted: Vec<(String, usize)> = Vec::new();
-    for row in floor.iter().filter(|row| row.findings > 0) {
-        let label = labelled(&row.gate, row.findings);
-        match counted.iter_mut().find(|(said, _)| *said == label) {
-            Some((_, total)) => *total += row.findings,
-            None => counted.push((label, row.findings)),
+/// One count of each check's findings in a person's words, summed over the gates of one check,
+/// such as every `sarif` entry, and `None` where every count is 0.
+fn counted(floor: &[Floor], count: fn(&Floor) -> usize) -> Option<String> {
+    let mut totals: Vec<(&str, usize)> = Vec::new();
+    for row in floor.iter().filter(|row| count(row) > 0) {
+        match totals.iter_mut().find(|(check, _)| *check == row.check) {
+            Some((_, total)) => *total += count(row),
+            None => totals.push((row.check, count(row))),
         }
     }
-    match counted.is_empty() {
-        true => "nothing, no check found a problem".to_string(),
-        false => counted
-            .iter()
-            .map(|(label, count)| format!("{count} {label}"))
-            .collect::<Vec<_>>()
-            .join(", "),
-    }
+    let said: Vec<String> = totals
+        .iter()
+        .map(|(check, total)| format!("{total} {}", labelled(check, *total)))
+        .collect();
+    (!said.is_empty()).then(|| said.join(", "))
 }
 
-/// What a report calls one gate's findings, and the gate's name for one this binary holds no
-/// words for, such as a `sarif` entry.
-fn labelled(gate: &str, count: usize) -> String {
-    let check = gate.split('/').next().unwrap_or(gate);
-    match catalogue::labels(check) {
-        Some(labels) => labels.count(count).to_string(),
-        None => format!("{gate} findings"),
+/// What a report calls one check's findings, and its name with "finding" for one this binary
+/// holds no words for, such as the built-in row of the lost files.
+fn labelled(check: &str, count: usize) -> String {
+    match (catalogue::labels(check), count) {
+        (Some(labels), _) => labels.count(count).to_string(),
+        (None, 1) => format!("{check} finding"),
+        (None, _) => format!("{check} findings"),
     }
 }
 
 /// Each check that judges nothing here: one that runs and judged none of the files it found,
-/// and one that does not run.
+/// one a hole left incomplete, and one that does not run.
 fn blind(floor: &[Floor]) -> String {
     let said: Vec<String> = floor
         .iter()
-        .filter_map(|row| match (row.runs, row.coverage) {
-            (false, _) => Some(format!("{} (off)", row.gate)),
-            (true, Some((0, found))) => Some(format!("{} (0 of {found} files judged)", row.gate)),
-            (true, _) => None,
+        .filter_map(|row| match (row.runs, row.incomplete, row.coverage) {
+            (false, _, _) => Some(format!("{} (off)", row.gate)),
+            (true, true, _) => Some(format!("{} (incomplete)", row.gate)),
+            (true, false, Some((0, found))) => {
+                Some(format!("{} (0 of {found} files judged)", row.gate))
+            }
+            (true, false, _) => None,
         })
         .collect();
     match said.is_empty() {

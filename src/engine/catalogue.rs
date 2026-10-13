@@ -4,7 +4,7 @@
 //! no check names the catalogue. ADR 0036.
 
 use crate::config::key::{Key, Languages, Section, SectionShape};
-use crate::contract::check::{Activation, Derivation, Judges, Needs, Placement, Run, Unit};
+use crate::contract::check::{Activation, Count, Derivation, Judges, Needs, Placement, Run, Unit};
 use crate::contract::project::Project;
 use crate::{
     checks::{
@@ -101,7 +101,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Values(doc_size::derive),
         judges: Judges {
             unit: Unit::Documents,
-            count: Some(doc_size::judges),
+            count: Some(|project, _| doc_size::judges(project).map(Count::Selected)),
             absent: "the tree holds no agent instruction file",
         },
         needs: Needs::Nothing,
@@ -127,7 +127,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Values(doc_citations::derive),
         judges: Judges {
             unit: Unit::Documents,
-            count: Some(doc_citations::judges),
+            count: Some(|project, _| doc_citations::judges(project).map(Count::Selected)),
             absent: "the tree holds no document",
         },
         needs: Needs::TheTree,
@@ -153,7 +153,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Values(lockfile::derive),
         judges: Judges {
             unit: Unit::Manifests,
-            count: Some(lockfile::judges),
+            count: Some(|project, _| lockfile::judges(project).map(Count::Selected)),
             absent: "the tree holds no manifest klin reads a lockfile for",
         },
         needs: Needs::TheTree,
@@ -179,7 +179,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Nothing,
         judges: Judges {
             unit: Unit::Files,
-            count: Some(escapes::judges),
+            count: Some(|project, _| escapes::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
         },
         needs: Needs::TheTree,
@@ -205,7 +205,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Nothing,
         judges: Judges {
             unit: Unit::Files,
-            count: Some(stubs::judges),
+            count: Some(|project, _| stubs::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
         },
         needs: Needs::TheTree,
@@ -231,7 +231,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Values(inventory::derive),
         judges: Judges {
             unit: Unit::TestFiles,
-            count: Some(inventory::judges),
+            count: Some(|project, _| inventory::judges(project).map(Count::Selected)),
             absent: "the tree holds no test root and no file its test convention marks",
         },
         needs: Needs::TheTree,
@@ -257,7 +257,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Values(complexity::derive),
         judges: Judges {
             unit: Unit::Files,
-            count: Some(complexity::judges),
+            count: Some(|project, _| complexity::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
         },
         needs: Needs::TheTree,
@@ -283,7 +283,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Nothing,
         judges: Judges {
             unit: Unit::Files,
-            count: Some(dead_symbols::judges),
+            count: Some(|project, _| dead_symbols::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
         },
         needs: Needs::TheTree,
@@ -309,7 +309,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Values(reachability::derive),
         judges: Judges {
             unit: Unit::Files,
-            count: Some(reachability::judges),
+            count: Some(|project, _| reachability::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
         },
         needs: Needs::TheTree,
@@ -335,7 +335,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::Nothing,
         judges: Judges {
             unit: Unit::Files,
-            count: Some(layering::judges),
+            count: Some(|project, _| layering::judges(project).map(Count::Selected)),
             absent: "it runs only under a section a person writes",
         },
         needs: Needs::TheCommit,
@@ -361,7 +361,7 @@ pub const CATALOGUE: &[Row] = &[
         derivation: Derivation::ExplainedWhenNamed(public_api::explain),
         judges: Judges {
             unit: Unit::Files,
-            count: Some(public_api::judges),
+            count: Some(|project, _| public_api::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
         },
         needs: Needs::TheCommit,
