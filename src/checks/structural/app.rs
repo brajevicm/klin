@@ -419,7 +419,7 @@ impl<'g> Walk<'g> {
     /// Whether the base's `.gitattributes` mark a file `linguist-vendored` or
     /// `linguist-generated`, so its code is not the repository's own.
     fn vendored(&self, file: &str) -> bool {
-        !self.attributes.is_empty() && files::form(file, self.attributes).vendored
+        !self.attributes.is_empty() && files::vendored(file, self.attributes)
     }
 
     fn lead(&mut self, from: usize, start_byte: u64, to: usize) {
