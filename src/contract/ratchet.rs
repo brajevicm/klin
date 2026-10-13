@@ -192,6 +192,16 @@ struct Comparison {
 }
 
 impl Comparison {
+    /// Whether a failure is of a row that blocks, so the gate fails. A failure of a ride-along
+    /// row alone leaves the gate's exit at 0. Spec 9.6.
+    fn blocks(&self, evaluator: &Evaluator) -> bool {
+        let rose = self.rose.iter().map(|(finding, _)| finding);
+        self.unmatched_findings
+            .iter()
+            .chain(rose)
+            .any(|finding| !(evaluator.rides_along)(&finding.values))
+    }
+
     fn failed(&self) -> bool {
         !self.unmatched_findings.is_empty() || !self.rose.is_empty()
     }
@@ -541,7 +551,7 @@ fn report(
     if comparison.failed() {
         failures(comparison, evaluator, (at.gate, held), out);
         notes(comparison, evaluator, at, out);
-        return 1;
+        return u8::from(comparison.blocks(evaluator));
     }
     out.tell(Told::Judged {
         line,

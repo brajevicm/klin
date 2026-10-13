@@ -1411,7 +1411,9 @@ A row in the ride-along tier of ADR 0073 has an N above 3 and at most 10 per
 100 changes, and a safe remedy. A row is one rule of a check, such as one
 kind of escape, or the whole check where it has one rule. The check's
 evaluator names the tier of each row from the finding's values, and the
-ratchet sets that tier on each finding.
+ratchet sets that tier on each finding. The ratchet's exit code counts only
+the failures of blocking rows. A gate that fails for any other reason fails,
+whatever ride-along findings it also holds.
 No shipped row is in this tier yet. #581 and #582 may add the first ones.
 
 At the Stop:
@@ -2936,6 +2938,7 @@ Result model and exit codes:
   `a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding`,
   `a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing`,
   `a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them`,
+  `a_ride_along_finding_does_not_mask_a_failure_its_gate_found_apart`,
   `at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change`
   and
   `at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one`
