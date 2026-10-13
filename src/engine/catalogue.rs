@@ -11,6 +11,7 @@ use crate::contract::project::Project;
 use crate::{
     checks::{
         complexity, conventions, doc_citations, doc_size, escapes, inventory, lockfile, sarif,
+        secrets,
         structural::{dead_symbols, layering, public_api, reachability},
         stubs,
     },
@@ -220,6 +221,33 @@ pub const CATALOGUE: &[Row] = &[
         labels: Labels {
             one: "stub",
             many: "stubs",
+        },
+        gate_per_entry: false,
+        shape: SectionShape::Object,
+    },
+    Row {
+        name: "secrets",
+        section: secrets::SECTION,
+        activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
+        keys: secrets::KEYS,
+        reference_text: None,
+        languages: Some(secrets::language_extensions),
+        available: |project| !project.found_no_source_root(),
+        run: secrets::gate,
+        derivation: Derivation::Nothing,
+        judges: Judges {
+            unit: Unit::Files,
+            count: Some(|project, _| secrets::judges(project).map(Count::Selected)),
+            absent: "the tree holds no source root",
+            debt: Debt::Held,
+        },
+        needs: Needs::TheTree,
+        takes_scope: true,
+        labels: Labels {
+            one: "hardcoded secret",
+            many: "hardcoded secrets",
         },
         gate_per_entry: false,
         shape: SectionShape::Object,

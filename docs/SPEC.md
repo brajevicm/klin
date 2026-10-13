@@ -1303,6 +1303,7 @@ measurement rules are section B.8, amended below and by section 7.
 | `lockfile` | check | Automatic | `{stop, check}` | None. |
 | `escapes` | check | Automatic | `{stop, check}` | None. Known rewordings stay documented limitations. |
 | `stubs` | check | Automatic | `{stop, check}` | None. File-and-kind marker identity (ADR 0064). |
+| `secrets` | check | Automatic | `{stop, check}` | New (#582). A live-shaped vendor token, keyed by a redacted fingerprint (B.8.2.1). |
 | `inventory` | check | Automatic | `{stop, check}` | A deleted test is a review item (section 9.2). |
 | `complexity` | check | Automatic | `{stop, check}` | None. Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). |
 | `dead-symbols` | check | Automatic | `{stop, check}` | None. |
@@ -1414,7 +1415,7 @@ evaluator names the tier of each row from the finding's values, and the
 ratchet sets that tier on each finding. The ratchet's exit code counts only
 the failures of blocking rows. A gate that fails for any other reason fails,
 whatever ride-along findings it also holds.
-No shipped row is in this tier yet. #581 and #582 may add the first ones.
+No shipped row is in this tier yet. #581 may add the first ones. `secrets` blocks: its replay over the frozen `nextjs` sample of #572 found 0 findings in 102 changes, so N = 0.
 
 At the Stop:
 
@@ -2629,8 +2630,12 @@ The README MUST name both levels and say which one a setup reaches.
 
 ### 16.3 Secrets and safety
 
-klin reads no secrets. No native check or recipe reads the network, and no
-measurement sends anything anywhere. `klin update` uses the network to fetch
+klin reads secrets only to find them, and never stores or prints one. The
+`secrets` check reads each source file and each `.env` file the tree does
+not ignore, and keys a finding by a redacted fingerprint, so no output,
+journal record, check document or accepted entry holds the key (B.8.2.1).
+No native check or recipe reads the network, and no measurement sends
+anything anywhere. `klin update` uses the network to fetch
 a release, and the guard denies it to an agent. `klin status` and `klin setup`
 and a session start ask GitHub for the newest release once a day, in a
 detached child (section 11.9). The ask sends no data of the repository.
@@ -4263,6 +4268,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text, or file + kind for a comment marker | `count` rises | yes | **new** |
+| `secrets` | live vendor key written into the code | file + redacted fingerprint | `count` rises | yes | shipped, #582 |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
 | `lockfile` | dependency added without a lockfile entry, pin removed, pin the lockfile does not record | manifest + name | `unlocked`, `unpinned`, `stale` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
@@ -4563,6 +4569,35 @@ grammar rejection: `stubs` MUST propagate the named error of section 13,
 including in a direct `stubs` command or a run selecting only that gate.
 Pinned by `an_oversized_source_preserves_the_named_resource_error_in_stubs`
 in `tests/stubs.rs`.
+
+**`secrets` keys a token by a redacted fingerprint.** It reads every file
+of a language klin knows, test files included, and each `.env` or `.env.*`
+file the tree does not ignore. A token is a match of one vendor's prefix and
+the rest at its usual length: `sk-proj-` and 40 or more characters,
+`sk-ant-` and a kind with two digits and 80 or more characters, `sk_live_`
+and 24 or more, `ghp_` and 36, `github_pat_` and 82, `AKIA` and 16, `xox`
+with one of `a`, `b`, `p`, `o`, `s` or `r` and 10 or more, `AIza` and 35,
+and `glpat-` and 20. A token that holds `test`, `xxx` or `example` in any
+case, or that `...` follows, is a placeholder and is not a site. A site is
+one file plus the fingerprint: the vendor prefix, `...` and a hash of the
+vendor and the whole token, the same FNV-1a hash as the identity of 11.2.
+Its `count` is the number of matches of that token in the file, and its
+line is the first. No site holds the token, the line it is on or any part
+of the token after the prefix, so the text report, the check document, the
+journal and an accepted entry a person copies from them hold no key. A
+person accepts a key with the fingerprint as the entry's `text`. Pinned by
+`a_new_openai_project_key_fails`,
+`every_vendor_token_of_its_usual_length_fails`,
+`a_token_shorter_than_its_usual_length_passes`,
+`no_text_json_or_journal_holds_the_key`,
+`a_token_that_holds_a_placeholder_word_passes`,
+`a_person_accepts_a_secret_without_writing_the_key`,
+`a_key_the_base_holds_passes_where_its_line_moved` and
+`a_tracked_env_file_is_read_and_an_ignored_one_is_not` in
+`tests/secrets.rs`. Known limit: a key of another vendor, a key split
+across a concatenation and a key in a file of no language klin knows, such
+as JSON or YAML, are not read. A prompt that holds a key still lands in the
+journal's prompt excerpt, which `journal.prompt: false` turns off.
 
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and
