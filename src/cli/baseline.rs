@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::cli::check;
 use crate::engine::catalogue;
-use crate::engine::document::{Floor, Standing};
+use crate::engine::document::{FilesMeasured, Floor, Standing};
 
 /// What `setup` ends with: the debt today's tree holds, which the Stop holds as its floor, and
 /// each check that judges nothing in this tree. Spec 11.2.
@@ -75,7 +75,9 @@ fn blind(floor: &[Floor]) -> String {
             let why = match (row.standing, row.coverage) {
                 (Standing::Off, _) => "off".to_string(),
                 (Standing::Skipped, _) => "not run by setup".to_string(),
-                (Standing::Measured, Some((0, found))) => format!("0 of {found} files judged"),
+                (Standing::Measured, Some(FilesMeasured { measured: 0, found })) => {
+                    format!("0 of {found} files judged")
+                }
                 (Standing::Measured, _) => return None,
             };
             Some(format!("{} ({why})", row.gate))

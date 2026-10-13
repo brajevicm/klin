@@ -904,6 +904,18 @@ pub struct Judges {
     pub count: Option<Counter>,
     /// Why an Automatic check does not apply to a tree that lacks its facts.
     pub absent: &'static str,
+    /// Which findings its ratchet passed are debt the floor of `setup` holds. Spec 11.2.
+    pub debt: Debt,
+}
+
+/// The findings a ratchet passed that are debt. Spec 11.2.
+#[derive(Clone, Copy)]
+pub enum Debt {
+    /// Every finding the ratchet held.
+    Held,
+    /// Only the findings an accepted entry passed, for a check that judges what is present and
+    /// fine as well, such as every test the base holds.
+    Accepted,
 }
 
 /// The values a check derives from the configuration, the survey and the derivation commit, with

@@ -4,7 +4,9 @@
 //! no check names the catalogue. ADR 0036.
 
 use crate::config::key::{Key, Languages, Section, SectionShape};
-use crate::contract::check::{Activation, Count, Derivation, Judges, Needs, Placement, Run, Unit};
+use crate::contract::check::{
+    Activation, Count, Debt, Derivation, Judges, Needs, Placement, Run, Unit,
+};
 use crate::contract::project::Project;
 use crate::{
     checks::{
@@ -103,6 +105,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Documents,
             count: Some(|project, _| doc_size::judges(project).map(Count::Selected)),
             absent: "the tree holds no agent instruction file",
+            debt: Debt::Held,
         },
         needs: Needs::Nothing,
         takes_scope: false,
@@ -129,6 +132,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Documents,
             count: Some(|project, _| doc_citations::judges(project).map(Count::Selected)),
             absent: "the tree holds no document",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: false,
@@ -155,6 +159,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Manifests,
             count: Some(|project, _| lockfile::judges(project).map(Count::Selected)),
             absent: "the tree holds no manifest klin reads a lockfile for",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: false,
@@ -181,6 +186,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| escapes::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: true,
@@ -207,6 +213,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| stubs::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: true,
@@ -233,6 +240,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::TestFiles,
             count: Some(|project, _| inventory::judges(project).map(Count::Selected)),
             absent: "the tree holds no test root and no file its test convention marks",
+            debt: Debt::Accepted,
         },
         needs: Needs::TheTree,
         takes_scope: true,
@@ -259,6 +267,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| complexity::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: true,
@@ -285,6 +294,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| dead_symbols::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: true,
@@ -311,6 +321,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| reachability::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: false,
@@ -337,6 +348,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| layering::judges(project).map(Count::Selected)),
             absent: "it runs only under a section a person writes",
+            debt: Debt::Held,
         },
         needs: Needs::TheCommit,
         takes_scope: false,
@@ -363,6 +375,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(|project, _| public_api::judges(project).map(Count::Selected)),
             absent: "the tree holds no source root",
+            debt: Debt::Held,
         },
         needs: Needs::TheCommit,
         takes_scope: false,
@@ -389,6 +402,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: Some(conventions::judges),
             absent: "it runs only under a section a person writes",
+            debt: Debt::Held,
         },
         needs: Needs::TheTree,
         takes_scope: true,
@@ -415,6 +429,7 @@ pub const CATALOGUE: &[Row] = &[
             unit: Unit::Files,
             count: None,
             absent: "it runs only under a section a person writes",
+            debt: Debt::Held,
         },
         needs: Needs::TheCommit,
         takes_scope: false,

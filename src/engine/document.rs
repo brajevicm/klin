@@ -14,8 +14,8 @@ use crate::config::file::MEASUREMENT_LOST;
 use crate::config::scope::{Moved, Moves};
 use crate::contract;
 use crate::contract::check::{
-    Activation, Caller, Cause, Class, Context, Hole, Incomplete, NO_SOURCE_ROOT, Plain, Reason,
-    Records, Sink, Told, UNBUILT,
+    Activation, Caller, Cause, Class, Context, Debt, Hole, Incomplete, NO_SOURCE_ROOT, Plain,
+    Reason, Records, Sink, Told, UNBUILT,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Seen, Unmeasured};
@@ -24,7 +24,7 @@ use crate::engine::catalogue;
 use crate::engine::plan::{Gate, Plan, State, every_check};
 use crate::engine::render::{self, Finding, GateRecords, Note, Review, Slot};
 use crate::sys::changed::Change;
-use crate::sys::error::{ErrorKind, Fault};
+use crate::sys::error::{Error, ErrorKind, Fault};
 use crate::window::base::{self, Prior, Window};
 use crate::{engine::diagnostics, facts::survey, sys::clock};
 
@@ -310,6 +310,7 @@ struct Capability {
     name: String,
     /// The catalogue check the row runs, which for a `sarif` entry is not its name.
     check: &'static str,
+    debt: Debt,
     kind: &'static str,
     placement: &'static [&'static str],
     state: State,
@@ -328,6 +329,7 @@ impl Capability {
         Capability {
             name: gate.name.clone(),
             check: gate.check.name,
+            debt: gate.check.judges.debt,
             kind: gate.check.kind(),
             placement: gate.check.placement.names(),
             state: State::Active,
@@ -347,6 +349,7 @@ impl Capability {
         Capability {
             name: check.name.to_string(),
             check: check.name,
+            debt: check.judges.debt,
             kind: check.kind(),
             placement: check.placement.names(),
             state: State::NotApplicable,
@@ -365,6 +368,7 @@ impl Capability {
         Capability {
             name: MEASUREMENT_LOST.to_string(),
             check: MEASUREMENT_LOST,
+            debt: Debt::Held,
             kind: "built-in",
             placement: &["stop", "check"],
             state: State::Active,
@@ -458,7 +462,41 @@ pub struct Floor {
     pub standing: Standing,
     pub held: usize,
     pub failing: usize,
-    pub coverage: Option<(usize, usize)>,
+    pub coverage: Option<FilesMeasured>,
+}
+
+/// How many files a capability measured of the ones it found. Spec 11.2.
+#[derive(Clone, Copy)]
+pub struct FilesMeasured {
+    pub measured: usize,
+    pub found: usize,
+}
+
+/// A gate the run lists in no capability row: one a person set to `false`, or an integration
+/// the run left alone. Spec 11.2.
+struct Unrun {
+    gate: String,
+    check: &'static str,
+}
+
+impl Unrun {
+    fn of(gate: &Gate) -> Unrun {
+        Unrun {
+            gate: gate.name.clone(),
+            check: gate.check.name,
+        }
+    }
+
+    fn floor(&self, standing: Standing) -> Floor {
+        Floor {
+            gate: self.gate.clone(),
+            check: self.check,
+            standing,
+            held: 0,
+            failing: 0,
+            coverage: None,
+        }
+    }
 }
 
 /// How one capability stood in the run `setup` reads its floor from. Spec 11.2.
@@ -481,9 +519,9 @@ pub struct CheckDocument {
     /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
     stopped: bool,
     /// The checks a person set to `false`, which the document lists nowhere. Spec 11.2.
-    excluded: Vec<(String, &'static str)>,
+    excluded: Vec<Unrun>,
     /// The integrations the run left alone, which the document lists nowhere. Spec 11.2.
-    skipped: Vec<(String, &'static str)>,
+    skipped: Vec<Unrun>,
     capabilities: Vec<Capability>,
     findings: Vec<Finding>,
     notes: Vec<Note>,
@@ -509,13 +547,12 @@ pub struct CheckDocument {
     grammar_lag: bool,
 }
 
-/// The findings a capability's ratchet passed that are debt. `inventory` judges every test the
-/// base holds, a present one included, so only the sites an accepted entry passed are a missing
-/// test the floor holds. Spec 11.2.
+/// The findings a capability's ratchet passed that are debt, as its check counts debt.
+/// Spec 11.2.
 fn held_debt(row: &Capability) -> usize {
-    let passed = match row.check {
-        INVENTORY => row.accepted,
-        _ => row.held,
+    let passed = match row.debt {
+        Debt::Held => row.held,
+        Debt::Accepted => row.accepted,
     };
     passed.map_or(0, |count| count as usize)
 }
@@ -584,19 +621,19 @@ impl CheckDocument {
     /// each check a person set to `false`, then each integration the run left alone. The first
     /// error of the run, a check's included, where one kept any capability from measuring, and
     /// why the measurement is incomplete where it is, because then no floor is known. Spec 11.2.
-    pub fn floor(&self) -> Result<Vec<Floor>, String> {
+    pub fn floor(&self) -> Result<Vec<Floor>, Error> {
         if let Some(problem) = self.problems.first() {
-            return Err(match &problem.check {
+            return Err(Error(match &problem.check {
                 Some(check) => format!("{check}: {}", problem.message),
                 None => problem.message.clone(),
-            });
+            }));
         }
         if self.totals().incomplete {
-            return Err(match self.holes.first() {
+            return Err(Error(match self.holes.first() {
                 Some(hole) => hole.text.clone(),
                 None => "a check could not measure everything it found, which klin check names"
                     .to_string(),
-            });
+            }));
         }
         let ran = self.capabilities.iter().map(|row| Floor {
             gate: row.name.clone(),
@@ -607,35 +644,22 @@ impl CheckDocument {
             },
             held: held_debt(row),
             failing: self.failing(&row.name),
-            coverage: row
-                .coverage
-                .as_ref()
-                .map(|counts| (counts.measured, counts.found)),
+            coverage: row.coverage.as_ref().map(|counts| FilesMeasured {
+                measured: counts.measured,
+                found: counts.found,
+            }),
         });
-        let unrun = |rows: &[(String, &'static str)], standing| {
-            rows.iter()
-                .map(|(gate, check)| Floor {
-                    gate: gate.clone(),
-                    check,
-                    standing,
-                    held: 0,
-                    failing: 0,
-                    coverage: None,
-                })
-                .collect::<Vec<_>>()
-        };
-        Ok(ran
-            .chain(unrun(&self.excluded, Standing::Off))
-            .chain(unrun(&self.skipped, Standing::Skipped))
-            .collect())
+        let excluded = self.excluded.iter().map(|gate| gate.floor(Standing::Off));
+        let skipped = self
+            .skipped
+            .iter()
+            .map(|gate| gate.floor(Standing::Skipped));
+        Ok(ran.chain(excluded).chain(skipped).collect())
     }
 
     /// The integrations a run left alone, which `setup` names as blind spots. Spec 11.2.
     pub fn skip(&mut self, gates: &[&Gate]) {
-        self.skipped = gates
-            .iter()
-            .map(|gate| (gate.name.clone(), gate.check.name))
-            .collect();
+        self.skipped = gates.iter().map(|gate| Unrun::of(gate)).collect();
     }
 
     fn failing(&self, gate: &str) -> usize {
@@ -1047,7 +1071,10 @@ impl CheckDocument {
             .iter()
             .filter_map(|name| {
                 let check = catalogue::CATALOGUE.iter().find(|row| row.name == name)?;
-                Some((name.clone(), check.name))
+                Some(Unrun {
+                    gate: name.clone(),
+                    check: check.name,
+                })
             })
             .collect();
         self.capabilities.extend(

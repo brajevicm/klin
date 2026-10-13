@@ -149,60 +149,75 @@ struct Capability<'a> {
     limitations: Vec<&'static str>,
 }
 
-/// What one capability judges in this tree. Spec 11.6.
-enum Judged {
+/// What one capability judges in this tree, counted in its check's unit. Spec 11.6.
+struct Judged {
+    unit: Unit,
+    what: Selection,
+}
+
+/// How much of the tree a capability selects.
+enum Selection {
     /// A capability that runs, with the size of its selection.
-    Selected(usize, Unit),
+    Counted(usize),
     /// A capability that does not run, which judges nothing, and why.
-    Idle(Unit, &'static str),
+    Idle(&'static str),
     /// An integration, whose report names the files only a run reads.
-    OnlyARunCounts(Unit),
+    OnlyARunCounts,
     /// A capability whose section a person must settle before a run judges any file.
-    Unsettled(Unit, String),
+    Unsettled(String),
 }
 
 impl Judged {
+    fn idle(check: &catalogue::Row, why: &'static str) -> Judged {
+        Judged {
+            unit: check.judges.unit,
+            what: Selection::Idle(why),
+        }
+    }
+
     fn running(
         check: &catalogue::Row,
         project: &Project,
         entry: Option<&str>,
     ) -> Result<Judged, Fault> {
-        let unit = check.judges.unit;
-        let Some(count) = check.judges.count else {
-            return Ok(Judged::OnlyARunCounts(unit));
-        };
-        Ok(
-            match count(project, entry).map_err(fault(ErrorKind::Configuration))? {
-                Count::Selected(count) => Judged::Selected(count, unit),
-                Count::Unsettled(why) => Judged::Unsettled(unit, why),
+        let what = match check.judges.count {
+            None => Selection::OnlyARunCounts,
+            Some(count) => match count(project, entry).map_err(fault(ErrorKind::Configuration))? {
+                Count::Selected(count) => Selection::Counted(count),
+                Count::Unsettled(why) => Selection::Unsettled(why),
             },
-        )
+        };
+        Ok(Judged {
+            unit: check.judges.unit,
+            what,
+        })
     }
 
     fn line(&self) -> String {
-        match self {
-            Judged::Selected(count, unit) => {
+        let unit = self.unit;
+        match &self.what {
+            Selection::Counted(count) => {
                 format!("judges: {count} {} in this tree", unit.count(*count))
             }
-            Judged::Idle(unit, reason) => format!("judges: 0 {}, because {reason}", unit.name()),
-            Judged::OnlyARunCounts(unit) => format!(
+            Selection::Idle(reason) => format!("judges: 0 {}, because {reason}", unit.name()),
+            Selection::OnlyARunCounts => format!(
                 "judges: the {} its report names, which only a run counts",
                 unit.name()
             ),
-            Judged::Unsettled(_, why) => {
+            Selection::Unsettled(why) => {
                 format!("judges: no file until a person settles this: {why}")
             }
         }
     }
 
     fn json(&self) -> Value {
-        let (count, of, reason) = match self {
-            Judged::Selected(count, unit) => (Some(*count), unit, None),
-            Judged::Idle(unit, reason) => (Some(0), unit, Some(reason.to_string())),
-            Judged::OnlyARunCounts(unit) => (None, unit, None),
-            Judged::Unsettled(unit, why) => (None, unit, Some(why.clone())),
+        let (count, reason) = match &self.what {
+            Selection::Counted(count) => (Some(*count), None),
+            Selection::Idle(reason) => (Some(0), Some(reason.to_string())),
+            Selection::OnlyARunCounts => (None, None),
+            Selection::Unsettled(why) => (None, Some(why.clone())),
         };
-        json!({ "count": count, "of": of.name(), "reason": reason })
+        json!({ "count": count, "of": self.unit.name(), "reason": reason })
     }
 }
 
@@ -219,7 +234,7 @@ impl<'a> Capability<'a> {
             name,
             check,
             state,
-            judges: Judged::Idle(check.judges.unit, why),
+            judges: Judged::idle(check, why),
             lines: limitation_lines(&limitations),
             values: Vec::new(),
             limitations,
