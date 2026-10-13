@@ -1414,7 +1414,14 @@ evaluator names the tier of each row from the finding's values, and the
 ratchet sets that tier on each finding. The ratchet's exit code counts only
 the failures of blocking rows. A gate that fails for any other reason fails,
 whatever ride-along findings it also holds.
-No shipped row is in this tier yet. #581 and #582 may add the first ones.
+The `biome-ignore` row of `escapes` is in this tier, at N 4.9 on the
+replay of #572 (#581). Pinned by
+`a_stop_whose_only_new_escape_is_a_biome_ignore_does_not_block_and_prints_nothing`,
+`a_biome_ignore_appears_in_a_stop_that_blocks_for_another_escape`,
+`at_klin_check_a_biome_ignore_is_a_ride_along_review_item_and_the_exit_does_not_change`
+and
+`at_klin_check_a_blocking_escape_beside_a_biome_ignore_fails_on_the_blocking_one`
+in `tests/escapes.rs`.
 
 At the Stop:
 
@@ -2932,17 +2939,14 @@ Result model and exit codes:
 - a finding of a ride-along row appears in a Stop that blocks for another
   finding, a Stop whose only findings ride along does not block, and at
   `klin check` the finding is a `ride-along` review item and the exit does
-  not change (section 9.6). No shipped row is in the tier yet, so these are
-  `#[cfg(test)]` pins under the AGENTS.md exception until #581 or #582 ships
-  one. The pins are
-  `a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding`,
-  `a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing`,
-  `a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them`,
-  `a_ride_along_finding_does_not_mask_a_failure_its_gate_found_apart`,
-  `at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change`
-  and
-  `at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one`
-  in `src/engine/document.rs`;
+  not change (section 9.6). Section 9.6 names the CLI tests. A ride-along
+  finding of a gate that erred, or of a gate that failed apart from its
+  findings, stays unprinted or beside that failure. No shipped gate with a
+  ride-along row does either, so these are `#[cfg(test)]` pins under the
+  AGENTS.md exception. The pins are
+  `a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them`
+  and `a_ride_along_finding_does_not_mask_a_failure_its_gate_found_apart` in
+  `src/engine/document.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities
@@ -3453,8 +3457,9 @@ reads `test_lines`, of the same shape, which only a person pins, and which
 holds the length of test code as `lines` holds the length of production code
 (5.4, 8.2.1, ADR 0063). `escapes`
 additionally reads `skip_test_idioms`, default `true`, which leaves `unwrap` and
-`expect` out of Rust test code and `@ts-expect-error` out of TypeScript and
-JavaScript test files, and nothing else (8.2, ADR 0049, ADR 0060). The key was
+`expect` out of Rust test code and `@ts-expect-error`, `as unknown as` and
+empty error handlers out of TypeScript and JavaScript test files, and nothing
+else (8.2, ADR 0049, ADR 0060, #581). The key was
 `skip_rust_tests`, and a section that still names it MUST get the migration
 error of 5.2 naming `skip_test_idioms`. Pinned by
 `the_retired_skip_rust_tests_key_names_the_key_that_replaced_it` in
@@ -4438,7 +4443,9 @@ match of every pattern in the language's table, on every line whose trimmed
 text is equal, lands on that one site. Its `count` is the number of those
 matches. Its label and remedy are the ones of the first pattern, in table
 order, that matched a line with that text, and its line is the first line
-that pattern matched. The built-in language table comes first. A line that
+that pattern matched. A row in the ride-along tier of 9.6 gives way: a
+blocking row that matches the same text takes the label, the remedy and the
+line, so a line that holds kinds of both tiers blocks. The built-in language table comes first. A line that
 carries two kinds is one site labelled by
 the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
@@ -4449,8 +4456,9 @@ tests. Each language's table names its test idioms and its test code, and a
 language that names none has every row judged in a test. The Rust test idioms
 are `unwrap` and `expect`, and Rust test code is an inline `#[cfg(test)]`
 module or a `.rs` file under a test root the survey finds in the tree being
-read (5.4). The TypeScript and JavaScript test idiom is `@ts-expect-error`, a
-row of its own, and their test code is a test file of 5.4: one under a test
+read (5.4). The TypeScript and JavaScript test idioms are `@ts-expect-error`,
+the double cast `as unknown as` and the empty handler, each a row of its own,
+and their test code is a test file of 5.4: one under a test
 root, or one a test directory segment or a test affix marks. It needs no
 description, the same way a reason on `#[ignore]` silences nothing. Each tree
 is classified over its own files, so a root that stops being test-only has its
@@ -4486,6 +4494,21 @@ line, judges a test module like any other code, and refuses the key. Pinned by
 `tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
 line. A finding that says `unwrap x4` may hold two `expect` calls.
 
+The TypeScript and JavaScript table also holds these rows, each with its own
+remedy (#581): the double cast `as unknown as`, `any` as a generic argument
+beside another argument such as `Record<string, any>` (a lone `<any>` stays
+the `any` row), `biome-ignore`, an ESLint configuration comment such as
+`/* eslint no-console: off */`, `NOSONAR`, `@codescene(disable`, and an empty
+handler: `catch {}`, `catch (e) {}` and `.catch(() => {})` or `.catch(e =>
+{})` with nothing but whitespace in the body. A handler whose body holds a
+comment is no site. `biome-ignore` rides along (9.6), and every other row
+blocks. Pinned by `each_new_typescript_row_fails_with_its_own_remedy`,
+`a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass`,
+`a_double_cast_and_an_empty_handler_in_a_test_file_are_left_out_by_default`
+and
+`a_line_that_holds_a_biome_ignore_and_a_blocking_escape_blocks_as_the_blocking_one`
+in `tests/escapes.rs`.
+
 `stubs` keys a comment marker by its file and the row kind,
 `comment marker`, in place of a line text (ADR 0064). Every marker match in
 one file lands on that one site, its `count` is the number of matches, and
@@ -4509,6 +4532,12 @@ as new. The pairing is `n log n` in the marks of a file, the line count is
 linear in the file for each pattern, and the quoted-span lookup is a binary
 search. Known limit: a reworded marker, or a marker deleted while another is
 added in the same file, holds the count.
+The TypeScript and JavaScript table also keys a `placeholder comment` this
+way: a `//` or `/*` comment that says "in a real implementation",
+"simplified version", "replace with actual" or "mock data", in any case.
+"for now" is not a phrase, because #362 measured it as noise (#581). Pinned
+by `a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not` in
+`tests/stubs.rs`.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
 `a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
 `every_marker_line_the_base_file_lacks_is_named`,

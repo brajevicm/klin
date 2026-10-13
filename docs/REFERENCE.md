@@ -42,7 +42,7 @@ No keys: the section is absent, or `false` to exclude the gate.
 | --- | --- | --- | --- | --- | --- |
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
-| `skip_test_idioms` | whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files | no | pinned only | — | `true` |
+| `skip_test_idioms` | whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error`, `as unknown as` and empty error handlers in TypeScript and JavaScript test files | no | pinned only | — | `true` |
 
 ### `stubs`
 

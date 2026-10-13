@@ -647,3 +647,24 @@ fn an_oversized_new_source_is_a_resource_limit_review_item_in_stubs() {
         direct.out
     );
 }
+
+#[test]
+fn a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not() {
+    let tree = tree();
+    tree.write(
+        "src/stats.ts",
+        "// In a real implementation, this would fetch from the API\n\
+         const stats = [1, 2];\n\
+         const label = \"mock data\";\n\
+         /* simplified version of the parser */\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(
+        run.says("src/stats.ts:1  placeholder comment x2, new on lines 1, 4 — write the real code"),
+        "{}",
+        run.out
+    );
+}

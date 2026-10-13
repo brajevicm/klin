@@ -100,7 +100,8 @@ pub struct Kind {
 pub const SKIP_TEST_IDIOMS: Key = Key {
     name: "skip_test_idioms",
     holds: "whether the test idioms inside test code are left out: `unwrap` and `expect` in \
-            Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files",
+            Rust tests, `@ts-expect-error`, `as unknown as` and empty error handlers in \
+            TypeScript and JavaScript test files",
     required: false,
     rule: None,
     default: "`true`",
@@ -141,6 +142,8 @@ struct Pattern {
     test_idiom: bool,
     /// Whether this row's matches in one file are one site, keyed by the row.
     keyed_by_row: bool,
+    /// Whether this row is in the ride-along tier of spec 9.6.
+    rides_along: bool,
 }
 
 impl Pattern {
@@ -153,11 +156,16 @@ impl Pattern {
         line: u64,
         body: &str,
     ) {
+        let row = Matched {
+            name: &self.name,
+            remedy: &self.remedy,
+            rides_along: self.rides_along,
+        };
         if !self.keyed_by_row {
-            record(seen, rel, line, body, &self.name, &self.remedy);
+            record(seen, rel, line, body, row);
             return;
         }
-        record(seen, rel, line, &self.name, &self.name, &self.remedy)
+        record(seen, rel, line, &self.name, row)
             .marks
             .push((line, body.to_string()));
     }
@@ -238,6 +246,7 @@ struct Tally {
     line: u64,
     name: String,
     remedy: String,
+    rides_along: bool,
     count: u64,
     /// The line and trimmed text of each match, for a site keyed by its row.
     marks: Vec<(u64, String)>,
@@ -431,6 +440,7 @@ fn compiled(
         .map(|(name, regex, remedy)| {
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
+                    rides_along: rides_along(kind, &name),
                     test_idiom: idioms.contains(&name.as_str()),
                     keyed_by_row: kind.keyed_by_row.contains(&name.as_str()),
                     name: name.clone(),
@@ -446,6 +456,14 @@ fn compiled(
                 })
         })
         .collect()
+}
+
+/// Whether a row is in the ride-along tier, as the kind's evaluator names it from the values of
+/// a site that row labels. Spec 9.6.
+fn rides_along(kind: &Kind, name: &str) -> bool {
+    let mut values = Values::new();
+    values.insert(kind.label.into(), name.into());
+    (kind.evaluator.rides_along)(&values)
 }
 
 /// Whether this run leaves the test idioms of test code out. A section whose languages name no
@@ -587,7 +605,12 @@ fn shapes(
     unparsed: &mut Vec<Unparsed>,
 ) -> Result<(), Error> {
     for stub in syntax::convention::stubs(rel, text, unparsed)? {
-        record(seen, rel, stub.line, &stub.text, stub.name, stub.remedy);
+        let row = Matched {
+            name: stub.name,
+            remedy: stub.remedy,
+            rides_along: false,
+        };
+        record(seen, rel, stub.line, &stub.text, row);
     }
     Ok(())
 }
@@ -682,23 +705,41 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Findi
     (out, marks)
 }
 
+/// The row that matched one line, as a site records it.
+struct Matched<'a> {
+    name: &'a str,
+    remedy: &'a str,
+    rides_along: bool,
+}
+
+/// One match at its site. A site takes the label, remedy and line of the first row that matched
+/// it, except that a blocking row takes them from a ride-along row, so a line that holds a kind
+/// of each tier blocks. Spec 8.2.1, 9.6.
 fn record<'a>(
     seen: &'a mut BTreeMap<(String, String), Tally>,
     file: &str,
     line: u64,
     text: &str,
-    name: &str,
-    remedy: &str,
+    row: Matched,
 ) -> &'a mut Tally {
-    seen.entry((file.to_string(), text.to_string()))
-        .and_modify(|tally| tally.count += 1)
+    let tally = seen
+        .entry((file.to_string(), text.to_string()))
         .or_insert(Tally {
             line,
-            name: name.to_string(),
-            remedy: remedy.to_string(),
-            count: 1,
+            name: row.name.to_string(),
+            remedy: row.remedy.to_string(),
+            rides_along: row.rides_along,
+            count: 0,
             marks: Vec::new(),
-        })
+        });
+    tally.count += 1;
+    if tally.rides_along && !row.rides_along {
+        tally.line = line;
+        tally.name = row.name.to_string();
+        tally.remedy = row.remedy.to_string();
+        tally.rides_along = false;
+    }
+    tally
 }
 
 /// The quoted spans of this text, so a match that starts inside one is not a site. A quote that

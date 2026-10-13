@@ -1625,8 +1625,9 @@ fn erred(gate: &str, item: &Told) -> Vec<Problem> {
 }
 
 /// The aggregation of spec 7.5 over in-memory results, for the holes no shipped capability can
-/// reach yet. `work-limit` is one: no shipped capability has a work bound. The ride-along tier
-/// of spec 9.6 is another: no shipped row sits in it yet. AGENTS.md.
+/// reach yet. `work-limit` is one: no shipped capability has a work bound. A ride-along finding
+/// beside an error, or beside a failure its gate found apart, is another: no shipped gate with a
+/// ride-along row errs or fails apart from its findings. AGENTS.md.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1718,42 +1719,6 @@ mod tests {
         (doc, out)
     }
 
-    fn rider() -> Gate {
-        gate("rider", |at, out| Ok(found(at, &[RIDER], out)))
-    }
-
-    fn blocker() -> Gate {
-        gate("blocker", |at, out| Ok(found(at, &["blocker"], out)))
-    }
-
-    #[test]
-    fn a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding() {
-        let (doc, out) = ran(View::Stop, &[rider(), blocker()]);
-
-        assert_eq!(doc.failed(), 1, "{out}");
-        assert_eq!(doc.failed_in_report(), 2, "{out}");
-        assert!(out.contains("src/rider.ts:3"), "{out}");
-        assert!(out.contains("src/blocker.ts:3"), "{out}");
-        assert_eq!(doc.reported().len(), 2, "{out}");
-        let document = doc.into_json();
-        let marked: Vec<&Value> = document["findings"]
-            .as_array()
-            .expect("findings")
-            .iter()
-            .map(|finding| &finding["rides_along"])
-            .collect();
-        assert_eq!(marked, [&json!(true), &Value::Null], "{document}");
-    }
-
-    #[test]
-    fn a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing() {
-        let (doc, out) = ran(View::Stop, &[rider()]);
-
-        assert_eq!(doc.failed(), 0, "{out}");
-        assert_eq!(doc.failed_in_report(), 0, "{out}");
-        assert!(!out.contains("src/rider.ts"), "{out}");
-    }
-
     #[test]
     fn a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them() {
         let erred = gate("erred", |at, out| {
@@ -1785,40 +1750,6 @@ mod tests {
         assert_eq!(doc.failed(), 1, "{out}");
         assert!(out.contains("src/rider.ts:3"), "{out}");
         assert_eq!(check.into_json()["judgement"], "fail");
-    }
-
-    #[test]
-    fn at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change() {
-        let (doc, mut out) = ran(View::Text, &[rider()]);
-        let exit = doc.finish(
-            &Args {
-                view: View::Text,
-                ..Args::default()
-            },
-            &mut out,
-        );
-        let (json, _) = ran(View::Json, &[rider()]);
-        let document = json.into_json();
-
-        assert_eq!(exit, 0, "{out}");
-        assert!(out.contains("REVIEW  rider"), "{out}");
-        assert!(out.contains("REVIEW: 1 site(s)"), "{out}");
-        assert!(!out.contains("Fix it."), "{out}");
-        assert_eq!(document["reviews"][0]["kind"], RIDE_ALONG, "{document}");
-        assert_eq!(document["findings"], json!([]), "{document}");
-    }
-
-    #[test]
-    fn at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one() {
-        let mixed = gate("mixed", |at, out| Ok(found(at, &["blocker", RIDER], out)));
-        let (doc, _) = ran(View::Json, &[mixed]);
-        let document = doc.into_json();
-        let findings = document["findings"].as_array().expect("findings");
-
-        assert_eq!(findings.len(), 1, "{document}");
-        assert_eq!(findings[0]["file"], "src/blocker.ts", "{document}");
-        assert_eq!(document["reviews"][0]["file"], "src/rider.ts", "{document}");
-        assert_eq!(document["judgement"], "fail", "{document}");
     }
 
     fn work_limited() -> GateRecords {
