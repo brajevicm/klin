@@ -416,7 +416,11 @@ impl Fixture {
         if self.layering {
             assert!(median_counter("layering_graph_modules") > 0);
         }
-        assert_eq!(median_counter("public-api_surface_surfaces"), 4);
+        let surfaces = match std::env::var_os("KLIN_PERF_APP") {
+            Some(_) => 2,
+            None => 4,
+        };
+        assert_eq!(median_counter("public-api_surface_surfaces"), surfaces);
         assert!(median_counter("public-api_surface_items") > 0);
         assert_eq!(median_counter("public-api_surface_holes"), 0);
     }
