@@ -1626,31 +1626,63 @@ fn a_sibling_base_config_the_owner_extends_is_not_a_second_owner() {
     );
 }
 
-#[test]
-fn a_nested_config_that_extends_an_ancestor_and_resolves_an_alias_the_same_way_proves_it() {
-    let tree = Tree::new();
+const ANCESTOR_THAT_EXCLUDES_MODEL: &str = r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"],"@/x":["web/model/x"]}},"include":["**/*.ts"],"exclude":["web/model"]}"#;
+
+fn a_nested_model_config(tree: &Tree, extends: &str, paths: &str, roots: &str) {
     tree.write(
         "web/model/tsconfig.json",
-        &format!(
-            r#"{{"extends":"../../tsconfig.json","compilerOptions":{{"baseUrl":"../..","paths":{{"@/*":["web/*"]}}}},{OWN_ROOTS}}}"#
-        ),
+        &format!(r#"{{{extends}"compilerOptions":{{"baseUrl":"../..","paths":{paths}}},{roots}}}"#),
     );
-    let run = an_alias_from_model_to_view(
-        &tree,
-        r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"],"@/x":["web/model/x"]}},"include":["**/*.ts"],"exclude":["web/model"]}"#,
-    );
-    assert_eq!(run.code, 1, "{}", run.out);
+}
+
+#[test]
+fn a_nested_config_that_resolves_an_alias_the_same_way_as_its_ancestor_proves_it() {
+    for extends in [r#""extends":"../../tsconfig.json","#, ""] {
+        let tree = Tree::new();
+        a_nested_model_config(&tree, extends, r#"{"@/*":["web/*"]}"#, OWN_ROOTS);
+        let run = an_alias_from_model_to_view(&tree, ANCESTOR_THAT_EXCLUDES_MODEL);
+        assert_eq!(run.code, 1, "{extends}: {}", run.out);
+        assert!(
+            run.says("model → view") && !run.says("local paths alias"),
+            "{extends}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_nested_config_that_misses_an_alias_or_the_file_leaves_a_hole() {
+    for (paths, roots) in [
+        (r#"{"@/other/*":["web/*"]}"#, OWN_ROOTS),
+        (r#"{"@/*":["web/*"]}"#, r#""include":["none"],"exclude":[]"#),
+    ] {
+        let tree = Tree::new();
+        a_nested_model_config(&tree, r#""extends":"../../tsconfig.json","#, paths, roots);
+        let run = an_alias_from_model_to_view(&tree, ANCESTOR_THAT_EXCLUDES_MODEL);
+        assert_a_hole(&run);
+    }
+}
+
+#[test]
+fn a_bare_base_url_import_under_two_competing_configs_stays_a_hole() {
+    let tree = Tree::new();
+    a_nested_model_config(&tree, "", r#"{"@/*":["web/*"]}"#, OWN_ROOTS);
+    an_alias_from_model_to_view(&tree, ANCESTOR_THAT_EXCLUDES_MODEL);
+    tree.write("web/model/index.ts", "import { x } from \"web/view/x\";\n");
+    let run = tree.run(&["check", "layering"]);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("model → view") && !run.says("local paths alias"),
+        run.says("REVIEW:") && run.says("baseUrl import whose configuration klin cannot prove"),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn a_nested_config_that_extends_an_ancestor_and_resolves_an_alias_elsewhere_leaves_a_hole() {
+fn a_nested_config_that_resolves_an_alias_to_another_file_than_its_ancestor_leaves_a_hole() {
     for excluded in ["[]", r#"["web"]"#] {
         let tree = Tree::new();
+        tree.write("other/view/x.ts", "export const x = 2;\n");
         tree.write(
             "web/tsconfig.json",
             &format!(

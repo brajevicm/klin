@@ -84,10 +84,13 @@ impl Paths {
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                if scope.programs.iter().all(Program::is_empty) && scope.base_urls.is_empty() {
+                if scope.programs.iter().all(Program::is_empty) {
                     return None;
                 }
-                let root = scope.roots.iter().any(|roots| roots.contains(file));
+                let root = scope
+                    .programs
+                    .iter()
+                    .any(|program| program.roots.contains(file));
                 return Some(FilePaths { scope, root });
             }
             if ancestor.is_empty() {
@@ -106,16 +109,16 @@ fn contains(directory: &str, file: &str) -> bool {
 }
 
 struct Scope {
-    roots: Vec<Roots>,
-    /// Every `baseUrl` an owning config writes, so an ambiguous owner still looks under each.
-    base_urls: Vec<String>,
     /// One per owning config. An alias is proved only where every one resolves it the same way.
     programs: Vec<Program>,
+    /// Whether a bare `baseUrl` import stays unproved: more than one owner, or one klin cannot
+    /// prove.
     uncertain: bool,
 }
 
-/// The alias rules of one owning config.
+/// The roots and alias rules of one owning config.
 struct Program {
+    roots: Roots,
     anchor: Option<Anchor>,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
@@ -141,9 +144,9 @@ impl FilePaths<'_> {
         }
         let bases: Vec<String> = self
             .scope
-            .base_urls
+            .programs
             .iter()
-            .filter_map(|base| joined(base, specifier))
+            .filter_map(|program| joined(program.anchor.as_ref()?.base_url()?, specifier))
             .collect();
         (!bases.is_empty()).then_some((bases, !self.scope.uncertain && self.root))
     }
@@ -169,11 +172,6 @@ impl Scope {
             .filter(|config| !config.extended(&candidates))
             .collect();
         Self {
-            roots: owners.iter().map(|config| config.roots.clone()).collect(),
-            base_urls: owners
-                .iter()
-                .filter_map(|config| config.anchor.as_ref()?.base_url().map(str::to_string))
-                .collect(),
             uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
             programs: owners.into_iter().map(Program::compile).collect(),
         }
@@ -182,14 +180,15 @@ impl Scope {
     /// None means no owning config recognizes this specifier; Err means known local but
     /// unproved, including owners that resolve it to different paths.
     fn resolve(&self, specifier: &str, root: bool) -> Option<Result<String, String>> {
+        if let [only] = self.programs.as_slice() {
+            return only.resolve(specifier, root);
+        }
         let resolved: Vec<_> = self
             .programs
             .iter()
             .map(|program| program.resolve(specifier, root))
             .collect();
         match resolved.as_slice() {
-            [] => None,
-            [only] => only.clone(),
             [first @ Some(Ok(_)), rest @ ..] if rest.iter().all(|other| other == first) => {
                 first.clone()
             }
@@ -206,6 +205,7 @@ fn unproved(specifier: &str) -> String {
 impl Program {
     fn compile(config: &Config) -> Self {
         let mut program = Self {
+            roots: config.roots.clone(),
             anchor: config.anchor.clone(),
             exact: HashMap::new(),
             wildcards: Vec::new(),
@@ -221,7 +221,9 @@ impl Program {
     }
 
     fn is_empty(&self) -> bool {
-        self.exact.is_empty() && self.wildcards.is_empty()
+        self.exact.is_empty()
+            && self.wildcards.is_empty()
+            && self.anchor.as_ref().and_then(Anchor::base_url).is_none()
     }
 
     fn insert(&mut self, pattern: &str, targets: &Value) {
