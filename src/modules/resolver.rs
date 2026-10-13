@@ -24,6 +24,12 @@ impl<'a> Topology<'a> {
         self.present.contains(&language)
     }
 
+    /// How many files the topology lists and how many of them carry facts, which tells two views
+    /// of one tree apart.
+    pub(super) fn seen(&self) -> (usize, usize) {
+        (self.files.len(), self.facts.len())
+    }
+
     /// Whether the tree lists a file at this path.
     pub fn holds(&self, path: &str) -> bool {
         self.files

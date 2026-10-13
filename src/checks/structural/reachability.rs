@@ -155,8 +155,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     out.record(|records| {
         records.names = Some(names);
         records.layout = layout;
-        let graph = before.apps.graph + after.apps.graph;
-        records.graph = (graph.modules > 0).then_some(graph);
+        records.graph = match (before.apps.graph, after.apps.graph) {
+            (None, None) => None,
+            (was, now) => Some(was.unwrap_or_default() + now.unwrap_or_default()),
+        };
     });
     let mut held_before: Vec<&State> = before_states.iter().collect();
     contract::check::keep_held(at, &mut held_before);

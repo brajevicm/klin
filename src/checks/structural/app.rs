@@ -222,7 +222,8 @@ pub(super) struct Judged {
     pub judged: HashSet<String>,
     pub excluded: HashSet<String>,
     pub holes: Vec<Unresolved>,
-    pub graph: GraphCost,
+    /// What reading the tree's module graph cost, and none where no app package asked for it.
+    pub graph: Option<GraphCost>,
 }
 
 pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
@@ -253,7 +254,7 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
         return out;
     }
     let (graph, cost) = side.graph.get(&topology);
-    out.graph = cost;
+    out.graph = Some(cost);
     let walk = Walk::of(&topology, &graph);
     let used = walk.used();
     for (at, files) in &owned {

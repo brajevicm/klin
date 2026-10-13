@@ -165,27 +165,35 @@ pub struct ModuleGraph {
     pub time: Duration,
 }
 
-/// One tree's module graph, built once for every gate that reads it. Every caller passes the
-/// topology of every structural file of that tree, under that tree's own paths, so the graph is
-/// a function of the tree alone and the first caller's build serves them all.
+/// One tree's module graph, built once for every gate that reads it. A gate passes the topology
+/// of every structural file of that tree, under that tree's own paths, so the graph is a
+/// function of the tree alone and the first caller's build serves them all. A caller whose
+/// topology lists other files or facts gets a graph of its own, so no gate judges a graph
+/// another gate's narrower view built, whatever order the gates run in.
 #[derive(Default)]
-pub struct Shared(std::cell::OnceCell<Rc<ModuleGraph>>);
+pub struct Shared(std::cell::OnceCell<((usize, usize), Rc<ModuleGraph>)>);
 
 impl Shared {
-    /// The graph, built from `topology` by the first caller, with what this call paid: the
-    /// graph's counts, and its build time only for the call that built it.
+    /// The graph of `topology`, with what this call paid: the graph's counts, and its build time
+    /// only for a call that built it.
     pub fn get(&self, topology: &Topology) -> (Rc<ModuleGraph>, GraphCost) {
         let mut time = Duration::ZERO;
-        let graph = self.0.get_or_init(|| {
+        let mut built = || {
             let graph = build(topology);
             time = graph.time;
             Rc::new(graph)
-        });
+        };
+        let seen = topology.seen();
+        let (held, graph) = self.0.get_or_init(|| (seen, built()));
+        let graph = match *held == seen {
+            true => Rc::clone(graph),
+            false => built(),
+        };
         let cost = GraphCost {
             time,
             ..graph.cost()
         };
-        (Rc::clone(graph), cost)
+        (graph, cost)
     }
 }
 
@@ -533,6 +541,39 @@ mod tests {
             Ok(structural::facts::Outcome::Facts(facts)) => facts,
             _ => panic!("{path} measures"),
         }
+    }
+
+    fn typescript(path: &str, text: &str) -> Rc<FileFacts> {
+        match structural::of(path, text) {
+            Ok(structural::facts::Outcome::Facts(facts)) => facts,
+            _ => panic!("{path} measures"),
+        }
+    }
+
+    /// A shared graph serves every caller whose topology lists the same files and facts, and a
+    /// caller with a narrower view of the tree gets a graph of its own, whichever asks first.
+    /// No shipped gate passes a narrower view, so this pins the rule in memory. #580.
+    #[test]
+    fn a_shared_graph_serves_only_a_topology_like_the_one_that_built_it() {
+        let files = ["web/a.ts", "web/b.ts"].map(String::from);
+        let whole = [
+            typescript(
+                "web/a.ts",
+                "import { b } from \"./b\";\nexport const a = b;\n",
+            ),
+            typescript("web/b.ts", "export const b = 1;\n"),
+        ];
+        let narrow = [whole[1].clone()];
+        let renamed = HashMap::new();
+        let whole = super::topology(Path::new("."), &files, &whole, &renamed);
+        let narrow = super::topology(Path::new("."), &files, &narrow, &renamed);
+        let shared = Shared::default();
+        let (first, _) = shared.get(&narrow);
+        let (second, _) = shared.get(&whole);
+        let (third, _) = shared.get(&narrow);
+        assert_eq!(first.dependencies.len(), 0);
+        assert_eq!(second.dependencies.len(), 1);
+        assert!(Rc::ptr_eq(&first, &third));
     }
 
     /// A module of two files attaches each file on its own, a structural file no module holds

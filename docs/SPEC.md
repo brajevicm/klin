@@ -5697,7 +5697,14 @@ unit tests
 `a_semantic_edge_is_paired_before_its_findings_are_made` in
 `src/checks/structural/layering.rs`, and
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
-`src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
+`src/modules/mod.rs`, pin it over a graph built in memory. Each tree's module
+graph is built once and shared by `layering`, `public-api` and the app mode of
+`reachability`, each passing the topology of every structural file of that
+tree; a caller whose topology lists other files or facts gets a graph of its
+own, so the gates' order never changes a graph. No shipped gate passes a
+narrower view, so the unit test
+`a_shared_graph_serves_only_a_topology_like_the_one_that_built_it` in
+`src/modules/mod.rs` pins it. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
 declares, a TypeScript `import()` whose first argument is no string literal
 or a `require()`, a bare import under a
