@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use serde_json::{Map, Value};
 
 use crate::facts::tree::{self, Tree};
+use crate::modules;
 use crate::syntax::structural::cache::ReadCost;
 use crate::syntax::structural::facts::Outcome;
 use crate::syntax::structural::{Cache, selected_extensions};
@@ -38,6 +39,7 @@ pub struct Prior {
     /// The path the base holds each file at that the change renamed, by the path it has today.
     renamed: HashMap<String, String>,
     added: HashSet<String>,
+    graph: modules::Shared,
 }
 
 /// What laying the whole base out took, part by part, so a warm run's base cost is not one
@@ -77,7 +79,13 @@ impl Prior {
             layout: Cell::new(None),
             renamed: HashMap::new(),
             added: HashSet::new(),
+            graph: modules::Shared::default(),
         }
+    }
+
+    /// The base's module graph, built once for every gate that reads it.
+    pub fn graph(&self) -> &modules::Shared {
+        &self.graph
     }
 
     /// One part of the layout timed, added to what this base already recorded.

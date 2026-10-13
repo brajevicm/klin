@@ -276,6 +276,7 @@ fn sweeps(
         files: tree.files()?,
         facts: sides.after.facts(),
         renamed: &HashMap::new(),
+        graph: at.project.graph(),
     };
     let apps = app::judged(side, scope);
     let after = Swept {
@@ -392,31 +393,20 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
-/// The whole tree under the root, in the families' languages and in TypeScript where the tree
-/// holds an app package, because a caller may sit anywhere in the repository and a member is
-/// reached by any of them. Spec 8.4.
+/// The whole tree under the root, in the families' languages, because a caller may sit
+/// anywhere in the repository and a member is reached by any of them. Where the tree holds an
+/// app package, every structural file, as the module graph every gate shares reads them all.
+/// Spec 8.4.
 fn measure(
     tree: &Tree,
     families: &[Family],
     unchanged: Option<&measurement::Unchanged>,
 ) -> Result<Measurement, Error> {
-    let mut extensions = extensions(families);
     if app::present(tree.root(), tree.files()?) {
-        extensions.extend(typescript_extensions());
-        extensions.sort_unstable();
-        extensions.dedup();
+        return measurement::measure_all(tree, unchanged);
     }
-    let found = tree.scoped(&extensions, true, |_| true)?;
+    let found = tree.scoped(&extensions(families), true, |_| true)?;
     measurement::measure(found, tree, unchanged)
-}
-
-fn typescript_extensions() -> Vec<&'static str> {
-    let named = structural::languages()
-        .into_iter()
-        .filter(|(_, id)| *id == LanguageId::TypeScript)
-        .map(|(name, _)| name.to_string())
-        .collect::<Vec<_>>();
-    structural::selected_extensions(&named).unwrap_or_default()
 }
 
 fn extensions(families: &[Family]) -> Vec<&'static str> {
@@ -481,6 +471,7 @@ fn before(
             files: prior.tree().files()?,
             facts: measured.facts(),
             renamed: prior.renamed(),
+            graph: prior.graph(),
         };
         let was = app::judged(side, &scope);
         Ok((measured, (before_families, was)))

@@ -11,6 +11,7 @@
 //! derives it: with no section the gate does not run. Spec 8.2.1, ADR 0043, ADR 0058.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::rc::Rc;
 use std::time::Instant;
 
 use serde_json::{Map, Value};
@@ -88,7 +89,8 @@ struct Policy {
 struct Side {
     files: Vec<String>,
     unparsed: Vec<syntax::Unparsed>,
-    graph: ModuleGraph,
+    graph: Rc<ModuleGraph>,
+    cost: GraphCost,
     current: HashMap<String, String>,
 }
 
@@ -184,8 +186,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let time = started.elapsed();
     out.record(|records| {
         records.graph = Some(
-            was.graph.cost()
-                + now.graph.cost()
+            was.cost
+                + now.cost
                 + GraphCost {
                     time,
                     ..GraphCost::default()
@@ -263,21 +265,30 @@ fn sides<'a>(
         after,
         ..
     } = measurement::sides_all(at, commit, out)?;
-    let was = side(prior.tree(), &before, prior.renamed())?;
-    let now = side(project.tree(), &after, &HashMap::new())?;
+    let was = side((prior.tree(), prior.graph()), &before, prior.renamed())?;
+    let now = side((project.tree(), project.graph()), &after, &HashMap::new())?;
     let base_scoped = move || {
         let files = project.tree().files()?;
-        side_in((prior.root(), files), &after, &HashMap::new())
+        side_in((prior.root(), files), &after, &HashMap::new(), built)
     };
     Ok((was, now, base_scoped))
 }
 
 fn side(
-    tree: &Tree,
+    (tree, shared): (&Tree, &modules::Shared),
     measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
 ) -> Result<Side, Error> {
-    side_in((tree.root(), tree.files()?), measured, renamed)
+    side_in((tree.root(), tree.files()?), measured, renamed, |layout| {
+        shared.get(layout)
+    })
+}
+
+/// A graph built for one caller alone, with what building it cost.
+fn built(layout: &modules::resolver::Topology) -> (Rc<ModuleGraph>, GraphCost) {
+    let graph = modules::build(layout);
+    let cost = graph.cost();
+    (Rc::new(graph), cost)
 }
 
 /// One side resolved from the manifests under `root` over these files and facts.
@@ -285,6 +296,7 @@ fn side_in(
     (root, listed): (&std::path::Path, &[String]),
     measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
+    graph: impl FnOnce(&modules::resolver::Topology) -> (Rc<ModuleGraph>, GraphCost),
 ) -> Result<Side, Error> {
     let topology = |file: &str| {
         renamed
@@ -300,6 +312,7 @@ fn side_in(
         .chain(measured.unparsed.iter().map(|file| topology(&file.file)))
         .collect();
     files.sort_unstable();
+    let (graph, cost) = graph(&layout);
     Ok(Side {
         files,
         unparsed: measured
@@ -310,7 +323,8 @@ fn side_in(
                 language: file.language,
             })
             .collect(),
-        graph: modules::build(&layout),
+        graph,
+        cost,
         current: renamed
             .iter()
             .map(|(now, was)| (was.clone(), now.clone()))
@@ -524,7 +538,11 @@ pub struct Suggested {
 /// `acyclic`. `None` where the tree holds no such file. Spec 11.6.
 pub fn suggested(project: &Project) -> Result<Option<Suggested>, Error> {
     let measured = measurement::measure_all(project.tree(), None)?;
-    let side = side(project.tree(), &measured, &HashMap::new())?;
+    let side = side(
+        (project.tree(), project.graph()),
+        &measured,
+        &HashMap::new(),
+    )?;
     if side.files.is_empty() {
         return Ok(None);
     }
@@ -1219,11 +1237,12 @@ mod tests {
         Side {
             files: Vec::new(),
             unparsed: Vec::new(),
-            graph: ModuleGraph {
+            graph: Rc::new(ModuleGraph {
                 modules,
                 dependencies,
                 ..ModuleGraph::default()
-            },
+            }),
+            cost: GraphCost::default(),
             current: HashMap::new(),
         }
     }

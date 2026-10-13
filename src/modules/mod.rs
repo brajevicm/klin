@@ -165,6 +165,30 @@ pub struct ModuleGraph {
     pub time: Duration,
 }
 
+/// One tree's module graph, built once for every gate that reads it. Every caller passes the
+/// topology of every structural file of that tree, under that tree's own paths, so the graph is
+/// a function of the tree alone and the first caller's build serves them all.
+#[derive(Default)]
+pub struct Shared(std::cell::OnceCell<Rc<ModuleGraph>>);
+
+impl Shared {
+    /// The graph, built from `topology` by the first caller, with what this call paid: the
+    /// graph's counts, and its build time only for the call that built it.
+    pub fn get(&self, topology: &Topology) -> (Rc<ModuleGraph>, GraphCost) {
+        let mut time = Duration::ZERO;
+        let graph = self.0.get_or_init(|| {
+            let graph = build(topology);
+            time = graph.time;
+            Rc::new(graph)
+        });
+        let cost = GraphCost {
+            time,
+            ..graph.cost()
+        };
+        (Rc::clone(graph), cost)
+    }
+}
+
 /// The TypeScript paths rules of one tree, read once, for a consumer that resolves an alias a
 /// configuration file writes rather than an import.
 pub struct Aliases(typescript_paths::Paths);

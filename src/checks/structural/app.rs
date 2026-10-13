@@ -184,13 +184,15 @@ pub(super) fn present(root: &Path, files: &[String]) -> bool {
         .any(Package::judged)
 }
 
-/// One tree as app mode reads it: its root, the files it lists and their facts, and the base
-/// path of every file a rename moved, as the module graph takes them.
+/// One tree as app mode reads it: its root, the files it lists and the facts of every structural
+/// file, the base path of every file a rename moved, as the module graph takes them, and the
+/// tree's module graph, which every gate that reads it shares.
 pub(super) struct Side<'a> {
     pub root: &'a Path,
     pub files: &'a [String],
     pub facts: &'a [Rc<FileFacts>],
     pub renamed: &'a HashMap<String, String>,
+    pub graph: &'a modules::Shared,
 }
 
 /// One file app mode judged that is no entry, and whether no entry reaches it.
@@ -250,8 +252,8 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     if !packages.iter().any(Package::judged) {
         return out;
     }
-    let graph = modules::build(&topology);
-    out.graph = graph.cost();
+    let (graph, cost) = side.graph.get(&topology);
+    out.graph = cost;
     let walk = Walk::of(&topology, &graph);
     let used = walk.used();
     for (at, files) in &owned {
