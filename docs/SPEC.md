@@ -5362,7 +5362,8 @@ the base, and its finding names the current path, so a move into another layer
 is new debt and a move inside a layer is held.
 
 TypeScript explicit `compilerOptions.paths` aliases are local dependencies.
-One conventional ancestor `tsconfig.json`, with no extends or references,
+One conventional ancestor `tsconfig.json`, with no references and either no
+extends or its own `compilerOptions.paths` and `compilerOptions.baseUrl`,
 proves an exact or single-`*` alias only for a proven project root and when
 its single target reduces to
 exactly one held TypeScript module under the relative candidate rule. JSONC
@@ -5380,8 +5381,8 @@ after a directory. Paths are relative to the config. An unsupported include
 entry adds no roots and leaves other include entries in force. An unsupported
 exclude entry might remove any file, so it declines all include proof for
 that config. Explicit files still prove roots. A malformed include/exclude
-list declines include proof. With neither files nor include, the config directory is the default
-include; with files but no include, include is empty. Dot paths, dependency
+list declines include proof. With neither files nor include nor extends, the config directory is the
+default include; with files but no include, include is empty. Dot paths, dependency
 directories and outDir/declarationDir are conservatively outside include
 proof, even when an explicit exclude list would admit them. Explicit files
 can still prove these roots. An excluded or non-root file might enter a
@@ -5401,7 +5402,22 @@ resolution incompleteness. One exception follows TypeScript, which tries
 normal package lookup after the paths targets: when a rule's target names
 no file the tree holds and the specifier is a valid package name, such as
 `react` or `@scope/pkg`, the import is external. A specifier that cannot name
-a package, such as `@/missing`, stays a hole. Multiple/nested or alternate tsconfigs, extends,
+a package, such as `@/missing`, stays a hole. A config that extends another
+and writes both its own `paths` and `baseUrl` proves its aliases, because
+TypeScript takes those two values from the child alone, and a bare import
+under that `baseUrl` is proven too. Under extends, an `include` or `exclude`
+the child does not write comes from the parent, so include proof needs both
+written by the child. The child's own `files` still prove roots. An `outDir`
+or `declarationDir` the child inherits is not read, so only the child's own
+`exclude` keeps such a directory out. A config whose own
+`compilerOptions.moduleSuffixes`, or that of a held local parent it extends,
+is anything but `[]` or `[""]` proves no alias and no `baseUrl` import,
+because the candidate rule does not model suffixes. On each extends chain,
+the nearest config that writes the option decides, and TypeScript reads `[]`
+as the default, a plain lookup. A package parent is not read, so its resolution
+options, such as `moduleSuffixes` or `rootDirs`, are outside this guarantee.
+Multiple/nested or alternate
+tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
 bounded, to recognize local names only. The nearest defined paths object
@@ -5441,7 +5457,13 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `multiple_extends_do_not_supply_inherited_alias_names` and
 `a_config_only_edit_changes_root_proof_for_an_unchanged_import`,
 `output_and_dot_sources_need_explicit_files_for_root_proof` and
-`local_extends_recognition_uses_the_nearest_paths_object` in
+`local_extends_recognition_uses_the_nearest_paths_object`,
+`a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends`,
+`a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
+`files_a_config_writes_under_extends_stay_roots`,
+`module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole`,
+`empty_module_suffixes_nearer_the_child_override_a_parent` and
+`own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in

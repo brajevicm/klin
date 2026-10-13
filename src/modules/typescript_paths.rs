@@ -17,6 +17,17 @@ enum Anchor {
 }
 
 impl Anchor {
+    fn read(file: &str, value: &Value) -> Option<Self> {
+        match value.pointer("/compilerOptions/baseUrl") {
+            None => Some(Anchor::Config(directory(file).to_string())),
+            Some(value) => value
+                .as_str()
+                .filter(|path| !absolute(path))
+                .and_then(|path| joined(directory(file), path))
+                .map(Anchor::BaseUrl),
+        }
+    }
+
     fn path(&self) -> &str {
         match self {
             Anchor::Config(path) | Anchor::BaseUrl(path) => path,
@@ -328,36 +339,74 @@ fn rules(file: &str, parsed: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
         else {
             break;
         };
-        file = if parsed.contains_key(&parent) {
-            parent
-        } else {
-            format!("{parent}.json")
-        };
+        file = held(parent, parsed);
     }
     Vec::new()
+}
+
+fn held(parent: String, parsed: &BTreeMap<String, Value>) -> String {
+    if parsed.contains_key(&parent) {
+        parent
+    } else {
+        format!("{parent}.json")
+    }
+}
+
+fn suffixed(value: &Value) -> Option<bool> {
+    let suffixes = value.pointer("/compilerOptions/moduleSuffixes")?;
+    Some(match suffixes.as_array().map(Vec::as_slice) {
+        Some([]) => false,
+        Some([only]) => only.as_str() != Some(""),
+        _ => true,
+    })
+}
+
+fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    let value = &parsed[file];
+    if let Some(own) = suffixed(value) {
+        return own;
+    }
+    let mut seen = BTreeSet::new();
+    let mut pending = parents(file, value);
+    while let Some(parent) = pending.pop() {
+        let parent = held(parent, parsed);
+        let Some(value) = parsed.get(&parent) else {
+            continue;
+        };
+        if !seen.insert(parent.clone()) {
+            continue;
+        }
+        match suffixed(value) {
+            Some(true) => return true,
+            Some(false) => {}
+            None => pending.extend(parents(&parent, value)),
+        }
+    }
+    false
 }
 
 impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
-        let anchor = match value.pointer("/compilerOptions/baseUrl") {
-            None => Some(Anchor::Config(directory(file).to_string())),
-            Some(value) => value
-                .as_str()
-                .filter(|path| !absolute(path))
-                .and_then(|path| joined(directory(file), path))
-                .map(Anchor::BaseUrl),
-        };
+        let anchor = Anchor::read(file, value);
         Self {
             directory: directory(file).to_string(),
+            uncertain: Self::uncertain(file, parsed, anchor.as_ref()),
             anchor,
             rules: rules(file, parsed),
-            roots: Roots::read(file, value),
-            uncertain: !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
-                || value.is_null()
-                || value.get("extends").is_some()
-                || value.get("references").is_some(),
+            roots: Roots::read(file, value, value.get("extends").is_some()),
         }
+    }
+
+    fn uncertain(file: &str, parsed: &BTreeMap<String, Value>, anchor: Option<&Anchor>) -> bool {
+        let value = &parsed[file];
+        let own_paths = value.pointer("/compilerOptions/paths").is_some()
+            && anchor.and_then(Anchor::base_url).is_some();
+        !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
+            || value.is_null()
+            || (value.get("extends").is_some() && !own_paths)
+            || value.get("references").is_some()
+            || suffixes_apply(file, parsed)
     }
 }
 
@@ -386,7 +435,7 @@ enum RootPattern {
 }
 
 impl Roots {
-    fn read(file: &str, value: &Value) -> Self {
+    fn read(file: &str, value: &Value, inherits: bool) -> Self {
         let directory = directory(file);
         let files = value
             .get("files")
@@ -406,11 +455,13 @@ impl Roots {
             },
             unknown: false,
         };
-        let include = value.get("include").map_or(Some(default_include), |value| {
-            root_patterns(directory, value)
-        });
+        let include = value
+            .get("include")
+            .map_or((!inherits).then_some(default_include), |value| {
+                root_patterns(directory, value)
+            });
         let mut exclude = value.get("exclude").map_or(
-            Some(RootPatterns {
+            (!inherits).then_some(RootPatterns {
                 matching: Vec::new(),
                 unknown: false,
             }),
