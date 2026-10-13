@@ -1536,6 +1536,48 @@ fn files_a_config_writes_under_extends_stay_roots() {
 }
 
 #[test]
+fn module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole() {
+    let roots = r#""include":["**/*.ts"],"exclude":[]"#;
+    let suffixed = r#"{"compilerOptions":{"moduleSuffixes":[".native"]}}"#;
+    for (base, config) in [
+        (
+            suffixed,
+            format!(r#"{{"extends":"./base.json",{OWN_PATHS},{roots}}}"#),
+        ),
+        (
+            "{}",
+            r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"]},"moduleSuffixes":[".native"]}}"#
+                .to_string(),
+        ),
+    ] {
+        let tree = Tree::new();
+        tree.write("base.json", base);
+        let run = an_alias_from_model_to_view(&tree, &config);
+        assert_eq!(run.code, 0, "{config}: {}", run.out);
+        assert!(
+            run.says("REVIEW:") && run.says("local paths alias"),
+            "{config}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_child_that_writes_empty_module_suffixes_overrides_its_parent() {
+    let tree = Tree::new();
+    tree.write(
+        "base.json",
+        r#"{"compilerOptions":{"moduleSuffixes":[".native"]}}"#,
+    );
+    let run = an_alias_from_model_to_view(
+        &tree,
+        r#"{"extends":"./base.json","compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"]},"moduleSuffixes":[""]},"include":["**/*.ts"],"exclude":[]}"#,
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("model → view"), "{}", run.out);
+}
+
+#[test]
 fn own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots() {
     for roots in [r#""include":["**/*.ts"]"#, r#""exclude":[]"#] {
         let tree = Tree::new();

@@ -339,32 +339,73 @@ fn rules(file: &str, parsed: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
         else {
             break;
         };
-        file = if parsed.contains_key(&parent) {
-            parent
-        } else {
-            format!("{parent}.json")
-        };
+        file = held(parent, parsed);
     }
     Vec::new()
+}
+
+fn held(parent: String, parsed: &BTreeMap<String, Value>) -> String {
+    if parsed.contains_key(&parent) {
+        parent
+    } else {
+        format!("{parent}.json")
+    }
+}
+
+fn suffixed(value: &Value) -> Option<bool> {
+    let suffixes = value.pointer("/compilerOptions/moduleSuffixes")?;
+    Some(match suffixes.as_array().map(Vec::as_slice) {
+        Some([]) => false,
+        Some([only]) => only.as_str() != Some(""),
+        _ => true,
+    })
+}
+
+fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    let value = &parsed[file];
+    if let Some(own) = suffixed(value) {
+        return own;
+    }
+    let mut seen = BTreeSet::new();
+    let mut pending = parents(file, value);
+    while let Some(parent) = pending.pop() {
+        let parent = held(parent, parsed);
+        let Some(value) = parsed.get(&parent) else {
+            continue;
+        };
+        if !seen.insert(parent.clone()) {
+            continue;
+        }
+        if suffixed(value) == Some(true) {
+            return true;
+        }
+        pending.extend(parents(&parent, value));
+    }
+    false
 }
 
 impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
         let anchor = Anchor::read(file, value);
-        let inherits = value.get("extends").is_some();
-        let own_paths = value.pointer("/compilerOptions/paths").is_some()
-            && !matches!(anchor, Some(Anchor::Config(_)));
         Self {
             directory: directory(file).to_string(),
+            uncertain: Self::uncertain(file, parsed, anchor.as_ref()),
             anchor,
             rules: rules(file, parsed),
-            roots: Roots::read(file, value, inherits),
-            uncertain: !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
-                || value.is_null()
-                || inherits && !own_paths
-                || value.get("references").is_some(),
+            roots: Roots::read(file, value, value.get("extends").is_some()),
         }
+    }
+
+    fn uncertain(file: &str, parsed: &BTreeMap<String, Value>, anchor: Option<&Anchor>) -> bool {
+        let value = &parsed[file];
+        let own_paths = value.pointer("/compilerOptions/paths").is_some()
+            && anchor.and_then(Anchor::base_url).is_some();
+        !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
+            || value.is_null()
+            || (value.get("extends").is_some() && !own_paths)
+            || value.get("references").is_some()
+            || suffixes_apply(file, parsed)
     }
 }
 

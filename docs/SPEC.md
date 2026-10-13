@@ -5409,7 +5409,13 @@ under that `baseUrl` is proven too. Under extends, an `include` or `exclude`
 the child does not write comes from the parent, so include proof needs both
 written by the child. The child's own `files` still prove roots. An `outDir`
 or `declarationDir` the child inherits is not read, so only the child's own
-`exclude` keeps such a directory out. Multiple/nested or alternate
+`exclude` keeps such a directory out. A config whose own
+`compilerOptions.moduleSuffixes`, or that of a held local parent it extends,
+is anything but `[]` or `[""]` proves no alias and no `baseUrl` import,
+because the candidate rule does not model suffixes. The child's own value
+replaces the parent's. A package parent is not read, so its resolution
+options, such as `moduleSuffixes` or `rootDirs`, are outside this guarantee.
+Multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
@@ -5453,7 +5459,9 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `local_extends_recognition_uses_the_nearest_paths_object`,
 `a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends`,
 `a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
-`files_a_config_writes_under_extends_stay_roots` and
+`files_a_config_writes_under_extends_stay_roots`,
+`module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole`,
+`a_child_that_writes_empty_module_suffixes_overrides_its_parent` and
 `own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
