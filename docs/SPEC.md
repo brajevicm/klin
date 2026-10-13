@@ -4894,7 +4894,9 @@ literal, type-only ones included. The entries are:
   under `app/`, such as `page-client.tsx`, is an ordinary module;
 - every file under `pages/` or `src/pages/`;
 - `middleware`, `proxy`, `instrumentation` and `instrumentation-client` at
-  the package root or under `src/`, and `next.config` at the package root;
+  the package root or under `src/`, and each `*.config` file at the package
+  root, such as `next.config.ts` or `tailwind.config.ts`, which its tool reads
+  by name;
 - each TypeScript file a word of a package script names, joined to the
   package directory, such as `scripts/seed.ts` in `tsx scripts/seed.ts`.
 
@@ -4913,7 +4915,10 @@ export or a re-export names. A bare star names none. A named import or named
 re-export takes the name it names in its source module, so
 `import { a as b }` takes `a`; a default import takes `default`; a namespace
 import, a star re-export and an `import()` take every name; a side-effect
-import takes none. A use from the exporting file itself does not count. The
+import takes none. A use from the exporting file itself does not count, except
+that a name the declared contract of another exported declaration of the file
+writes is used, so a type an exported function returns or an exported type
+holds is no finding. The
 check resolves each use through the graph and never by name, so a reached
 file that declares `generateId` is not used by an import of another file's
 `generateId`. Next.js reads these exports from the file kind named, so they
@@ -4931,11 +4936,12 @@ are never unused there, and a renamed export counts by its exported name:
 `getServerSideProps`, `getStaticProps`, `getStaticPaths` and `config` under
 `pages/`. Where a `components.json` sits beside the manifest, the directory
 its `aliases.ui` names, resolved through the app's tsconfig `paths`, holds a
-vendored kit: its files
-are judged for reach and not for their exports, so a new kit file nothing
-imports still fails. With no `components.json` no kit rule applies, and a
-person narrows the check with `except`; klin does not guess a kit from a
-directory name. The section's `in` and `except` narrow an app's judged files
+vendored kit. With no `components.json`, `components/ui` at the package root
+or under `src/` holds it, where a kit is vendored by hand. A kit file is
+judged neither for reach nor for its exports, and coverage counts it as
+excluded, because a kit is vendored whole and keeps primitives nothing uses
+yet. Any other vendored directory, such as the `components/ai-elements` a
+registry installs, is narrowed with `except`. The section's `in` and `except` narrow an app's judged files
 and exports as they narrow the families, and coverage counts a file they take
 out as excluded.
 
@@ -4972,7 +4978,10 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `an_export_is_judged_through_the_graph_and_not_by_its_name`,
 `a_namespace_import_uses_every_export_of_its_module`,
 `a_module_only_its_test_imports_fails_and_the_test_is_no_finding`,
-`a_kit_file_gets_the_file_rule_and_not_the_export_rule`,
+`a_kit_file_the_components_json_ui_alias_names_gets_neither_rule`,
+`with_no_components_json_a_kit_under_components_ui_gets_neither_rule`,
+`a_config_file_a_tool_reads_at_the_package_root_is_an_entry`,
+`a_type_an_exported_signature_names_counts_as_used`,
 `a_file_a_package_script_runs_is_an_entry`,
 `a_file_the_section_excepts_is_excluded_and_not_judged`,
 `an_orphan_the_base_held_stays_a_note`,

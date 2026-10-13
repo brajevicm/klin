@@ -19,7 +19,7 @@ use crate::modules::resolver::{Doubt, Topology, directory, joined};
 use crate::modules::{self, Aliases, ModuleGraph};
 use crate::surface;
 use crate::syntax::LanguageId;
-use crate::syntax::structural::facts::Visibility;
+use crate::syntax::structural::facts::{Declaration, Visibility};
 use crate::syntax::structural::{self, facts::DeclarationKind, facts::FileFacts};
 
 const MANIFEST: &str = "package.json";
@@ -435,13 +435,13 @@ impl App<'_, '_> {
             let Some(module) = self.walk.module_of.get(file).copied() else {
                 continue;
             };
-            if !self.scope.selects(&now) {
+            let vendored = kit.as_deref().is_some_and(|kit| under_or_at(file, kit));
+            if vendored || !self.scope.selects(&now) {
                 out.excluded.insert(now);
                 continue;
             }
             let kind = kinds.get(file).copied();
-            let kit = kit.as_deref().is_some_and(|kit| under_or_at(file, kit));
-            if reached[module] && !kit {
+            if reached[module] {
                 self.exports(file, (module, kind), &used, &now, out);
             }
             if kind.is_none() {
@@ -512,18 +512,26 @@ impl App<'_, '_> {
             .collect()
     }
 
-    /// The directory a `components.json` beside the manifest names as its `ui` alias, resolved
-    /// through the package's own paths rules, and none where it names none klin can prove.
+    /// The directory of the package's vendored kit: the `ui` alias a `components.json` beside
+    /// the manifest names, resolved through the package's own paths rules, and none where it
+    /// names none klin can prove. With no `components.json`, the `components/ui` directory at
+    /// the package root or under `src/`, where a kit is vendored by hand.
     fn kit(&self) -> Option<String> {
         let file = joined(&self.package.directory, KIT)?;
         let topology = self.walk.topology;
-        let ui = topology
-            .holds(&file)
-            .then(|| topology.read(&file))
-            .flatten()
-            .and_then(|bytes| ui_alias(&bytes))?;
+        if !topology.holds(&file) {
+            return self.vendored_by_hand();
+        }
+        let ui = topology.read(&file).and_then(|bytes| ui_alias(&bytes))?;
         let paths = Aliases::read(topology);
         self.files.iter().find_map(|from| paths.resolve(from, &ui))
+    }
+
+    fn vendored_by_hand(&self) -> Option<String> {
+        ["components/ui", "src/components/ui"]
+            .into_iter()
+            .filter_map(|at| joined(&self.package.directory, at))
+            .find(|at| self.files.iter().any(|file| under_or_at(file, at)))
     }
 
     fn exports(
@@ -537,9 +545,11 @@ impl App<'_, '_> {
         let Some(facts) = self.walk.topology.facts(file) else {
             return;
         };
+        let signed = signed(facts);
         for (name, line) in exports(facts) {
             out.exports += 1;
-            if !used.holds(module, &name) && !kind.is_some_and(|kind| kind.reads(&name)) {
+            let read = kind.is_some_and(|kind| kind.reads(&name));
+            if !used.holds(module, &name) && !read && !signed.contains(name.as_str()) {
                 out.unused.push(Unused {
                     file: now.to_string(),
                     line,
@@ -572,16 +582,35 @@ fn exports(facts: &FileFacts) -> BTreeMap<String, u64> {
     out
 }
 
+/// Every name the declared contract of an exported declaration writes, less the declaration's
+/// own name, so a type an exported function returns or an exported type holds is used by the
+/// export that names it.
+fn signed(facts: &FileFacts) -> HashSet<&str> {
+    let mut out = HashSet::new();
+    for declaration in facts.declarations.iter().filter(|held| exported(held)) {
+        let Some(signature) = declaration.signature.as_deref() else {
+            continue;
+        };
+        let words = signature
+            .split(|c: char| !(c.is_alphanumeric() || c == '_' || c == '$'))
+            .filter(|word| !word.is_empty() && *word != declaration.name);
+        out.extend(words);
+    }
+    out
+}
+
+fn exported(declaration: &Declaration) -> bool {
+    declaration.visibility == Visibility::Public
+        && declaration.kind != DeclarationKind::Method
+        && !declaration.associated
+}
+
 /// Each exported declaration of a file by the name a consumer addresses it by, with its line.
 fn declared(facts: &FileFacts) -> impl Iterator<Item = (&str, u64)> {
     facts
         .declarations
         .iter()
-        .filter(|declaration| {
-            declaration.visibility == Visibility::Public
-                && declaration.kind != DeclarationKind::Method
-                && !declaration.associated
-        })
+        .filter(|declaration| exported(declaration))
         .flat_map(|declaration| {
             let names: Vec<&str> = match declaration.exported_as.as_deref() {
                 Some(name) => vec![name],
@@ -607,14 +636,16 @@ fn kind(relative: &str) -> Option<Kind> {
     (under_or_at(relative, "pages") || under_or_at(relative, "src/pages")).then_some(Kind::Pages)
 }
 
-/// The kind of a file Next.js reads at the package root or under `src/`, by its name.
+/// The kind of a file Next.js or a tool reads at the package root or under `src/`, by its name:
+/// a `*.config` file at the root, such as `next.config.ts` or `tailwind.config.ts`, is a program
+/// its tool runs.
 fn rooted(stem: &str, at: &str) -> Option<Kind> {
     let root = matches!(at, "" | "src");
     match stem {
         "middleware" | "proxy" if root => Some(Kind::Middleware),
         "instrumentation" if root => Some(Kind::Instrumentation),
         "instrumentation-client" if root => Some(Kind::InstrumentationClient),
-        "next.config" if at.is_empty() => Some(Kind::Program),
+        config if at.is_empty() && config.ends_with(".config") => Some(Kind::Program),
         _ => None,
     }
 }

@@ -322,36 +322,88 @@ fn a_module_only_its_test_imports_fails_and_the_test_is_no_finding() {
 }
 
 #[test]
-fn a_kit_file_gets_the_file_rule_and_not_the_export_rule() {
+fn a_kit_file_the_components_json_ui_alias_names_gets_neither_rule() {
     let tree = app();
     tree.write("tsconfig.json", ALIASED);
+    tree.write("components.json", r#"{"aliases":{"ui":"@/ui"}}"#);
     tree.write(
-        "components.json",
-        r#"{"aliases":{"components":"@/components","ui":"@/components/ui"}}"#,
-    );
-    tree.write(
-        "components/ui/button.tsx",
+        "ui/button.tsx",
         "export function Button() {\n  return null;\n}\n",
     );
     tree.write(
         "components/header.tsx",
-        "import { Button } from \"@/components/ui/button\";\n\nexport function Header() {\n  return Button();\n}\n",
+        "import { Button } from \"@/ui/button\";\n\nexport function Header() {\n  return Button();\n}\n",
     );
     tree.base();
     tree.write(
-        "components/ui/button.tsx",
+        "ui/button.tsx",
         "export function Button() {\n  return null;\n}\n\nexport const buttonVariants = {};\n",
     );
     tree.write(
-        "components/ui/card.tsx",
+        "ui/card.tsx",
         "export function Card() {\n  return null;\n}\n",
+    );
+    tree.write(
+        "components/ui/badge.tsx",
+        "export function Badge() {\n  return null;\n}\n",
     );
 
     let run = reachability(&tree);
 
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("components/ui/card.tsx"), "{}", run.out);
+    assert!(!run.says("ui/card.tsx"), "{}", run.out);
     assert!(!run.says("buttonVariants"), "{}", run.out);
+    assert!(run.says("components/ui/badge.tsx"), "{}", run.out);
+}
+
+#[test]
+fn with_no_components_json_a_kit_under_components_ui_gets_neither_rule() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "components/ui/card.tsx",
+        "export function Card() {\n  return null;\n}\n",
+    );
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(!run.says("components/ui/card.tsx"), "{}", run.out);
+    assert!(run.says("components/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_config_file_a_tool_reads_at_the_package_root_is_an_entry() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "tailwind.config.ts",
+        "const config = { content: [] };\n\nexport default config;\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_type_an_exported_signature_names_counts_as_used() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "components/header.tsx",
+        "export type Title = { text: string };\nexport type Unused = number;\n\nexport function Header(): Title {\n  return { text: \"Chat\" };\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(!run.says("export Title"), "{}", run.out);
+    assert!(run.says("export Unused"), "{}", run.out);
 }
 
 #[test]
