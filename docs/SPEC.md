@@ -5416,7 +5416,14 @@ because the candidate rule does not model suffixes. On each extends chain,
 the nearest config that writes the option decides, and TypeScript reads `[]`
 as the default, a plain lookup. A package parent is not read, so its resolution
 options, such as `moduleSuffixes` or `rootDirs`, are outside this guarantee.
-Multiple/nested or alternate
+Every `tsconfig.json` or `tsconfig.*.json` in a file's directory or an
+ancestor directory competes to own the file, with two exceptions. A config
+that another config in its own directory reaches through held local
+`extends` supplies settings and does not compete. A config in an ancestor
+directory whose written `exclude` removes the whole scope directory, with no
+own `files` entry inside it, does not compete either. Two configs that still
+compete leave every alias under them a hole.
+Other multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
@@ -5462,8 +5469,11 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
 `files_a_config_writes_under_extends_stay_roots`,
 `module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole`,
-`empty_module_suffixes_nearer_the_child_override_a_parent` and
-`own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots` in
+`empty_module_suffixes_nearer_the_child_override_a_parent`,
+`own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots`,
+`a_sibling_base_config_the_owner_extends_is_not_a_second_owner`,
+`a_nested_config_that_extends_an_ancestor_owns_what_the_ancestor_excludes` and
+`sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in

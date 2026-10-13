@@ -43,7 +43,9 @@ impl Anchor {
 }
 
 struct Config {
+    file: String,
     directory: String,
+    extends: BTreeSet<String>,
     anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
@@ -153,10 +155,19 @@ struct Wildcard {
 
 impl Scope {
     fn compile(directory: &str, configs: &[Config]) -> Self {
-        let owners: Vec<&Config> = configs
+        let candidates: Vec<&Config> = configs
             .iter()
             .filter(|config| {
                 config.directory == directory || contains(&config.directory, directory)
+            })
+            .collect();
+        let owners: Vec<&Config> = candidates
+            .iter()
+            .copied()
+            .filter(|config| {
+                !candidates.iter().any(|other| {
+                    other.directory == config.directory && other.extends.contains(&config.file)
+                }) && !(config.directory != directory && config.roots.excludes(directory))
             })
             .collect();
         let mut scope = Self {
@@ -385,12 +396,28 @@ fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
     false
 }
 
+fn extended(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
+    let mut reached = BTreeSet::new();
+    let mut pending = parents(file, &parsed[file]);
+    while let Some(parent) = pending.pop() {
+        let parent = held(parent, parsed);
+        if let Some(value) = parsed.get(&parent)
+            && reached.insert(parent.clone())
+        {
+            pending.extend(parents(&parent, value));
+        }
+    }
+    reached
+}
+
 impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
         let anchor = Anchor::read(file, value);
         Self {
+            file: file.to_string(),
             directory: directory(file).to_string(),
+            extends: extended(file, parsed),
             uncertain: Self::uncertain(file, parsed, anchor.as_ref()),
             anchor,
             rules: rules(file, parsed),
@@ -483,6 +510,16 @@ impl Roots {
             include,
             exclude,
         }
+    }
+
+    /// Whether the written `exclude` removes a whole directory that no `files` entry reaches into.
+    fn excludes(&self, directory: &str) -> bool {
+        !self.files.iter().any(|file| contains(directory, file))
+            && self.exclude.as_ref().is_some_and(|exclude| {
+                exclude.matching.iter().any(|pattern| {
+                    matches!(pattern, RootPattern::Subtree(_)) && pattern.matches(directory)
+                })
+            })
     }
 
     fn contains(&self, file: &str) -> bool {

@@ -1608,6 +1608,78 @@ fn own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots() {
     }
 }
 
+const OWN_ROOTS: &str = r#""include":["**/*.ts"],"exclude":[]"#;
+
+#[test]
+fn a_sibling_base_config_the_owner_extends_is_not_a_second_owner() {
+    let tree = Tree::new();
+    tree.write(
+        "tsconfig.base.json",
+        r#"{"compilerOptions":{"strict":true}}"#,
+    );
+    let run = an_alias_from_model_to_view(
+        &tree,
+        &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("model → view") && !run.says("local paths alias"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_nested_config_that_extends_an_ancestor_owns_what_the_ancestor_excludes() {
+    for (excluded, code) in [(r#"["web"]"#, 1), ("[]", 0)] {
+        let tree = Tree::new();
+        tree.write("klin.json", WEB);
+        tree.write(
+            "tsconfig.json",
+            &format!(
+                r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["other/*"]}}}},"include":["**/*.ts"],"exclude":{excluded}}}"#
+            ),
+        );
+        tree.write(
+            "web/tsconfig.json",
+            &format!(
+                r#"{{"extends":"../tsconfig.json","compilerOptions":{{"baseUrl":".","paths":{{"@/*":["./*"]}}}},{OWN_ROOTS}}}"#
+            ),
+        );
+        tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
+        tree.write("web/view/x.ts", "export const x = 1;\n");
+        let run = tree.run(&["check", "layering"]);
+        assert_eq!(run.code, code, "{excluded}: {}", run.out);
+        assert_eq!(
+            run.says("model → view"),
+            code == 1,
+            "{excluded}: {}",
+            run.out
+        );
+        assert_eq!(
+            run.says("local paths alias"),
+            code == 0,
+            "{excluded}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole() {
+    for sibling in ["tsconfig.base.json", "tsconfig.app.json"] {
+        let tree = Tree::new();
+        tree.write(sibling, &format!(r#"{{{OWN_PATHS},{OWN_ROOTS}}}"#));
+        let run = an_alias_from_model_to_view(&tree, &format!(r#"{{{OWN_PATHS},{OWN_ROOTS}}}"#));
+        assert_eq!(run.code, 0, "{sibling}: {}", run.out);
+        assert!(
+            run.says("REVIEW:") && run.says("local paths alias"),
+            "{sibling}: {}",
+            run.out
+        );
+    }
+}
+
 #[test]
 fn openstock_style_recursive_roots_prove_typescript_sources() {
     let roots = r#""include":["next-env.d.ts","**/*.ts","**/*.tsx",".next/types/**/*.ts"]"#;
