@@ -47,6 +47,9 @@ pub const NO_SOURCE_ROOT: &str = "no-source-root";
 /// The review item kind of a deleted test at `klin check`. Spec 9.2, 11.7.
 pub const DELETED_TEST: &str = "deleted-test";
 
+/// The review item kind of a finding of a ride-along row at `klin check`. ADR 0073, spec 9.6.
+pub const RIDE_ALONG: &str = "ride-along";
+
 /// The review item kind of an accepted entry that matched nothing, which only a person acts on.
 /// Spec 7.6.
 pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
@@ -473,6 +476,9 @@ pub struct Failed {
     /// The new finding whose group this one prints inside, for a gate whose text report groups
     /// what one change took away. Presentation only.
     pub lead: Option<usize>,
+    /// Whether the finding's row is in the ride-along tier, so it blocks no Stop on its own and
+    /// is a review item at `klin check`. ADR 0073, spec 9.6.
+    pub rides_along: bool,
 }
 
 /// An accepted entry that matched nothing this run: the entry, the check's words for its values,
@@ -688,12 +694,55 @@ pub enum Ratchet {
         condition: String,
         failed: Vec<Failed>,
     },
+    /// The findings of ride-along rows at `klin check`: review items. Spec 9.6.
+    RidesAlong {
+        unit: String,
+        condition: String,
+        failed: Vec<Failed>,
+    },
     /// The accepted entries that matched nothing: a review item at `klin check`, and a note at
     /// the Stop. Never a failure. Spec 7.6.
     AcceptedUnmatched {
         entries: Vec<Unmatched>,
         caller: Caller,
     },
+}
+
+impl Ratchet {
+    /// Takes the findings of ride-along rows out of a new or worsened result, as a result of
+    /// their own. What stays loses its text groups, whose leads index the unsplit list.
+    /// Spec 9.6.
+    pub fn ride_along(&mut self) -> Option<Ratchet> {
+        let (Ratchet::New {
+            unit,
+            condition,
+            failed,
+            ..
+        }
+        | Ratchet::Worse {
+            unit,
+            condition,
+            failed,
+        }) = self
+        else {
+            return None;
+        };
+        let riders: Vec<Failed> = failed.extract_if(.., |found| found.rides_along).collect();
+        if riders.is_empty() {
+            return None;
+        }
+        failed.iter_mut().for_each(|found| found.lead = None);
+        Some(Ratchet::RidesAlong {
+            unit: unit.clone(),
+            condition: condition.clone(),
+            failed: riders,
+        })
+    }
+
+    /// Whether this is a new or worsened result with no finding left in it.
+    pub fn emptied(&self) -> bool {
+        matches!(self, Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. } if failed.is_empty())
+    }
 }
 
 impl Told {

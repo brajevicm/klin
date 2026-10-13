@@ -15,7 +15,7 @@ use crate::config::scope::{Moved, Moves};
 use crate::contract;
 use crate::contract::check::{
     Activation, Caller, Cause, Class, Context, Debt, Hole, Incomplete, NO_SOURCE_ROOT, Plain,
-    Reason, Records, Sink, Told, UNBUILT,
+    RIDE_ALONG, Ratchet, Reason, Records, Sink, Told, UNBUILT,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Seen, Unmeasured};
@@ -194,11 +194,15 @@ enum Worst {
 }
 
 /// One gate's axes from its exit code and its result. A gate that erred still carries the
-/// findings it validated, so they still fail it. Spec 7.5.
+/// findings it validated, so they still fail it. A finding of a ride-along row fails nothing on
+/// its own: it is a review item, and the ratchet leaves it out of the exit code. Spec 7.5, 9.6.
 fn axes_of(code: u8, shown: &GateRecords) -> Axes {
-    let fails = code == 1 || shown.findings.iter().any(Finding::failing);
+    let failing = || shown.findings.iter().filter(|finding| finding.failing());
+    let rode = failing().any(|finding| finding.rides_along)
+        || shown.reviews.iter().any(|review| review.kind == RIDE_ALONG);
+    let fails = code == 1 || failing().any(|finding| !finding.rides_along);
     Axes {
-        judgement: match (fails, shown.reviews.is_empty()) {
+        judgement: match (fails, shown.reviews.is_empty() && !rode) {
             (true, _) => Judgement::Fail,
             (false, false) => Judgement::Review,
             (false, true) => Judgement::Pass,
@@ -247,6 +251,9 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
             2
         }
     };
+    if !args.at_stop() {
+        told = reviewed(told);
+    }
     let mut shown = render::records(&gate.name, &told);
     moved_out(project.moves(), gate.check.section, &mut shown.findings);
     Ran {
@@ -255,6 +262,47 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
         records,
         shown,
     }
+}
+
+/// At `klin check`, a finding of a ride-along row is a review item, and a remedy told only for
+/// such findings goes with them. ADR 0073, spec 9.6.
+fn reviewed(told: Vec<Told>) -> Vec<Told> {
+    let split: Vec<Told> = told
+        .into_iter()
+        .flat_map(|mut item| {
+            let riders = match &mut item {
+                Told::Ratchet(said) => said.ride_along(),
+                _ => None,
+            };
+            let emptied = matches!(&item, Told::Ratchet(said) if said.emptied());
+            (!emptied)
+                .then_some(item)
+                .into_iter()
+                .chain(riders.map(Told::from))
+        })
+        .collect();
+    let blocks = split.iter().any(|item| {
+        matches!(
+            item,
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+        )
+    });
+    split
+        .into_iter()
+        .filter(|item| blocks || !matches!(item, Told::Plain(Plain::Remedy(_))))
+        .collect()
+}
+
+/// A Stop's result of a gate whose only failures are of ride-along rows, split into what it
+/// tells on its own and those failures with their remedy. Spec 9.6.
+fn riding(told: Vec<Told>) -> (Vec<Told>, Vec<Told>) {
+    told.into_iter().partition(|item| {
+        !matches!(
+            item,
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+                | Told::Plain(Plain::Remedy(_))
+        )
+    })
 }
 
 /// A finding at a file the change moved out of its gate's scope, which keeps the scope of its
@@ -545,6 +593,9 @@ pub struct CheckDocument {
     /// Whether a file the base parsed is lost to a parse, which a person may hold where the
     /// grammar lags. Spec 7.2.
     grammar_lag: bool,
+    /// The Stop text of each gate whose only failures are of ride-along rows, which the Stop
+    /// prints only when another finding blocks it. Spec 9.6.
+    riding: Vec<String>,
 }
 
 /// The findings a capability's ratchet passed that are debt, as its check counts debt.
@@ -675,6 +726,15 @@ impl CheckDocument {
         self.capabilities.iter().filter(failed).count()
     }
 
+    /// How many gates a Stop's report prints as failed: the gates that failed and, where any
+    /// did, each gate whose only failures ride along. Spec 9.6.
+    pub fn failed_in_report(&self) -> usize {
+        match self.failed() {
+            0 => 0,
+            failed => failed + self.riding.len(),
+        }
+    }
+
     /// How many gates could not run, and how many run-scope errors there were. Spec 10.4.
     pub fn errored(&self) -> usize {
         let erred = self.capabilities.iter().filter(|row| row.error).count();
@@ -758,6 +818,9 @@ impl CheckDocument {
         }
         if args.gates.is_empty() {
             self.not_applicable(plan);
+        }
+        if self.failed() > 0 {
+            out.extend(self.riding.iter().map(String::as_str));
         }
     }
 
@@ -861,6 +924,7 @@ impl CheckDocument {
         } = ran;
         let axes = axes_of(code, &shown);
         self.axes = self.axes.and(axes);
+        let told = self.held_back(args, &gate.name, axes, told);
         if shows(args, code, &shown) {
             let text = match args.view {
                 View::Stop => render::stop(&told, code == 0),
@@ -892,6 +956,27 @@ impl CheckDocument {
         self.reviews.extend(shown.reviews);
         self.findings.extend(shown.findings);
         self.notes.extend(shown.notes);
+    }
+
+    /// A Stop's gate whose only failures are of ride-along rows: those failures go to the text
+    /// the Stop prints only when another finding blocks it, and the gate prints what it tells
+    /// on its own. Every other gate keeps its result. Spec 9.6.
+    fn held_back(&mut self, args: &Args, gate: &str, axes: Axes, told: Vec<Told>) -> Vec<Told> {
+        let failed = told.iter().any(|item| {
+            matches!(
+                item,
+                Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+            )
+        });
+        if !args.at_stop() || !failed || axes.judgement == Judgement::Fail {
+            return told;
+        }
+        let (told, riders) = riding(told);
+        let text = render::stop(&riders, false);
+        let mut block = String::new();
+        printed(gate, "FAIL", (&riders, &text), &mut block);
+        self.riding.push(block);
+        told
     }
 
     /// The files the run could not measure, sorted once: the `measurement-lost` row and its
@@ -1540,10 +1625,201 @@ fn erred(gate: &str, item: &Told) -> Vec<Problem> {
 }
 
 /// The aggregation of spec 7.5 over in-memory results, for the holes no shipped capability can
-/// reach yet. `work-limit` is one: no shipped capability has a work bound. AGENTS.md.
+/// reach yet. `work-limit` is one: no shipped capability has a work bound. The ride-along tier
+/// of spec 9.6 is another: no shipped row sits in it yet. AGENTS.md.
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::file::Config;
+    use crate::contract::check::{Counted, Line};
+    use crate::contract::ratchet::{self, Evaluator, Remedy};
+    use crate::sys::record::Values;
+
+    const RIDER: &str = "rider";
+
+    const EVALUATOR: Evaluator<'static> = Evaluator {
+        metrics: &["count"],
+        unit: "site(s)",
+        condition: "where the code opts out",
+        fix_advice: Remedy::Fixed("Fix it."),
+        ceiling: None,
+        format_metrics: |_| "count 1".to_string(),
+        nested: None,
+        rides_along: |values| values.get("kind").and_then(Value::as_str) == Some(RIDER),
+    };
+
+    fn site(kind: &str) -> ratchet::Finding {
+        let mut values = Values::new();
+        values.insert("kind".into(), kind.into());
+        values.insert("count".into(), 1.into());
+        ratchet::Finding {
+            file: format!("src/{kind}.ts"),
+            line: 3,
+            text: format!("site of a {kind}"),
+            values,
+            body: None,
+        }
+    }
+
+    fn found(at: &Context, kinds: &[&str], out: &mut Sink) -> u8 {
+        let line = Line::new(
+            Counted::Markers {
+                sites: kinds.len(),
+                unit: "site(s)",
+                skipped: 0,
+            },
+            None,
+        );
+        let now = kinds.iter().map(|kind| site(kind)).collect();
+        EVALUATOR.evaluate(now, Vec::new(), Vec::new(), at, line, out)
+    }
+
+    fn gate(name: &'static str, run: contract::check::Run) -> Gate {
+        let shipped = catalogue::CATALOGUE
+            .iter()
+            .find(|row| row.name == "escapes")
+            .expect("the escapes row");
+        let row = catalogue::Row {
+            name,
+            run,
+            labels: catalogue::Labels {
+                one: "site",
+                many: "sites",
+            },
+            ..*shipped
+        };
+        Gate {
+            name: name.to_string(),
+            check: Box::leak(Box::new(row)),
+        }
+    }
+
+    fn ran(view: View, gates: &[Gate]) -> (CheckDocument, String) {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let root = dir.path();
+        let project = Project::of(Config::empty(&root.join("klin.json")), root);
+        let args = Args {
+            changed: true,
+            view,
+            ..Args::default()
+        };
+        let wanted: Vec<&Gate> = gates.iter().collect();
+        let mut doc = CheckDocument::default();
+        let mut out = String::new();
+        let plan = Plan::default();
+        let against = Against::default();
+        doc.ran(
+            &args,
+            &project,
+            (&plan, &wanted, Vec::new()),
+            &against,
+            &mut out,
+        );
+        (doc, out)
+    }
+
+    fn rider() -> Gate {
+        gate("rider", |at, out| Ok(found(at, &[RIDER], out)))
+    }
+
+    fn blocker() -> Gate {
+        gate("blocker", |at, out| Ok(found(at, &["blocker"], out)))
+    }
+
+    #[test]
+    fn a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding() {
+        let (doc, out) = ran(View::Stop, &[rider(), blocker()]);
+
+        assert_eq!(doc.failed(), 1, "{out}");
+        assert_eq!(doc.failed_in_report(), 2, "{out}");
+        assert!(out.contains("src/rider.ts:3"), "{out}");
+        assert!(out.contains("src/blocker.ts:3"), "{out}");
+        assert_eq!(doc.reported().len(), 2, "{out}");
+        let document = doc.into_json();
+        let marked: Vec<&Value> = document["findings"]
+            .as_array()
+            .expect("findings")
+            .iter()
+            .map(|finding| &finding["rides_along"])
+            .collect();
+        assert_eq!(marked, [&json!(true), &Value::Null], "{document}");
+    }
+
+    #[test]
+    fn a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing() {
+        let (doc, out) = ran(View::Stop, &[rider()]);
+
+        assert_eq!(doc.failed(), 0, "{out}");
+        assert_eq!(doc.failed_in_report(), 0, "{out}");
+        assert!(!out.contains("src/rider.ts"), "{out}");
+    }
+
+    #[test]
+    fn a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them() {
+        let erred = gate("erred", |at, out| {
+            found(at, &[RIDER], out);
+            Err(Error("the tool stopped".to_string()))
+        });
+        let (doc, out) = ran(View::Stop, &[erred]);
+
+        assert_eq!(doc.failed(), 0, "{out}");
+        assert!(out.contains("the tool stopped"), "{out}");
+        assert!(!out.contains("src/rider.ts"), "{out}");
+    }
+
+    #[test]
+    fn a_ride_along_finding_does_not_mask_a_failure_its_gate_found_apart() {
+        let independent = gate("independent", |at, out| {
+            found(at, &[RIDER], out);
+            Ok(1)
+        });
+        let (doc, out) = ran(View::Stop, &[independent]);
+        let (check, _) = ran(
+            View::Json,
+            &[gate("independent", |at, out| {
+                found(at, &[RIDER], out);
+                Ok(1)
+            })],
+        );
+
+        assert_eq!(doc.failed(), 1, "{out}");
+        assert!(out.contains("src/rider.ts:3"), "{out}");
+        assert_eq!(check.into_json()["judgement"], "fail");
+    }
+
+    #[test]
+    fn at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change() {
+        let (doc, mut out) = ran(View::Text, &[rider()]);
+        let exit = doc.finish(
+            &Args {
+                view: View::Text,
+                ..Args::default()
+            },
+            &mut out,
+        );
+        let (json, _) = ran(View::Json, &[rider()]);
+        let document = json.into_json();
+
+        assert_eq!(exit, 0, "{out}");
+        assert!(out.contains("REVIEW  rider"), "{out}");
+        assert!(out.contains("REVIEW: 1 site(s)"), "{out}");
+        assert!(!out.contains("Fix it."), "{out}");
+        assert_eq!(document["reviews"][0]["kind"], RIDE_ALONG, "{document}");
+        assert_eq!(document["findings"], json!([]), "{document}");
+    }
+
+    #[test]
+    fn at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one() {
+        let mixed = gate("mixed", |at, out| Ok(found(at, &["blocker", RIDER], out)));
+        let (doc, _) = ran(View::Json, &[mixed]);
+        let document = doc.into_json();
+        let findings = document["findings"].as_array().expect("findings");
+
+        assert_eq!(findings.len(), 1, "{document}");
+        assert_eq!(findings[0]["file"], "src/blocker.ts", "{document}");
+        assert_eq!(document["reviews"][0]["file"], "src/rider.ts", "{document}");
+        assert_eq!(document["judgement"], "fail", "{document}");
+    }
 
     fn work_limited() -> GateRecords {
         render::records(

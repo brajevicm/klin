@@ -337,6 +337,7 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
         ceiling: None,
         format_metrics: show,
         nested: Some(held_by_removed_modules),
+        rides_along: ratchet::every_row_blocks,
     }
 }
 

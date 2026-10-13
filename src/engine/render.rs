@@ -13,8 +13,8 @@ use crate::contract;
 use crate::contract::check::{
     AMBIGUOUS, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, DERIVATION,
     Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed,
-    Located, Matched, Measured, Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNBUILT,
-    UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
+    Located, Matched, Measured, Plain, Provenance, PublicApi, RIDE_ALONG, Ratchet, Standing, Told,
+    UNBUILT, UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Unmeasured};
@@ -215,6 +215,11 @@ fn ratchet(said: &Ratchet, out: &mut String) {
             }
         }
         Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
+        Ratchet::RidesAlong {
+            unit,
+            condition,
+            failed,
+        } => riders((unit, condition), failed, out),
         Ratchet::AcceptedUnmatched {
             entries: unmatched,
             caller,
@@ -251,6 +256,25 @@ fn grouped(found: &[Failed]) -> Vec<(usize, Vec<usize>)> {
         }
     }
     groups
+}
+
+/// The findings of ride-along rows at `klin check`, which fail no run. Spec 9.6.
+fn riders((unit, condition): (&str, &str), failed: &[Failed], out: &mut String) {
+    let _ = writeln!(
+        out,
+        "REVIEW: {} {unit} {condition}, of rows that fail no run:",
+        failed.len()
+    );
+    for finding in failed {
+        let _ = writeln!(
+            out,
+            "  {}:{}  {}  {}",
+            finding.file,
+            finding.line,
+            finding.shown,
+            clip(&finding.text)
+        );
+    }
 }
 
 fn worse(unit: &str, failed: &[Failed], out: &mut String) {
@@ -715,6 +739,9 @@ pub struct Finding {
     pub matched: Value,
     pub condition: String,
     pub remedy: String,
+    /// Whether the finding's row is in the ride-along tier, which blocks no Stop on its own.
+    /// ADR 0073, spec 9.6.
+    pub rides_along: bool,
 }
 
 impl Finding {
@@ -731,7 +758,7 @@ impl Finding {
     }
 
     pub fn json(&self) -> Value {
-        serde_json::json!({
+        let mut out = serde_json::json!({
             "id": self.id,
             "check": self.check,
             "kind": self.kind,
@@ -744,7 +771,11 @@ impl Finding {
             "matched": self.matched,
             "condition": self.condition,
             "remedy": self.remedy,
-        })
+        });
+        if self.rides_along {
+            out["rides_along"] = true.into();
+        }
+        out
     }
 }
 
@@ -958,6 +989,7 @@ fn document_records(
             matched: Value::Null,
             condition: condition.to_string(),
             remedy: fix_advice.to_string(),
+            rides_along: false,
         }),
     }
 }
@@ -1056,6 +1088,17 @@ fn ratchet_records(said: &Ratchet, out: &mut GateRecords) {
         Ratchet::Worse {
             condition, failed, ..
         } => failed_findings(Outcome::Worsened, condition, failed, out),
+        Ratchet::RidesAlong {
+            condition, failed, ..
+        } => out.reviews.extend(failed.iter().map(|finding| Review {
+            check: Some(out.gate.clone()),
+            kind: RIDE_ALONG,
+            file: finding.file.clone(),
+            line: Slot::Is(finding.line),
+            text: finding.text.clone(),
+            reason: Slot::Is(condition.clone()),
+            values: Some(finding.values.clone()),
+        })),
         Ratchet::AcceptedUnmatched { entries, caller } => {
             for unmatched in entries {
                 unmatched_record(&unmatched.entry, *caller, out);
@@ -1107,6 +1150,7 @@ fn failed_findings(outcome: Outcome, condition: &str, failed: &[Failed], out: &m
             matched,
             condition: condition.to_string(),
             remedy: finding.fix_advice.clone(),
+            rides_along: finding.rides_along,
         });
     }
 }
@@ -1229,6 +1273,7 @@ pub fn lost_finding(item: &Unmeasured, held: bool) -> Finding {
         matched: matched.unwrap_or(Value::Null),
         condition: lost_condition(item),
         remedy: lost_remedy(item),
+        rides_along: false,
     }
 }
 

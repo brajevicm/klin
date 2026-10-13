@@ -3,7 +3,7 @@ use crate::config::key::Key;
 use crate::config::scope;
 use crate::contract::check::{Context, Sink};
 use crate::contract::project::Project;
-use crate::contract::ratchet::{Evaluator, Remedy};
+use crate::contract::ratchet::{self, Evaluator, Remedy};
 use crate::syntax::LanguageId;
 use crate::sys::error::Error;
 use crate::sys::record::Values;
@@ -157,6 +157,7 @@ pub const KIND: Kind = Kind {
         ceiling: None,
         format_metrics: show,
         nested: None,
+        rides_along: ratchet::every_row_blocks,
     },
 };
 
