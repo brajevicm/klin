@@ -4924,8 +4924,8 @@ import, a star re-export and an `import()` take every name; a side-effect
 import takes none. A use from the exporting file itself does not count, except
 that a name the declared contract of another exported declaration of the file
 reads through `typeof` is used, so `export type Size = (typeof sizes)[number]`
-uses `sizes`; any other word of a contract, such as a property name, uses
-nothing. The remedy imports the export where it is needed or drops the
+uses `sizes`, and so does a `type Size` that `export type { Size }` exposes;
+any other word of a contract, such as a property name, uses nothing. The remedy imports the export where it is needed or drops the
 `export`, and deletes no code: `dead-symbols` judges the private declaration
 left behind. So the row sits in the safe-remedy tier of ADR 0073. The
 check resolves each use through the graph and never by name, so a reached
@@ -4958,8 +4958,8 @@ An import that names no file the tree holds, such as generated types, reaches
 nothing and turns nothing off. An import that may name several held files
 reaches each of them and takes its names from each. An alias configuration
 klin cannot prove, as 8.2.1 words a `paths` rule or a `baseUrl` it cannot
-prove, or a file the grammar refused, in a file of the app turns the whole app
-off: the run reports it as a hole and judges no file of the app. A package
+prove, or a file the grammar refused, in a file of the app that is no test and
+no declaration file turns the whole app off: the run reports it as a hole and judges no file of the app. A package
 with no entry point that owns a TypeScript file and does not name `next`, such
 as a React Router app, is a hole too, and nothing of it is judged. These holes
 are notes where the base holds them, review items at `klin check` where the
@@ -4996,6 +4996,8 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `an_export_only_an_unreached_file_imports_is_no_finding_of_its_own`,
 `a_file_a_package_script_runs_is_an_entry`,
 `a_value_an_exported_interface_names_only_as_a_property_is_still_unused`,
+`a_value_a_type_a_local_export_clause_exposes_reads_through_typeof_is_used`,
+`an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged`,
 `a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads`,
 `the_judged_count_includes_the_entries`,
 `a_file_the_section_excepts_is_excluded_and_not_judged`,

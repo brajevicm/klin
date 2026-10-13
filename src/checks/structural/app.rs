@@ -467,12 +467,14 @@ impl App<'_, '_> {
     }
 
     /// What keeps the package from being judged: an alias configuration klin cannot prove, and a
-    /// file the grammar refused, whose imports are unknown.
+    /// file the grammar refused, whose imports are unknown. Only a file app mode judges counts:
+    /// a test's or a declaration file's imports reach nothing, so its holes hide nothing.
     fn unproved(&self) -> Vec<Unresolved> {
         let aliases = self
             .walk
             .unproved
             .iter()
+            .filter(|hole| judgeable(&hole.file))
             .filter(|hole| self.files.binary_search(&hole.file.as_str()).is_ok())
             .map(|hole| Unresolved {
                 file: (self.current)(&hole.file),
@@ -483,6 +485,7 @@ impl App<'_, '_> {
         let unread = self
             .files
             .iter()
+            .filter(|file| judgeable(file))
             .filter(|file| self.walk.topology.facts(file).is_none())
             .map(|file| Unresolved {
                 file: (self.current)(file),
@@ -616,11 +619,23 @@ fn exports(facts: &FileFacts) -> BTreeMap<String, u64> {
 }
 
 /// Every value the declared contract of an exported declaration reads through `typeof`, as
-/// `export type Size = (typeof sizes)[number]` reads `sizes`. Any other word of a contract, such
-/// as a property name, reads no value.
+/// `export type Size = (typeof sizes)[number]` reads `sizes`. A declaration a local export
+/// clause exposes, such as `type Size` beside `export type { Size }`, is exported too. Any other
+/// word of a contract, such as a property name, reads no value.
 fn signed(facts: &FileFacts) -> HashSet<&str> {
+    let clauses: HashSet<&str> = facts
+        .exports
+        .iter()
+        .filter(|export| export.source.is_none())
+        .flat_map(|export| &export.leaves)
+        .map(|leaf| leaf.path.as_str())
+        .collect();
     let mut out = HashSet::new();
-    for declaration in facts.declarations.iter().filter(|held| exported(held)) {
+    let declared = facts
+        .declarations
+        .iter()
+        .filter(|held| exported(held) || clauses.contains(held.name.as_str()));
+    for declaration in declared {
         let Some(signature) = declaration.signature.as_deref() else {
             continue;
         };

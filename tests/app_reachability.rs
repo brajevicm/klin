@@ -472,6 +472,43 @@ fn a_value_an_exported_interface_names_only_as_a_property_is_still_unused() {
 }
 
 #[test]
+fn a_value_a_type_a_local_export_clause_exposes_reads_through_typeof_is_used() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "components/header.tsx",
+        "export const sizes = [\"sm\", \"lg\"] as const;\ntype Size = (typeof sizes)[number];\nexport type { Size };\n\nexport function Header() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged() {
+    let tree = app();
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./*","./src/*"]}}}"#,
+    );
+    tree.write(
+        "components/header.test.tsx",
+        "import { Header } from \"@/components/header\";\n\nHeader();\n",
+    );
+    tree.base();
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("components/footer.tsx"), "{}", run.out);
+}
+
+#[test]
 fn a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads() {
     let tree = app();
     tree.write(
