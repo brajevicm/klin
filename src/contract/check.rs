@@ -708,6 +708,43 @@ pub enum Ratchet {
     },
 }
 
+impl Ratchet {
+    /// Takes the findings of ride-along rows out of a new or worsened result, as a result of
+    /// their own. What stays loses its text groups, whose leads index the unsplit list.
+    /// Spec 9.6.
+    pub fn ride_along(&mut self) -> Option<Ratchet> {
+        let (Ratchet::New {
+            unit,
+            condition,
+            failed,
+            ..
+        }
+        | Ratchet::Worse {
+            unit,
+            condition,
+            failed,
+        }) = self
+        else {
+            return None;
+        };
+        let riders: Vec<Failed> = failed.extract_if(.., |found| found.rides_along).collect();
+        if riders.is_empty() {
+            return None;
+        }
+        failed.iter_mut().for_each(|found| found.lead = None);
+        Some(Ratchet::RidesAlong {
+            unit: unit.clone(),
+            condition: condition.clone(),
+            failed: riders,
+        })
+    }
+
+    /// Whether this is a new or worsened result with no finding left in it.
+    pub fn emptied(&self) -> bool {
+        matches!(self, Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. } if failed.is_empty())
+    }
+}
+
 impl Told {
     /// The `OK:` line of a gate that compares nothing, so nothing held its findings.
     pub fn judged(line: Line) -> Told {

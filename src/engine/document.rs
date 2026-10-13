@@ -14,8 +14,8 @@ use crate::config::file::MEASUREMENT_LOST;
 use crate::config::scope::{Moved, Moves};
 use crate::contract;
 use crate::contract::check::{
-    Activation, Caller, Cause, Class, Context, Debt, Failed, Hole, Incomplete, NO_SOURCE_ROOT,
-    Plain, RIDE_ALONG, Ratchet, Reason, Records, Sink, Told, UNBUILT,
+    Activation, Caller, Cause, Class, Context, Debt, Hole, Incomplete, NO_SOURCE_ROOT, Plain,
+    RIDE_ALONG, Ratchet, Reason, Records, Sink, Told, UNBUILT,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Seen, Unmeasured};
@@ -267,61 +267,30 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
 /// At `klin check`, a finding of a ride-along row is a review item, and a remedy told only for
 /// such findings goes with them. ADR 0073, spec 9.6.
 fn reviewed(told: Vec<Told>) -> Vec<Told> {
-    let blocks = told.iter().any(|item| match item {
-        Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) => {
-            failed.iter().any(|finding| !finding.rides_along)
-        }
-        _ => false,
-    });
-    told.into_iter()
-        .flat_map(|item| match item {
-            Told::Ratchet(Ratchet::New {
-                unit,
-                condition,
-                held,
-                failed,
-            }) => parted(failed, (&unit, &condition), |failed| Ratchet::New {
-                unit: unit.clone(),
-                condition: condition.clone(),
-                held,
-                failed,
-            }),
-            Told::Ratchet(Ratchet::Worse {
-                unit,
-                condition,
-                failed,
-            }) => parted(failed, (&unit, &condition), |failed| Ratchet::Worse {
-                unit: unit.clone(),
-                condition: condition.clone(),
-                failed,
-            }),
-            Told::Plain(Plain::Remedy(_)) if !blocks => Vec::new(),
-            other => vec![other],
+    let split: Vec<Told> = told
+        .into_iter()
+        .flat_map(|mut item| {
+            let riders = match &mut item {
+                Told::Ratchet(said) => said.ride_along(),
+                _ => None,
+            };
+            let emptied = matches!(&item, Told::Ratchet(said) if said.emptied());
+            (!emptied)
+                .then_some(item)
+                .into_iter()
+                .chain(riders.map(Told::from))
         })
-        .collect()
-}
-
-/// One ratchet result split into its failures and the review items of its ride-along rows. A
-/// split drops the text's groups, whose leads index the unsplit list.
-fn parted(
-    failed: Vec<Failed>,
-    (unit, condition): (&str, &str),
-    failure: impl FnOnce(Vec<Failed>) -> Ratchet,
-) -> Vec<Told> {
-    let (riders, mut failed): (Vec<Failed>, Vec<Failed>) =
-        failed.into_iter().partition(|finding| finding.rides_along);
-    if !riders.is_empty() {
-        for finding in &mut failed {
-            finding.lead = None;
-        }
-    }
-    let failing = (!failed.is_empty()).then(|| failure(failed));
-    let riding = (!riders.is_empty()).then(|| Ratchet::RidesAlong {
-        unit: unit.to_string(),
-        condition: condition.to_string(),
-        failed: riders,
+        .collect();
+    let blocks = split.iter().any(|item| {
+        matches!(
+            item,
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+        )
     });
-    failing.into_iter().chain(riding).map(Told::from).collect()
+    split
+        .into_iter()
+        .filter(|item| blocks || !matches!(item, Told::Plain(Plain::Remedy(_))))
+        .collect()
 }
 
 /// A Stop's result of a gate whose only failures are of ride-along rows, split into what it
@@ -624,11 +593,9 @@ pub struct CheckDocument {
     /// Whether a file the base parsed is lost to a parse, which a person may hold where the
     /// grammar lags. Spec 7.2.
     grammar_lag: bool,
-    /// The Stop text of the gates whose only failures are of ride-along rows, which the Stop
+    /// The Stop text of each gate whose only failures are of ride-along rows, which the Stop
     /// prints only when another finding blocks it. Spec 9.6.
-    riding: String,
-    /// How many gates `riding` holds. Spec 9.6.
-    riders: usize,
+    riding: Vec<String>,
 }
 
 /// The findings a capability's ratchet passed that are debt, as its check counts debt.
@@ -764,7 +731,7 @@ impl CheckDocument {
     pub fn failed_in_report(&self) -> usize {
         match self.failed() {
             0 => 0,
-            failed => failed + self.riders,
+            failed => failed + self.riding.len(),
         }
     }
 
@@ -853,7 +820,7 @@ impl CheckDocument {
             self.not_applicable(plan);
         }
         if self.failed() > 0 {
-            out.push_str(&std::mem::take(&mut self.riding));
+            out.extend(self.riding.iter().map(String::as_str));
         }
     }
 
@@ -1012,8 +979,9 @@ impl CheckDocument {
         }
         let (told, riders) = riding(told);
         let text = render::stop(&riders, false);
-        printed(gate, "FAIL", (&riders, &text), &mut self.riding);
-        self.riders += 1;
+        let mut block = String::new();
+        printed(gate, "FAIL", (&riders, &text), &mut block);
+        self.riding.push(block);
         (if code == 1 { 0 } else { code }, told)
     }
 
@@ -1669,7 +1637,7 @@ fn erred(gate: &str, item: &Told) -> Vec<Problem> {
 mod tests {
     use super::*;
     use crate::config::file::Config;
-    use crate::contract::check::Matched;
+    use crate::contract::check::{Failed, Matched};
     use crate::sys::record::Values;
 
     fn failing(rides_along: bool) -> Failed {
