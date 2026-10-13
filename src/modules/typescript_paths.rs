@@ -393,50 +393,55 @@ fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
     false
 }
 
-fn reached(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
-    let mut seen = BTreeSet::new();
-    let mut pending = parents(file, &parsed[file]);
-    while let Some(parent) = pending.pop() {
-        let parent = held(parent, parsed);
-        let Some(value) = parsed.get(&parent) else {
-            continue;
-        };
-        if !seen.insert(parent.clone()) {
-            continue;
-        }
-        pending.extend(parents(&parent, value));
-    }
-    seen
+/// The held local configs one config reaches through `extends`, whether a parent on the way is
+/// a package or a config klin cannot read, and whether the chain holds a cycle.
+struct Chain {
+    reached: BTreeSet<String>,
+    opaque: bool,
+    cyclic: bool,
 }
 
-/// Whether TypeScript may hand this config the value at `pointer`, such as `/files`,
-/// from its extends chain: no own value, and a parent that writes one or that klin cannot read.
-fn inherits(file: &str, pointer: &str, parsed: &BTreeMap<String, Value>) -> bool {
-    if parsed[file].pointer(pointer).is_some() {
-        return false;
-    }
-    let mut seen = BTreeSet::new();
-    let mut pending = vec![file.to_string()];
-    while let Some(file) = pending.pop() {
-        let Some(value) = parsed.get(&file).filter(|value| !value.is_null()) else {
-            return true;
+impl Chain {
+    fn walk(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
+        let mut chain = Self {
+            reached: BTreeSet::new(),
+            opaque: false,
+            cyclic: false,
         };
-        if !seen.insert(file.clone()) {
-            continue;
-        }
-        if seen.len() > 1 && value.pointer(pointer).is_some() {
-            return true;
-        }
+        chain.visit(file, parsed, &mut Vec::new());
+        chain
+    }
+
+    fn visit(&mut self, file: &str, parsed: &BTreeMap<String, Value>, path: &mut Vec<String>) {
+        let value = &parsed[file];
         let written = value
             .get("extends")
             .map_or(0, |extends| extends.as_array().map_or(1, Vec::len));
-        let parents = parents(&file, value);
-        if parents.len() != written {
-            return true;
+        let parents = parents(file, value);
+        self.opaque |= value.is_null() || parents.len() != written;
+        path.push(file.to_string());
+        for parent in parents {
+            let parent = held(parent, parsed);
+            if path.contains(&parent) {
+                self.cyclic = true;
+            } else if !parsed.contains_key(&parent) {
+                self.opaque = true;
+            } else if self.reached.insert(parent.clone()) {
+                self.visit(&parent, parsed, path);
+            }
         }
-        pending.extend(parents.into_iter().map(|parent| held(parent, parsed)));
+        path.pop();
     }
-    false
+
+    /// Whether TypeScript may hand the config the value at `pointer`, such as `/files`, from a
+    /// parent: one that writes it, or one klin cannot read.
+    fn inherits(&self, pointer: &str, parsed: &BTreeMap<String, Value>) -> bool {
+        self.opaque
+            || self
+                .reached
+                .iter()
+                .any(|parent| parsed[parent].pointer(pointer).is_some())
+    }
 }
 
 /// What a config that only supplies settings writes and inherits none of: roots that would make
@@ -456,19 +461,15 @@ impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
         let anchor = Anchor::read(file, value);
-        let reached = reached(file, parsed);
-        let cyclic = reached.contains(file)
-            || reached
-                .iter()
-                .any(|parent| self::reached(parent, parsed).contains(parent));
+        let chain = Chain::walk(file, parsed);
         Self {
             file: file.to_string(),
             directory: directory(file).to_string(),
             settings_only: OWN_PROJECT.into_iter().all(|pointer| {
-                value.pointer(pointer).is_none() && !inherits(file, pointer, parsed)
+                value.pointer(pointer).is_none() && !chain.inherits(pointer, parsed)
             }),
-            uncertain: cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
-            reached,
+            uncertain: chain.cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
+            reached: chain.reached,
             anchor,
             rules: rules(file, parsed),
             roots: Roots::read(file, value, value.get("extends").is_some()),
