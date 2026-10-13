@@ -84,16 +84,10 @@ impl Paths {
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                if scope.exact.is_empty()
-                    && scope.wildcards.is_empty()
-                    && scope.base_urls.is_empty()
-                {
+                if scope.programs.iter().all(Program::is_empty) && scope.base_urls.is_empty() {
                     return None;
                 }
-                let root = scope
-                    .roots
-                    .as_ref()
-                    .is_some_and(|roots| roots.contains(file));
+                let root = scope.roots.iter().any(|roots| roots.contains(file));
                 return Some(FilePaths { scope, root });
             }
             if ancestor.is_empty() {
@@ -112,10 +106,17 @@ fn contains(directory: &str, file: &str) -> bool {
 }
 
 struct Scope {
-    roots: Option<Roots>,
-    anchor: Option<Anchor>,
+    roots: Vec<Roots>,
     /// Every `baseUrl` an owning config writes, so an ambiguous owner still looks under each.
     base_urls: Vec<String>,
+    /// One per owning config. An alias is proved only where every one resolves it the same way.
+    programs: Vec<Program>,
+    uncertain: bool,
+}
+
+/// The alias rules of one owning config.
+struct Program {
+    anchor: Option<Anchor>,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
@@ -167,26 +168,60 @@ impl Scope {
             .copied()
             .filter(|config| !config.extended(&candidates))
             .collect();
-        let mut scope = Self {
-            roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
-            anchor: owners.first().and_then(|config| config.anchor.clone()),
+        Self {
+            roots: owners.iter().map(|config| config.roots.clone()).collect(),
             base_urls: owners
                 .iter()
                 .filter_map(|config| config.anchor.as_ref()?.base_url().map(str::to_string))
                 .collect(),
+            uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
+            programs: owners.into_iter().map(Program::compile).collect(),
+        }
+    }
+
+    /// None means no owning config recognizes this specifier; Err means known local but
+    /// unproved, including owners that resolve it to different paths.
+    fn resolve(&self, specifier: &str, root: bool) -> Option<Result<String, String>> {
+        let resolved: Vec<_> = self
+            .programs
+            .iter()
+            .map(|program| program.resolve(specifier, root))
+            .collect();
+        match resolved.as_slice() {
+            [] => None,
+            [only] => only.clone(),
+            [first @ Some(Ok(_)), rest @ ..] if rest.iter().all(|other| other == first) => {
+                first.clone()
+            }
+            _ if resolved.iter().all(Option::is_none) => None,
+            _ => Some(Err(unproved(specifier))),
+        }
+    }
+}
+
+fn unproved(specifier: &str) -> String {
+    format!("{specifier} is a local paths alias whose configuration klin cannot prove")
+}
+
+impl Program {
+    fn compile(config: &Config) -> Self {
+        let mut program = Self {
+            anchor: config.anchor.clone(),
             exact: HashMap::new(),
             wildcards: Vec::new(),
-            uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
+            uncertain: config.uncertain,
         };
-        for config in owners {
-            for (pattern, targets) in &config.rules {
-                scope.insert(pattern, targets);
-            }
+        for (pattern, targets) in &config.rules {
+            program.insert(pattern, targets);
         }
-        scope
+        program
             .wildcards
             .sort_by_key(|rule| std::cmp::Reverse(rule.prefix.len()));
-        scope
+        program
+    }
+
+    fn is_empty(&self) -> bool {
+        self.exact.is_empty() && self.wildcards.is_empty()
     }
 
     fn insert(&mut self, pattern: &str, targets: &Value) {
@@ -232,9 +267,7 @@ impl Scope {
         ambiguous: bool,
     ) -> Result<String, String> {
         if self.uncertain || ambiguous {
-            return Err(format!(
-                "{specifier} is a local paths alias whose configuration klin cannot prove"
-            ));
+            return Err(unproved(specifier));
         }
         let (Some(anchor), Some(target)) = (&self.anchor, target) else {
             return Err(format!(

@@ -1627,7 +1627,28 @@ fn a_sibling_base_config_the_owner_extends_is_not_a_second_owner() {
 }
 
 #[test]
-fn a_nested_config_that_extends_an_ancestor_still_competes_with_it() {
+fn a_nested_config_that_extends_an_ancestor_and_resolves_an_alias_the_same_way_proves_it() {
+    let tree = Tree::new();
+    tree.write(
+        "web/model/tsconfig.json",
+        &format!(
+            r#"{{"extends":"../../tsconfig.json","compilerOptions":{{"baseUrl":"../..","paths":{{"@/*":["web/*"]}}}},{OWN_ROOTS}}}"#
+        ),
+    );
+    let run = an_alias_from_model_to_view(
+        &tree,
+        r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"],"@/x":["web/model/x"]}},"include":["**/*.ts"],"exclude":["web/model"]}"#,
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("model → view") && !run.says("local paths alias"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_nested_config_that_extends_an_ancestor_and_resolves_an_alias_elsewhere_leaves_a_hole() {
     for excluded in ["[]", r#"["web"]"#] {
         let tree = Tree::new();
         tree.write(

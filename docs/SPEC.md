@@ -5427,8 +5427,14 @@ compile such a config with its default roots, but with no `paths` or
 competes, because it is the default project. An ancestor config competes
 even when its `exclude` leaves the file's directory out, because sources
 outside that directory can still bring the file into its program. A config
-whose held local extends chain holds a cycle proves no alias. Two configs
-that still compete leave every alias under them a hole.
+whose held local extends chain holds a cycle proves no alias. When two or
+more configs still compete, an alias is a local edge only when every one of
+them proves it and resolves it to the same path, so the edge holds whichever
+program compiles the file. The file must be a proven root of at least one of
+them. An alias that one competing config does not recognize, or that two
+resolve to different paths, is a hole. A `tsconfig.*.json` proves no alias,
+so a competing one leaves every alias under it a hole. A bare `baseUrl`
+import under two competing configs stays a hole.
 Other multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
@@ -5478,7 +5484,8 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `empty_module_suffixes_nearer_the_child_override_a_parent`,
 `own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots`,
 `a_sibling_base_config_the_owner_extends_is_not_a_second_owner`,
-`a_nested_config_that_extends_an_ancestor_still_competes_with_it`,
+`a_nested_config_that_extends_an_ancestor_and_resolves_an_alias_the_same_way_proves_it`,
+`a_nested_config_that_extends_an_ancestor_and_resolves_an_alias_elsewhere_leaves_a_hole`,
 `sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole`,
 `configs_that_extend_each_other_leave_the_alias_a_hole`,
 `a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project` and
