@@ -1477,6 +1477,7 @@ fn local_extends_recognition_uses_the_nearest_paths_object() {
 }
 
 const OWN_PATHS: &str = r#""compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"]}}"#;
+const OWN_ROOTS: &str = r#""include":["**/*.ts"],"exclude":[]"#;
 
 fn an_alias_from_model_to_view(tree: &Tree, config: &str) -> harness::Run {
     tree.write("klin.json", WEB);
@@ -1496,7 +1497,7 @@ fn a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_ex
         );
         let run = an_alias_from_model_to_view(
             &tree,
-            &format!(r#"{{"extends":"{extends}",{OWN_PATHS},"include":["**/*.ts"],"exclude":[]}}"#),
+            &format!(r#"{{"extends":"{extends}",{OWN_PATHS},{OWN_ROOTS}}}"#),
         );
         assert_eq!(run.code, 1, "{extends}: {}", run.out);
         assert!(
@@ -1513,9 +1514,7 @@ fn a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge() {
     tree.write("klin.json", WEB);
     tree.write(
         "tsconfig.json",
-        &format!(
-            r#"{{"extends":"package/config",{OWN_PATHS},"include":["**/*.ts"],"exclude":[]}}"#
-        ),
+        &format!(r#"{{"extends":"package/config",{OWN_PATHS},{OWN_ROOTS}}}"#),
     );
     tree.write("web/model/index.ts", "import { x } from \"web/view/x\";\n");
     tree.write("web/view/x.ts", "export const x = 1;\n");
@@ -1537,7 +1536,7 @@ fn files_a_config_writes_under_extends_stay_roots() {
 
 #[test]
 fn module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole() {
-    let roots = r#""include":["**/*.ts"],"exclude":[]"#;
+    let roots = OWN_ROOTS;
     let suffixed = r#"{"compilerOptions":{"moduleSuffixes":[".native"]}}"#;
     for (base, config) in [
         (
@@ -1565,7 +1564,7 @@ fn module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole() {
 #[test]
 fn empty_module_suffixes_nearer_the_child_override_a_parent() {
     let paths = r#""baseUrl":".","paths":{"@/*":["web/*"]}"#;
-    let roots = r#""include":["**/*.ts"],"exclude":[]"#;
+    let roots = OWN_ROOTS;
     for (middle, suffixes, extends) in [
         (None, r#","moduleSuffixes":[""]"#, "./base.json"),
         (None, r#","moduleSuffixes":[]"#, "./base.json"),
@@ -1605,6 +1604,132 @@ fn own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots() {
             "{roots}: {}",
             run.out
         );
+    }
+}
+
+#[test]
+fn a_sibling_base_config_the_owner_extends_is_not_a_second_owner() {
+    let tree = Tree::new();
+    tree.write(
+        "tsconfig.base.json",
+        r#"{"compilerOptions":{"strict":true}}"#,
+    );
+    let run = an_alias_from_model_to_view(
+        &tree,
+        &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("model → view") && !run.says("local paths alias"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_nested_config_that_extends_an_ancestor_still_competes_with_it() {
+    for excluded in ["[]", r#"["web"]"#] {
+        let tree = Tree::new();
+        tree.write(
+            "web/tsconfig.json",
+            &format!(
+                r#"{{"extends":"../tsconfig.json","compilerOptions":{{"baseUrl":".","paths":{{"@/*":["./*"]}}}},{OWN_ROOTS}}}"#
+            ),
+        );
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(
+                r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["other/*"]}}}},"include":["**/*.ts"],"exclude":{excluded}}}"#
+            ),
+        );
+        assert_a_hole(&run);
+    }
+}
+
+#[test]
+fn sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole() {
+    for sibling in ["tsconfig.base.json", "tsconfig.app.json"] {
+        let tree = Tree::new();
+        tree.write(sibling, &format!(r#"{{{OWN_PATHS},{OWN_ROOTS}}}"#));
+        let run = an_alias_from_model_to_view(&tree, &format!(r#"{{{OWN_PATHS},{OWN_ROOTS}}}"#));
+        assert_eq!(run.code, 0, "{sibling}: {}", run.out);
+        assert!(
+            run.says("REVIEW:") && run.says("local paths alias"),
+            "{sibling}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn configs_that_extend_each_other_leave_the_alias_a_hole() {
+    let cycles: [&[(&str, &str)]; 2] = [
+        &[("tsconfig.base.json", "./tsconfig.json")],
+        &[
+            ("tsconfig.base.json", "./tsconfig.shared.json"),
+            ("tsconfig.shared.json", "./tsconfig.base.json"),
+        ],
+    ];
+    for cycle in cycles {
+        let tree = Tree::new();
+        for (config, parent) in cycle {
+            tree.write(
+                config,
+                &format!(r#"{{"extends":"{parent}",{OWN_PATHS},{OWN_ROOTS}}}"#),
+            );
+        }
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
+        );
+        assert_a_hole(&run);
+    }
+}
+
+fn assert_a_hole(run: &harness::Run) {
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW:") && run.says("local paths alias"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project() {
+    for include in [r#"["tests"]"#, r#"["**/*.ts"]"#] {
+        let tree = Tree::new();
+        tree.write(
+            "tsconfig.test.json",
+            &format!(
+                r#"{{"extends":"./tsconfig.json","compilerOptions":{{"baseUrl":".","paths":{{"@/*":["tests/*"]}}}},"include":{include}}}"#
+            ),
+        );
+        let run = an_alias_from_model_to_view(&tree, &format!(r#"{{{OWN_PATHS},{OWN_ROOTS}}}"#));
+        assert_a_hole(&run);
+    }
+}
+
+#[test]
+fn a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends() {
+    for base in [
+        r#"{"include":["web/**/*.ts"]}"#,
+        r#"{"files":["web/model/index.ts"]}"#,
+        r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["other/*"]}}}"#,
+        r#"{"compilerOptions":{"baseUrl":"."}}"#,
+        r#"{"extends":"./config/aliases.json"}"#,
+    ] {
+        let tree = Tree::new();
+        tree.write(
+            "config/aliases.json",
+            r#"{"compilerOptions":{"paths":{"@/*":["../other/*"]}}}"#,
+        );
+        tree.write("tsconfig.base.json", base);
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
+        );
+        assert_a_hole(&run);
     }
 }
 

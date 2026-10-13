@@ -5416,7 +5416,20 @@ because the candidate rule does not model suffixes. On each extends chain,
 the nearest config that writes the option decides, and TypeScript reads `[]`
 as the default, a plain lookup. A package parent is not read, so its resolution
 options, such as `moduleSuffixes` or `rootDirs`, are outside this guarantee.
-Multiple/nested or alternate
+Every `tsconfig.json` or `tsconfig.*.json` in a file's directory or an
+ancestor directory competes to own the file, with one exception. A
+`tsconfig.*.json` that writes and inherits no `include`, `files`,
+`compilerOptions.paths` or `compilerOptions.baseUrl`, and that another config
+in its own directory reaches through held local `extends` without being
+reached back, supplies settings and does not compete. TypeScript can still
+compile such a config with its default roots, but with no `paths` or
+`baseUrl` it gives no alias another local target. A `tsconfig.json` always
+competes, because it is the default project. An ancestor config competes
+even when its `exclude` leaves the file's directory out, because sources
+outside that directory can still bring the file into its program. A config
+whose held local extends chain holds a cycle proves no alias. Two configs
+that still compete leave every alias under them a hole.
+Other multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
@@ -5462,8 +5475,14 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
 `files_a_config_writes_under_extends_stay_roots`,
 `module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole`,
-`empty_module_suffixes_nearer_the_child_override_a_parent` and
-`own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots` in
+`empty_module_suffixes_nearer_the_child_override_a_parent`,
+`own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots`,
+`a_sibling_base_config_the_owner_extends_is_not_a_second_owner`,
+`a_nested_config_that_extends_an_ancestor_still_competes_with_it`,
+`sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole`,
+`configs_that_extend_each_other_leave_the_alias_a_hole`,
+`a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project` and
+`a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in
