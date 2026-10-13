@@ -4445,9 +4445,9 @@ matches. Its label and remedy are the ones of the first pattern, in table
 order, that matched a line with that text, and its line is the first line
 that pattern matched. A row in the ride-along tier of 9.6 gives way: a
 blocking row that matches the same text takes the label, the remedy and the
-line, so a line that holds kinds of both tiers blocks. The built-in language table comes first. A line that
-carries two kinds is one site labelled by
-the earlier row, and a second copy of that line, indented differently, adds
+line, so a line that holds kinds of both tiers blocks. The built-in language
+table comes first. A line that carries two kinds of one tier is one site
+labelled by the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
 the text as written, so a pattern inside a string literal is a match. Unless
 `skip_test_idioms` is `false`, it leaves each language's test idioms out of
@@ -4492,15 +4492,16 @@ line, judges a test module like any other code, and refuses the key. Pinned by
 `a_line_carrying_two_escape_kinds_counts_both_under_the_first` and
 `the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in
 `tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
-line. A finding that says `unwrap x4` may hold two `expect` calls.
+line. A finding that says `unwrap x4` may hold two `expect` calls, and an
+`empty handler x2` may hold a `biome-ignore`.
 
 The TypeScript and JavaScript table also holds these rows, each with its own
 remedy (#581): the double cast `as unknown as`, `any` as a generic argument
 beside another argument such as `Record<string, any>` (a lone `<any>` stays
 the `any` row), `biome-ignore`, an ESLint configuration comment such as
 `/* eslint no-console: off */`, `NOSONAR`, `@codescene(disable`, and an empty
-handler: `catch {}`, `catch (e) {}` and `.catch(() => {})` or `.catch(e =>
-{})` with nothing but whitespace in the body. A handler whose body holds a
+handler: `catch {}`, `catch (e) {}` and `.catch(() => {})`, `.catch(async e => {})` or
+`.catch(function () {})` with nothing but whitespace in the body. A handler whose body holds a
 comment is no site. `biome-ignore` rides along (9.6), and every other row
 blocks. Pinned by `each_new_typescript_row_fails_with_its_own_remedy`,
 `a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass`,

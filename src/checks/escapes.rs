@@ -21,10 +21,11 @@ const DOUBLE_CAST: &str = "double cast";
 const DOUBLE_CAST_FIX: &str =
     "give the value the type it has: check its shape, or narrow it with a type guard";
 const EMPTY_HANDLER: &str = "empty handler";
+const BIOME_IGNORE: &str = "biome-ignore";
 const ANALYZER_FIX: &str = "fix what the analyzer reports instead of silencing it";
 
 /// The rows in the ride-along tier of ADR 0073, by their replay N on #572. Spec 9.6.
-const RIDE_ALONG: &[&str] = &["biome-ignore"];
+const RIDE_ALONG: &[&str] = &[BIOME_IGNORE];
 
 const LANGUAGES: &[Language] = &[
     Language {
@@ -135,7 +136,7 @@ const LANGUAGES: &[Language] = &[
                 "name the type the argument holds, or take `unknown` and narrow it",
             ),
             (
-                "biome-ignore",
+                BIOME_IGNORE,
                 r"biome-ignore",
                 "fix what the Biome rule reports instead of ignoring it",
             ),
@@ -148,7 +149,7 @@ const LANGUAGES: &[Language] = &[
             ("codescene disable", r"@codescene\(\s*disable", ANALYZER_FIX),
             (
                 EMPTY_HANDLER,
-                r"\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}|\.catch\(\s*(?:\([^)]*\)|\w+)\s*=>\s*\{\s*\}\s*\)",
+                r"\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}|\.catch\(\s*(?:(?:async\s+)?(?:\([^)]*\)|\w+)\s*=>|(?:async\s+)?function\s*\w*\s*\([^)]*\))\s*\{\s*\}\s*\)",
                 "handle the error, or say in a comment inside the handler why ignoring it is right",
             ),
         ],

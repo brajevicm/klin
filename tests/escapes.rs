@@ -1241,6 +1241,8 @@ try {
   f();
 } catch (error) {
 }
+p.catch(async (e) => {});
+p.catch(function () {});
 ";
 
 #[test]
@@ -1250,7 +1252,7 @@ fn each_new_typescript_row_fails_with_its_own_remedy() {
 
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("9 new escape site(s)"), "{}", run.out);
+    assert!(run.says("11 new escape site(s)"), "{}", run.out);
     assert!(run.says("REVIEW: 1 escape site(s)"), "{}", run.out);
     for expected in [
         "src/shortcuts.ts:1  double cast — give the value the type it has",
@@ -1263,6 +1265,8 @@ fn each_new_typescript_row_fails_with_its_own_remedy() {
         "src/shortcuts.ts:8  empty handler",
         "src/shortcuts.ts:9  empty handler",
         "src/shortcuts.ts:12  empty handler",
+        "src/shortcuts.ts:14  empty handler",
+        "src/shortcuts.ts:15  empty handler",
     ] {
         assert!(run.says(expected), "missing {expected}\n{}", run.out);
     }

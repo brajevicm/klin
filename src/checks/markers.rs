@@ -440,7 +440,7 @@ fn compiled(
         .map(|(name, regex, remedy)| {
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
-                    rides_along: rides_along(kind, &name),
+                    rides_along: row_rides_along(kind, &name),
                     test_idiom: idioms.contains(&name.as_str()),
                     keyed_by_row: kind.keyed_by_row.contains(&name.as_str()),
                     name: name.clone(),
@@ -460,7 +460,7 @@ fn compiled(
 
 /// Whether a row is in the ride-along tier, as the kind's evaluator names it from the values of
 /// a site that row labels. Spec 9.6.
-fn rides_along(kind: &Kind, name: &str) -> bool {
+fn row_rides_along(kind: &Kind, name: &str) -> bool {
     let mut values = Values::new();
     values.insert(kind.label.into(), name.into());
     (kind.evaluator.rides_along)(&values)
