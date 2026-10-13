@@ -4897,8 +4897,10 @@ literal, type-only ones included. The entries are:
   the package root or under `src/`, and each `*.config` file at the package
   root, such as `next.config.ts` or `tailwind.config.ts`, which its tool reads
   by name;
-- each TypeScript file a word of a package script names, joined to the
-  package directory, such as `scripts/seed.ts` in `tsx scripts/seed.ts`.
+- each TypeScript file a word of a script of the base's copy of the manifest
+  names, joined to the package directory, such as `scripts/seed.ts` in
+  `tsx scripts/seed.ts`. A script a change writes makes no entry until a
+  person makes it part of the base.
 
 A test file of 8.2 and a declaration file (`.d.ts`, `.d.mts`, `.d.cts`) is no
 entry and is never judged, so a module only its tests import is unreached.
@@ -4945,9 +4947,9 @@ are never unused there, and a renamed export counts by its exported name:
 `proxy`; `register` and `onRequestError` in an `instrumentation`;
 `onRouterTransitionStart` in an `instrumentation-client`; and
 `getServerSideProps`, `getStaticProps`, `getStaticPaths` and `config` under
-`pages/`. Where a `components.json` sits beside the manifest, the directory
-its `aliases.ui` names, resolved through the app's tsconfig `paths`, holds a
-vendored kit. With no `components.json`, `components/ui` at the package root
+`pages/`. Where the base holds a `components.json` beside the manifest, the
+directory its `aliases.ui` names in the base, resolved through the app's
+tsconfig `paths`, holds a vendored kit. With no `components.json`, `components/ui` at the package root
 or under `src/` holds it, where a kit is vendored by hand. A kit file is
 judged neither for reach nor for its exports, and coverage counts it as
 excluded, because a kit is vendored whole and keeps primitives nothing uses
@@ -4959,8 +4961,11 @@ it part of the base, as no change widens its own exemptions. Any other
 vendored directory, such as the `components/ai-elements` a registry installs,
 is narrowed with `except` or marked so. A convention file under `app/` or
 `src/app/` that a leading `_` turns off, such as `_route.ts`, which Next.js no
-longer routes, is judged by neither rule; a folder or any other file named so
-is judged as usual. The section's `in` and `except` narrow an app's judged files
+longer routes, is judged by neither rule where the base held it, under that
+name or under the name a rename moved it from; a new file named so, a folder
+or any other file is judged as usual. Every exemption is read from the base,
+so a change never widens its own: the marks, the kit and the scripts it
+writes count once a person makes them part of the base. The section's `in` and `except` narrow an app's judged files
 and exports as they narrow the families, and coverage counts a file they take
 out as excluded.
 
@@ -5016,7 +5021,10 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged`,
 `a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads`,
 `an_unused_export_blocks_no_stop_and_fails_at_check`,
-`a_convention_file_renamed_private_is_not_judged_and_a_private_folder_is`,
+`a_route_the_change_renames_private_is_not_judged_and_a_private_folder_is`,
+`a_new_file_named_like_a_disabled_route_is_judged`,
+`a_kit_alias_the_change_writes_leaves_nothing_out`,
+`a_script_the_change_writes_makes_no_entry`,
 `a_vendored_mark_the_change_writes_leaves_nothing_out`,
 `a_bin_or_workspaces_field_leaves_a_next_app_judged`,
 `a_file_gitattributes_marks_vendored_gets_neither_rule`,
@@ -5027,7 +5035,9 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_file_that_loses_its_last_import_is_worsened` and
 `the_stop_blocks_a_turn_that_adds_an_orphan_component` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
-`tests/recall.rs`. Known limits: a file any word of a package script names is an entry, even
+`tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no
+`components.json` exists, and a new `*.config` file at the package root is an
+entry, as these are names a person and a tool choose; a file any word of a package script names is an entry, even
 where the script only lints or formats it, so `eslint src/legacy.ts` hides
 that file's `unreached` finding; an import from a file of another language,
 such as MDX, reaches nothing; a `.d.ts` target is not resolved; a `require()`

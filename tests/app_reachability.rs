@@ -526,13 +526,13 @@ fn an_unused_export_blocks_no_stop_and_fails_at_check() {
 }
 
 #[test]
-fn a_convention_file_renamed_private_is_not_judged_and_a_private_folder_is() {
+fn a_route_the_change_renames_private_is_not_judged_and_a_private_folder_is() {
+    let route = "export async function GET() {\n  return new Response(\"auth\");\n}\n";
     let tree = app();
+    tree.write("app/api/auth/route.ts", route);
     tree.base();
-    tree.write(
-        "app/api/auth/_route.ts",
-        "export async function GET() {\n  return new Response(\"off\");\n}\n",
-    );
+    tree.remove("app/api/auth/route.ts");
+    tree.write("app/api/auth/_route.ts", route);
     tree.write(
         "app/_components/card.tsx",
         "export function Card() {\n  return null;\n}\n",
@@ -542,7 +542,56 @@ fn a_convention_file_renamed_private_is_not_judged_and_a_private_folder_is() {
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("app/_components/card.tsx"), "{}", run.out);
-    assert!(!run.says("_route.ts"), "{}", run.out);
+    assert!(!run.says("_route.ts:0  unreached"), "{}", run.out);
+}
+
+#[test]
+fn a_new_file_named_like_a_disabled_route_is_judged() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "app/chat/_page.tsx",
+        "export default function Page() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("app/chat/_page.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_kit_alias_the_change_writes_leaves_nothing_out() {
+    let tree = app();
+    tree.write("tsconfig.json", ALIASED);
+    tree.write("components.json", r#"{"aliases":{"ui":"@/ui"}}"#);
+    tree.base();
+    tree.write("components.json", r#"{"aliases":{"ui":"@/lib"}}"#);
+    tree.write(
+        "lib/format.ts",
+        "export function formatNumber(n: number) {\n  return `${n}`;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("lib/format.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_script_the_change_writes_makes_no_entry() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "package.json",
+        r#"{"name":"web","private":true,"scripts":{"x":"tsx lib/orphan.ts"},"dependencies":{"next":"15.0.0"}}"#,
+    );
+    tree.write("lib/orphan.ts", "console.log(\"orphan\");\n");
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("lib/orphan.ts"), "{}", run.out);
 }
 
 #[test]

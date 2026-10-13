@@ -26,22 +26,61 @@ const MANIFEST: &str = "package.json";
 const KIT: &str = "components.json";
 const FRAMEWORK: &str = "next";
 const DEPENDENCIES: &[&str] = &["dependencies", "devDependencies", "peerDependencies"];
-/// The in-tree `.gitattributes` files of the base tree with their texts, shallowest first, whose
-/// `linguist-vendored` and `linguist-generated` marks leave files out of both trees' judgement.
-/// The base's marks alone count, so a mark a change writes leaves out nothing until a person
-/// makes it part of the base, as the change cannot widen its own exemptions.
-pub(super) fn marks(root: &Path, files: &[String]) -> Vec<(String, String)> {
-    let mut held: Vec<&String> = files
-        .iter()
-        .filter(|file| basename(file) == ".gitattributes")
-        .collect();
-    held.sort_by_key(|file| file.matches('/').count());
-    held.into_iter()
-        .filter_map(|file| {
-            let bytes = std::fs::read(root.join(file)).ok()?;
-            Some((file.clone(), files::attribute_text(&bytes)))
-        })
-        .collect()
+/// The base tree, which every exemption app mode grants is read from: its `.gitattributes`
+/// marks, its `components.json`, its package scripts, and the convention files it held that a
+/// leading `_` turns off. A change cannot widen its own exemptions: what it writes there counts
+/// once a person makes it part of the base.
+pub(super) struct Base<'a> {
+    root: &'a Path,
+    held: HashSet<&'a str>,
+}
+
+impl<'a> Base<'a> {
+    pub(super) fn of(root: &'a Path, files: &'a [String]) -> Base<'a> {
+        Base {
+            root,
+            held: files.iter().map(String::as_str).collect(),
+        }
+    }
+
+    fn holds(&self, file: &str) -> bool {
+        self.held.contains(file)
+    }
+
+    fn read(&self, file: &str) -> Option<Vec<u8>> {
+        self.holds(file)
+            .then(|| std::fs::read(self.root.join(file)).ok())
+            .flatten()
+    }
+
+    /// The in-tree `.gitattributes` texts, shallowest first, whose `linguist-vendored` and
+    /// `linguist-generated` marks leave files out of both trees' judgement.
+    fn marks(&self) -> Vec<(String, String)> {
+        let mut held: Vec<&str> = self
+            .held
+            .iter()
+            .copied()
+            .filter(|file| basename(file) == ".gitattributes")
+            .collect();
+        held.sort_by_key(|file| (file.matches('/').count(), *file));
+        held.into_iter()
+            .filter_map(|file| Some((file.to_string(), files::attribute_text(&self.read(file)?))))
+            .collect()
+    }
+
+    /// The commands the scripts of the base's copy of this manifest run.
+    fn scripts(&self, manifest: &str) -> Vec<String> {
+        let parsed: Option<Value> = self
+            .read(manifest)
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok());
+        parsed
+            .as_ref()
+            .and_then(|held| held.get("scripts")?.as_object())
+            .into_iter()
+            .flatten()
+            .filter_map(|(_, command)| command.as_str().map(str::to_string))
+            .collect()
+    }
 }
 
 /// The UI frameworks whose packages are apps: a package with no entry point that depends on one
@@ -164,13 +203,11 @@ enum Role {
     UnknownApp,
 }
 
-/// One package manifest: where it is, what it makes of its package, and the commands its scripts
-/// run.
+/// One package manifest: where it is, and what it makes of its package.
 struct Package {
     manifest: String,
     directory: String,
     role: Role,
-    scripts: Vec<String>,
 }
 
 impl Package {
@@ -196,12 +233,6 @@ impl Package {
             manifest: manifest.to_string(),
             directory: directory(manifest).to_string(),
             role,
-            scripts: fields
-                .and_then(|held| held.get("scripts")?.as_object())
-                .into_iter()
-                .flatten()
-                .filter_map(|(_, command)| command.as_str().map(str::to_string))
-                .collect(),
         }
     }
 
@@ -234,8 +265,8 @@ pub(super) struct Side<'a> {
     pub facts: &'a [Rc<FileFacts>],
     pub renamed: &'a HashMap<String, String>,
     pub graph: &'a modules::Shared,
-    /// The base's `.gitattributes`, read by `marks`.
-    pub marks: &'a [(String, String)],
+    /// The base tree, which the exemptions are read from.
+    pub base: &'a Base<'a>,
 }
 
 /// One file app mode judged that is no entry, and whether no entry reaches it.
@@ -298,13 +329,15 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     }
     let (graph, cost) = side.graph.get(&topology);
     out.graph = Some(cost);
-    let walk = Walk::of(&topology, &graph, side.marks);
+    let marks = side.base.marks();
+    let walk = Walk::of(&topology, &graph, &marks);
     let used = walk.used();
     for (at, files) in &owned {
         let package = &packages[*at];
         if package.judged() {
             out.owned.extend(files.iter().map(|file| current(file)));
             let app = App {
+                base: side.base,
                 walk: &walk,
                 used: &used,
                 package,
@@ -476,6 +509,7 @@ impl<'g> Used<'g> {
 
 /// One app package judged: its entries, the files they reach, and the exports reached files take.
 struct App<'a, 'g> {
+    base: &'a Base<'a>,
     walk: &'a Walk<'g>,
     used: &'a Used<'g>,
     package: &'a Package,
@@ -522,12 +556,13 @@ impl App<'_, '_> {
     }
 
     /// Whether a file is code the app holds and did not write, or a route a person turned off:
-    /// a file of the kit, a file `.gitattributes` mark vendored or generated, or a private
-    /// name under `app/`. Neither rule judges it.
+    /// a file of the kit, a file the base's `.gitattributes` mark vendored or generated, or a
+    /// convention file under `app/` the base held that a leading `_` turns off. Neither rule
+    /// judges it.
     fn left_out(&self, file: &str, kit: Option<&str>) -> bool {
         kit.is_some_and(|kit| under_or_at(file, kit))
             || self.walk.vendored(file)
-            || private(relative(&self.package.directory, file))
+            || private(relative(&self.package.directory, file)) && self.base.holds(file)
     }
 
     /// What keeps the package from being judged: an alias configuration klin cannot prove, and a
@@ -576,11 +611,11 @@ impl App<'_, '_> {
             .collect()
     }
 
-    /// The TypeScript files the package's scripts name, joined to its directory.
+    /// The TypeScript files the scripts of the base's manifest name, joined to its directory.
     fn scripted(&self) -> HashSet<String> {
         let separator = |c: char| c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')');
-        self.package
-            .scripts
+        self.base
+            .scripts(&self.package.manifest)
             .iter()
             .flat_map(|command| command.split(separator))
             .map(|word| word.trim_matches(['"', '\'']))
@@ -591,17 +626,17 @@ impl App<'_, '_> {
             .collect()
     }
 
-    /// The directory of the package's vendored kit: the `ui` alias a `components.json` beside
-    /// the manifest names, resolved through the package's own paths rules, and none where it
+    /// The directory of the package's vendored kit: the `ui` alias the base's `components.json`
+    /// beside the manifest names, resolved through the package's own paths rules, and none where it
     /// names none klin can prove. With no `components.json`, the `components/ui` directory at
     /// the package root or under `src/`, where a kit is vendored by hand.
     fn kit(&self) -> Option<String> {
         let file = joined(&self.package.directory, KIT)?;
         let topology = self.walk.topology;
-        if !topology.holds(&file) {
+        if !self.base.holds(&file) {
             return self.vendored_by_hand();
         }
-        let ui = topology.read(&file).and_then(|bytes| ui_alias(&bytes))?;
+        let ui = self.base.read(&file).and_then(|bytes| ui_alias(&bytes))?;
         let paths = Aliases::read(topology);
         self.files.iter().find_map(|from| paths.resolve(from, &ui))
     }
