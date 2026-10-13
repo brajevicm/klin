@@ -1,16 +1,16 @@
 commit	file	line	label	reason	reviewed
-e42d3efd28ff7f4b5d4d4369a0faad355d39e620	lib/ai/models.ts	169	appropriate	new export nothing imports	
+e42d3efd28ff7f4b5d4d4369a0faad355d39e620	lib/ai/models.ts	169	not-appropriate	return type of the exported getModelAvailability; judgment call	
 f9652b452a4dc006af947c29301f4845efec892a	app/(auth)/auth.ts	33	not-appropriate	destructured auth library API; one unused binding of the set	
-f9652b452a4dc006af947c29301f4845efec892a	components/chat/document.tsx	161	appropriate	new memo component nothing imports	
-f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	139	appropriate	new export nothing imports	
+f9652b452a4dc006af947c29301f4845efec892a	components/chat/document.tsx	161	appropriate	existing export the change stranded by removing its importers	
+f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	139	not-appropriate	return type of the exported getAllGatewayModels; judgment call	
 f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	173	appropriate	new export nothing imports	
-f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	179	appropriate	new export nothing imports	
+f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	179	appropriate	existing export the change stranded by removing its importers	
 3651670fb9fc0f8deff26915730e05b71b0be918	components/icons.tsx	771	not-appropriate	icon set file; unused icons are kept as a library	
 3651670fb9fc0f8deff26915730e05b71b0be918	components/icons.tsx	788	not-appropriate	icon set file; unused icons are kept as a library	
-b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/client.ts	4	appropriate	export used only inside its own file	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/client.ts	4	not-appropriate	better-auth setup line, the same idiom as the destructure on line 9	
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/client.ts	9	not-appropriate	destructured auth library API; one unused binding of the set	
-b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/constants.ts	2	appropriate	new constant nothing imports	
-b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	26	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/constants.ts	2	appropriate	existing constant the change stranded by removing its importers	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	26	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom; the change removed its importer	
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	41	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	61	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	72	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
@@ -143,7 +143,7 @@ b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	72	not-appropriate	Inf
 453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	116	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
 453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	131	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
 37cb5e38da15f9b09039c0ad1e42372d181e6331	components/layout/footer-menu.tsx	9	appropriate	export used only inside its own file	
-9a4c995bb68535b83fba07406fd31d59ff28fefd	lib/shopify/types.ts	15	appropriate	type export no file imports	
+9a4c995bb68535b83fba07406fd31d59ff28fefd	lib/shopify/types.ts	15	not-appropriate	part of the exported CartItem in a types-only module; judgment call	
 03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/alert-dialog.tsx	146	not-appropriate	shadcn kit file; the kit exports its whole API	
 03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/button.tsx	36	not-appropriate	shadcn kit file; the kit exports its whole API	
 03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/button.tsx	53	not-appropriate	shadcn kit file; the kit exports its whole API	

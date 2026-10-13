@@ -1,6 +1,6 @@
 commit	file	line	label	reason	reviewed
-f9652b452a4dc006af947c29301f4845efec892a	components/chat/artifact-messages.tsx	0	appropriate	new component nothing imports; deleted later	
-3651670fb9fc0f8deff26915730e05b71b0be918	components/sidebar-toggle.tsx	0	appropriate	redesign removed its last import; it was unused until wired again later	
+f9652b452a4dc006af947c29301f4845efec892a	components/chat/artifact-messages.tsx	0	appropriate	the change moved it and dropped its only importer; still unimported on main	
+3651670fb9fc0f8deff26915730e05b71b0be918	components/sidebar-toggle.tsx	0	appropriate	the redesign removed its last import; later moved to components/chat and still unimported	
 64ca2ac79086bfc0199887b3e4d9e32185681189	tailwind.config.ts	0	not-appropriate	Tailwind reads its config by name; no import reaches it	
 aa0925261284ff62c6d9390484fde5e9fd1e38a7	app/api/auth/[...nextauth]/_route.ts	0	not-appropriate	a route a person disabled on purpose by renaming it	
 c606420fe76984ecf33d5b842b284232e975555a	components/ui/badge.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
