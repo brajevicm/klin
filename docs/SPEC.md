@@ -1425,11 +1425,13 @@ At the Stop:
    spends no block because the budget is spent or the history moved
    (section 6.6). A gate that also fails for a finding of a blocking
    row prints them in its own block. A gate that fails for ride-along
-   findings alone prints them, with their remedy, after the other gates.
+   findings alone prints them, with their remedy, after the other gates,
+   and the summary line counts it as failed.
 3. A blocking Stop records the ride-along findings it showed as asked, as it
    does every finding it shows (section 8.2).
-4. The Stop's check document keeps them as findings. A gate whose only
-   failures ride along has the judgement `review`, so the run does not fail.
+4. The Stop's check document keeps them as findings, each with
+   `rides_along: true`. A gate whose only failures ride along has the
+   judgement `review`, so the run does not fail.
 
 At `klin check`, a finding of a ride-along row is a `ride-along` review item.
 It never fails the run and never changes the exit code. Its `reason` is the
@@ -2033,7 +2035,9 @@ A finding: `id`, `check` (null for `measurement-lost`), `kind` (`metric` or
 `line` (null for `measurement-lost`), `text`, `values` (object), `ceiling`
 (object of the values judged),
 `matched` (`{file, line, text, accepted, values}` or null), `condition`
-(string, what the finding breaks), `remedy` (string), and `identity` (section 8.4) when the family has one.
+(string, what the finding breaks), `remedy` (string), `identity` (section 8.4) when the family has one,
+and `rides_along` (true) for a finding of a ride-along row at the Stop
+(section 9.6).
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
 `unmeasured`, `moved-pin`, `moved-skipped`, `ride-along`), `file`, `line`,

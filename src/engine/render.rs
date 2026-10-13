@@ -758,7 +758,7 @@ impl Finding {
     }
 
     pub fn json(&self) -> Value {
-        serde_json::json!({
+        let mut out = serde_json::json!({
             "id": self.id,
             "check": self.check,
             "kind": self.kind,
@@ -771,7 +771,11 @@ impl Finding {
             "matched": self.matched,
             "condition": self.condition,
             "remedy": self.remedy,
-        })
+        });
+        if self.rides_along {
+            out["rides_along"] = true.into();
+        }
+        out
     }
 }
 

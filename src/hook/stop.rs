@@ -921,7 +921,7 @@ fn summary_line(plan: &Plan, gates: usize, doc: &CheckDocument, out: &mut String
     };
     let line = format!(
         "klin: {gates} gate(s), {excluded}{}",
-        summary(doc.failed(), doc.errored())
+        summary(doc.failed_in_report(), doc.errored())
     );
     let _ = writeln!(out, "{line}");
 }

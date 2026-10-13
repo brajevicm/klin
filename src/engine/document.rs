@@ -627,6 +627,8 @@ pub struct CheckDocument {
     /// The Stop text of the gates whose only failures are of ride-along rows, which the Stop
     /// prints only when another finding blocks it. Spec 9.6.
     riding: String,
+    /// How many gates `riding` holds. Spec 9.6.
+    riders: usize,
 }
 
 /// The findings a capability's ratchet passed that are debt, as its check counts debt.
@@ -755,6 +757,15 @@ impl CheckDocument {
     pub fn failed(&self) -> usize {
         let failed = |row: &&Capability| row.judgement == Some(Judgement::Fail);
         self.capabilities.iter().filter(failed).count()
+    }
+
+    /// How many gates a Stop's report prints as failed: the gates that failed and, where any
+    /// did, each gate whose only failures ride along. Spec 9.6.
+    pub fn failed_in_report(&self) -> usize {
+        match self.failed() {
+            0 => 0,
+            failed => failed + self.riders,
+        }
     }
 
     /// How many gates could not run, and how many run-scope errors there were. Spec 10.4.
@@ -1002,6 +1013,7 @@ impl CheckDocument {
         let (told, riders) = riding(told);
         let text = render::stop(&riders, false);
         printed(gate, "FAIL", (&riders, &text), &mut self.riding);
+        self.riders += 1;
         (if code == 1 { 0 } else { code }, told)
     }
 
@@ -1752,9 +1764,18 @@ mod tests {
         let (doc, out) = ran(View::Stop, &[rider(), blocker()]);
 
         assert_eq!(doc.failed(), 1, "{out}");
+        assert_eq!(doc.failed_in_report(), 2, "{out}");
         assert!(out.contains("src/rider.ts:3"), "{out}");
         assert!(out.contains("src/blocker.ts:3"), "{out}");
         assert!(doc.reported().contains(&"rider".to_string()), "{out}");
+        let document = doc.into_json();
+        let marked: Vec<&Value> = document["findings"]
+            .as_array()
+            .expect("findings")
+            .iter()
+            .map(|finding| &finding["rides_along"])
+            .collect();
+        assert_eq!(marked, [&json!(true), &Value::Null], "{document}");
     }
 
     #[test]
@@ -1762,6 +1783,7 @@ mod tests {
         let (doc, out) = ran(View::Stop, &[rider()]);
 
         assert_eq!(doc.failed(), 0, "{out}");
+        assert_eq!(doc.failed_in_report(), 0, "{out}");
         assert!(!out.contains("src/rider.ts"), "{out}");
     }
 
