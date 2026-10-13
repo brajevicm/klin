@@ -1750,12 +1750,18 @@ fn a_nested_alias(tree: &Tree, root: &str) -> harness::Run {
 #[test]
 fn an_ancestor_that_imports_into_what_it_excludes_still_competes() {
     for (import, proved) in [
-        ("./other/y", true),
-        ("./web/model/index", false),
-        ("~/model/index", false),
+        ("import \"./other/y\";", true),
+        ("import \"./web/model/index\";", false),
+        ("import \"~/model/index\";", false),
+        ("/// <reference path=\"./web/model/index.ts\" />", false),
+        (
+            "export const f = () => import(\"./web/model/index\");",
+            false,
+        ),
+        ("export const f = () => import(`~/model/index`);", false),
     ] {
         let tree = Tree::new();
-        tree.write("main.ts", &format!("import \"{import}\";\n"));
+        tree.write("main.ts", &format!("{import}\n"));
         tree.write("other/y.ts", "export const y = 1;\n");
         let run = a_nested_alias(
             &tree,
@@ -1795,6 +1801,27 @@ fn an_ancestor_that_may_inherit_files_still_competes() {
         } else {
             assert_a_hole(&run);
         }
+    }
+}
+
+#[test]
+fn a_base_config_with_its_own_roots_is_a_project_the_owner_extends() {
+    for roots in [
+        r#""include":["web/**/*.ts"]"#,
+        r#""files":["web/model/index.ts"]"#,
+    ] {
+        let tree = Tree::new();
+        tree.write(
+            "tsconfig.base.json",
+            &format!(
+                r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["other/*"]}}}},{roots}}}"#
+            ),
+        );
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
+        );
+        assert_a_hole(&run);
     }
 }
 

@@ -46,8 +46,9 @@ impl<'a> Topology<'a> {
         self.physical.get(path).map_or(path, String::as_str)
     }
 
-    /// The bytes of one file the tree holds, read from disk. A manifest is read this way; a
-    /// source file never is, because its facts are already extracted.
+    /// The bytes of one file the tree holds, read from disk. A manifest is read this way. A
+    /// source file is read only for import forms its facts do not hold, when a TypeScript config
+    /// may exclude a nested config's directory.
     pub fn read(&self, path: &str) -> Option<Vec<u8>> {
         std::fs::read(self.root.join(self.held_path(path))).ok()
     }

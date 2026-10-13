@@ -5421,13 +5421,17 @@ ancestor directory competes to own the file, with two exceptions. First, a
 config in an ancestor directory does not compete when all of these hold:
 its written `exclude` removes the whole scope directory, no `files` entry of
 its own lies inside it, it cannot inherit `files` (no package or unreadable
-parent, and no parent that writes `files`), and no import or re-export in a
-held file outside the scope directory resolves into it under that config's
-relative, `paths` or `baseUrl` lookup. An `outDir` or `declarationDir` does
-not count as a written `exclude` here. Second, among the configs that remain,
-a `tsconfig.*.json` that another one in its own directory reaches through
-held local `extends`, and does not reach back, supplies settings and does
-not compete. A `tsconfig.json` always competes, because it is the default
+parent, and no parent that writes `files`), and nothing in a held TypeScript
+source outside the scope directory names a path inside it under that config's
+relative, `paths` or `baseUrl` lookup. That covers imports, re-exports, and
+the string literals of `import()`, `require()` and `/// <reference path>`,
+read from the source because the facts do not hold them. A source klin
+cannot read, or an alias target it cannot work out, counts as naming a path
+inside. An `outDir` or `declarationDir` does not count as a written `exclude`
+here. Second, among the configs that remain, a `tsconfig.*.json` that writes
+and inherits no `include` or `files`, and that another one in its own
+directory reaches through held local `extends` without being reached back,
+supplies settings and does not compete. A `tsconfig.json` always competes, because it is the default
 project. A config whose held local extends chain holds a cycle proves no
 alias. Two configs that still compete leave every alias under them a hole.
 Other multiple/nested or alternate
@@ -5484,7 +5488,8 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `configs_that_extend_each_other_leave_the_alias_a_hole`,
 `a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project`,
 `an_ancestor_that_imports_into_what_it_excludes_still_competes`,
-`an_ancestor_that_may_inherit_files_still_competes` and
+`an_ancestor_that_may_inherit_files_still_competes`,
+`a_base_config_with_its_own_roots_is_a_project_the_owner_extends` and
 `a_config_that_excludes_the_nested_directory_does_not_drop_the_parent_it_extends` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`

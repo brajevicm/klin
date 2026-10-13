@@ -1,6 +1,8 @@
 //! Direct TypeScript paths rules, compiled once from this tree's held configuration files.
 use serde_json::Value;
+use std::cell::OnceCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::sync::OnceLock;
 
 use super::resolver::{Topology, directory, joined};
 use crate::sys::jsonc;
@@ -47,6 +49,8 @@ struct Config {
     directory: String,
     reached: BTreeSet<String>,
     inherits_files: bool,
+    settings_only: bool,
+    targets: OnceCell<Vec<(usize, Option<String>)>>,
     anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
@@ -69,10 +73,14 @@ impl Paths {
             .iter()
             .map(|config| config.directory.as_str())
             .collect();
+        let specifiers = Specifiers {
+            topology,
+            named: OnceCell::new(),
+        };
         let scopes = directories
             .into_iter()
             .map(|directory| {
-                let scope = Scope::compile(directory, &configs, topology);
+                let scope = Scope::compile(directory, &configs, &specifiers);
                 (directory.to_string(), scope)
             })
             .collect();
@@ -105,6 +113,65 @@ impl Paths {
             ancestor = directory(ancestor);
         }
     }
+}
+
+/// What each TypeScript source names, read once and only when an ancestor may exclude a scope:
+/// its imports and re-exports, and the string literals in `import()`, `require()` and
+/// `/// <reference path>` forms that the facts do not hold. None is a source klin cannot read.
+struct Specifiers<'t, 'a> {
+    topology: &'t Topology<'a>,
+    named: OnceCell<Vec<Named<'t>>>,
+}
+
+type Named<'t> = (&'t str, Option<Vec<String>>);
+
+impl<'t> Specifiers<'t, '_> {
+    fn all(&self) -> &[Named<'t>] {
+        let topology = self.topology;
+        self.named.get_or_init(|| {
+            topology
+                .files()
+                .iter()
+                .filter(|file| typescript_source(file))
+                .map(|file| (file.as_str(), Self::named(topology, file)))
+                .collect()
+        })
+    }
+
+    fn named(topology: &Topology, file: &str) -> Option<Vec<String>> {
+        let facts = topology.facts(file)?;
+        let source = topology.read(file)?;
+        let mut named: Vec<String> = facts
+            .imports
+            .iter()
+            .filter_map(|import| import.module.clone())
+            .collect();
+        named.extend(loose(&String::from_utf8_lossy(&source))?);
+        Some(named)
+    }
+}
+
+fn loose(source: &str) -> Option<Vec<String>> {
+    static FORMS: OnceLock<Option<regex::Regex>> = OnceLock::new();
+    let forms = FORMS
+        .get_or_init(|| {
+            regex::Regex::new(
+                r#"(?:\b(?:import|require)\s*\(\s*|<reference\s+path\s*=\s*)(?:"([^"]*)"|'([^']*)'|`([^`$]*)`)"#,
+            )
+            .ok()
+        })
+        .as_ref()?;
+    Some(
+        forms
+            .captures_iter(source)
+            .filter_map(|found| found.iter().skip(1).flatten().next())
+            .map(|literal| literal.as_str().to_string())
+            .collect(),
+    )
+}
+
+fn typescript_source(file: &str) -> bool {
+    crate::syntax::structural::language_of(file) == Some(crate::syntax::LanguageId::TypeScript)
 }
 
 fn contains(directory: &str, file: &str) -> bool {
@@ -158,13 +225,13 @@ struct Wildcard {
 }
 
 impl Scope {
-    fn compile(directory: &str, configs: &[Config], topology: &Topology) -> Self {
+    fn compile(directory: &str, configs: &[Config], specifiers: &Specifiers) -> Self {
         let applicable: Vec<&Config> = configs
             .iter()
             .filter(|config| {
                 config.directory == directory || contains(&config.directory, directory)
             })
-            .filter(|config| !config.excludes(directory, topology))
+            .filter(|config| !config.excludes(directory, specifiers))
             .collect();
         let owners: Vec<&Config> = applicable
             .iter()
@@ -195,6 +262,25 @@ impl Scope {
             .wildcards
             .sort_by_key(|rule| std::cmp::Reverse(rule.prefix.len()));
         scope
+    }
+
+    /// The paths a specifier in `file` may name: relative, then a paths rule, then each `baseUrl`.
+    fn names(&self, file: &str, specifier: &str) -> Vec<Option<String>> {
+        if relative(specifier) {
+            return joined(directory(file), specifier)
+                .map(Some)
+                .into_iter()
+                .collect();
+        }
+        match self.resolve(specifier, true) {
+            Some(found) => vec![found.ok()],
+            None => self
+                .base_urls
+                .iter()
+                .filter_map(|base| joined(base, specifier))
+                .map(Some)
+                .collect(),
+        }
     }
 
     fn insert(&mut self, pattern: &str, targets: &Value) {
@@ -421,10 +507,10 @@ fn reached(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
     seen
 }
 
-/// Whether TypeScript may hand this config a `files` list from its extends chain: no own
-/// `files`, and a parent that writes one or that klin cannot read.
-fn inherits_files(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
-    if parsed[file].get("files").is_some() {
+/// Whether TypeScript may hand this config a `key` such as `files` from its extends chain: no
+/// own `key`, and a parent that writes one or that klin cannot read.
+fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    if parsed[file].get(key).is_some() {
         return false;
     }
     let mut seen = BTreeSet::new();
@@ -436,7 +522,7 @@ fn inherits_files(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
         if !seen.insert(file.clone()) {
             continue;
         }
-        if seen.len() > 1 && value.get("files").is_some() {
+        if seen.len() > 1 && value.get(key).is_some() {
             return true;
         }
         let written = value
@@ -467,7 +553,11 @@ impl Config {
         Self {
             file: file.to_string(),
             directory: directory(file).to_string(),
-            inherits_files: inherits_files(file, parsed),
+            inherits_files: inherits(file, "files", parsed),
+            targets: OnceCell::new(),
+            settings_only: ["include", "files"]
+                .into_iter()
+                .all(|key| value.get(key).is_none() && !inherits(file, key, parsed)),
             uncertain: cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
             reached,
             anchor,
@@ -476,10 +566,11 @@ impl Config {
         }
     }
 
-    /// A `tsconfig.*.json` that another applicable config in its directory extends, outside a
-    /// cycle, only supplies settings.
+    /// A `tsconfig.*.json` with no roots of its own that another applicable config in its
+    /// directory extends, outside a cycle, only supplies settings.
     fn extended(&self, applicable: &[&Config]) -> bool {
-        !default_project(&self.file)
+        self.settings_only
+            && !default_project(&self.file)
             && applicable.iter().any(|other| {
                 other.directory == self.directory
                     && other.reached.contains(&self.file)
@@ -489,43 +580,44 @@ impl Config {
 
     /// An ancestor leaves a directory out of its program when its own `files` and written
     /// `exclude` leave it out, and no import from outside resolves into it under its rules.
-    fn excludes(&self, scope: &str, topology: &Topology) -> bool {
+    fn excludes(&self, scope: &str, specifiers: &Specifiers) -> bool {
         self.directory != scope
             && !self.inherits_files
             && self.roots.excludes(scope)
-            && !self.enters(scope, topology)
+            && !self.enters(scope, specifiers)
     }
 
-    fn enters(&self, scope: &str, topology: &Topology) -> bool {
-        let mut alone = Scope::of(&[self]);
-        alone.uncertain = false;
+    fn enters(&self, scope: &str, specifiers: &Specifiers) -> bool {
+        let all = specifiers.all();
         let inside = |path: &str| path == scope || contains(scope, path);
-        topology
-            .files()
-            .iter()
-            .filter(|file| !contains(scope, file))
-            .filter_map(|file| Some((file, topology.facts(file)?)))
-            .any(|(file, facts)| {
-                facts
-                    .imports
-                    .iter()
-                    .filter_map(|import| import.module.as_deref())
-                    .any(|specifier| {
-                        if relative(specifier) {
-                            return joined(directory(file), specifier)
-                                .is_some_and(|path| inside(&path));
-                        }
-                        match alone.resolve(specifier, true) {
-                            Some(Ok(path)) => inside(&path),
-                            Some(Err(_)) => true,
-                            None => alone
-                                .base_urls
-                                .iter()
-                                .filter_map(|base| joined(base, specifier))
-                                .any(|path| inside(&path)),
-                        }
-                    })
-            })
+        self.targets(specifiers).iter().any(|(at, target)| {
+            !contains(scope, all[*at].0) && target.as_deref().is_none_or(inside)
+        })
+    }
+
+    /// Each path a held source names under this config's own lookup, by its index in
+    /// `specifiers`, resolved once per config. None is a target klin cannot work out.
+    fn targets(&self, specifiers: &Specifiers) -> &[(usize, Option<String>)] {
+        self.targets.get_or_init(|| {
+            let mut alone = Scope::of(&[self]);
+            alone.uncertain = false;
+            let mut targets = Vec::new();
+            for (at, (file, named)) in specifiers.all().iter().enumerate() {
+                let Some(named) = named else {
+                    targets.push((at, None));
+                    continue;
+                };
+                for specifier in named {
+                    targets.extend(
+                        alone
+                            .names(file, specifier)
+                            .into_iter()
+                            .map(|target| (at, target)),
+                    );
+                }
+            }
+            targets
+        })
     }
 
     fn uncertain(file: &str, parsed: &BTreeMap<String, Value>, anchor: Option<&Anchor>) -> bool {
