@@ -1,5 +1,9 @@
 # Public API is derived from library and package entry points
 
+> #643 amends this record. A config that extends another and writes its own
+> `compilerOptions.paths` and `compilerOptions.baseUrl` proves its aliases,
+> because TypeScript takes those values from the child alone (spec B.8.2.1).
+
 > ADR 0054 amends "Judgement, holes and the failure model" and the
 > canonicalization paragraph: the canonical contract shows the facts ADR 0054
 > lists, attributes included, and every changed measured contract still fails

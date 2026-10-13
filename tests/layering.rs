@@ -1508,6 +1508,34 @@ fn a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_ex
 }
 
 #[test]
+fn a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "tsconfig.json",
+        &format!(
+            r#"{{"extends":"package/config",{OWN_PATHS},"include":["**/*.ts"],"exclude":[]}}"#
+        ),
+    );
+    tree.write("web/model/index.ts", "import { x } from \"web/view/x\";\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    let run = tree.run(&["check", "layering"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("model → view"), "{}", run.out);
+}
+
+#[test]
+fn files_a_config_writes_under_extends_stay_roots() {
+    let tree = Tree::new();
+    let run = an_alias_from_model_to_view(
+        &tree,
+        &format!(r#"{{"extends":"package/config",{OWN_PATHS},"files":["web/model/index.ts"]}}"#),
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("model → view"), "{}", run.out);
+}
+
+#[test]
 fn own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots() {
     for roots in [r#""include":["**/*.ts"]"#, r#""exclude":[]"#] {
         let tree = Tree::new();

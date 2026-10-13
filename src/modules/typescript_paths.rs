@@ -349,9 +349,8 @@ impl Config {
                 .map(Anchor::BaseUrl),
         };
         let inherits = value.get("extends").is_some();
-        let own_paths = ["/compilerOptions/paths", "/compilerOptions/baseUrl"]
-            .iter()
-            .all(|pointer| value.pointer(pointer).is_some());
+        let own_paths = value.pointer("/compilerOptions/paths").is_some()
+            && !matches!(anchor, Some(Anchor::Config(_)));
         Self {
             directory: directory(file).to_string(),
             anchor,
