@@ -4923,8 +4923,9 @@ re-export takes the name it names in its source module, so
 import, a star re-export and an `import()` take every name; a side-effect
 import takes none. A use from the exporting file itself does not count, except
 that a name the declared contract of another exported declaration of the file
-writes is used, so a value an exported type reads through `typeof` is no
-finding. The remedy imports the export where it is needed or drops the
+reads through `typeof` is used, so `export type Size = (typeof sizes)[number]`
+uses `sizes`; any other word of a contract, such as a property name, uses
+nothing. The remedy imports the export where it is needed or drops the
 `export`, and deletes no code: `dead-symbols` judges the private declaration
 left behind. So the row sits in the safe-remedy tier of ADR 0073. The
 check resolves each use through the graph and never by name, so a reached
@@ -4968,8 +4969,9 @@ has one finding. A changed run walks both trees whole and compares findings by
 identity, as the family rule does; the walk reads the facts the run already
 measured and builds the graph once per tree. An accepted entry gives
 `unreached` for a file and `unused-export` for an export; each value is
-optional, and an entry that gives neither holds nothing. The OK line adds the
-exports app mode judged and how many are unused. This amends ADR 0061 for
+optional, and an entry that gives neither holds nothing. The OK line counts
+every file app mode judged, its entries included, and adds the exports it
+judged and how many are unused. This amends ADR 0061 for
 apps: in an app a re-export reaches its target only where the file that
 writes it is reached, and the name-only re-export rule stays for the families.
 Pinned by `a_new_component_nothing_imports_fails`,
@@ -4993,12 +4995,17 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_file_the_base_held_unreached_keeps_its_exports_held_once_it_is_reached`,
 `an_export_only_an_unreached_file_imports_is_no_finding_of_its_own`,
 `a_file_a_package_script_runs_is_an_entry`,
+`a_value_an_exported_interface_names_only_as_a_property_is_still_unused`,
+`a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads`,
+`the_judged_count_includes_the_entries`,
 `a_file_the_section_excepts_is_excluded_and_not_judged`,
 `an_orphan_the_base_held_stays_a_note`,
 `a_file_that_loses_its_last_import_is_worsened` and
 `the_stop_blocks_a_turn_that_adds_an_orphan_component` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
-`tests/recall.rs`. Known limits: an import from a file of another language,
+`tests/recall.rs`. Known limits: a file any word of a package script names is an entry, even
+where the script only lints or formats it, so `eslint src/legacy.ts` hides
+that file's `unreached` finding; an import from a file of another language,
 such as MDX, reaches nothing; a `.d.ts` target is not resolved; a `require()`
 and an `import()` whose specifier is no string literal are no edge; a private
 `_folder` under `app/` still holds convention files; and an import of a

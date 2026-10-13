@@ -457,6 +457,47 @@ fn an_export_only_an_unreached_file_imports_is_no_finding_of_its_own() {
 }
 
 #[test]
+fn a_value_an_exported_interface_names_only_as_a_property_is_still_unused() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "components/header.tsx",
+        "export const status = \"ready\";\nexport interface Props {\n  status: string;\n}\n\nexport function Header() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("export status"), "{}", run.out);
+}
+
+#[test]
+fn a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads() {
+    let tree = app();
+    tree.write(
+        "package.json",
+        r#"{"name":"web","private":true,"scripts":{"lint":"eslint src/legacy.ts"},"dependencies":{"next":"15.0.0"}}"#,
+    );
+    tree.base();
+    tree.write("src/legacy.ts", "console.log(\"legacy\");\n");
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn the_judged_count_includes_the_entries() {
+    let tree = app();
+    tree.base();
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("3 file(s) judged"), "{}", run.out);
+}
+
+#[test]
 fn a_file_a_package_script_runs_is_an_entry() {
     let tree = app();
     tree.write(

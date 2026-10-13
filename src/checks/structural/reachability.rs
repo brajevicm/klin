@@ -189,7 +189,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 /// many are unreached, and the exports app mode judged.
 fn measured(found: &[Finding], (members, unjudged): (usize, usize), now: &app::Judged) -> Measured {
     Measured::Reachability {
-        judged: members + now.files.len(),
+        judged: members + now.judged.len(),
         unreached: found
             .iter()
             .filter(|found| found.values.contains_key(UNREACHED))

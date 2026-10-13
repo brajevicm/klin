@@ -615,19 +615,24 @@ fn exports(facts: &FileFacts) -> BTreeMap<String, u64> {
     out
 }
 
-/// Every name the declared contract of an exported declaration writes, less the declaration's
-/// own name, so a type an exported function returns or an exported type holds is used by the
-/// export that names it.
+/// Every value the declared contract of an exported declaration reads through `typeof`, as
+/// `export type Size = (typeof sizes)[number]` reads `sizes`. Any other word of a contract, such
+/// as a property name, reads no value.
 fn signed(facts: &FileFacts) -> HashSet<&str> {
     let mut out = HashSet::new();
     for declaration in facts.declarations.iter().filter(|held| exported(held)) {
         let Some(signature) = declaration.signature.as_deref() else {
             continue;
         };
-        let words = signature
+        let words: Vec<&str> = signature
             .split(|c: char| !(c.is_alphanumeric() || c == '_' || c == '$'))
-            .filter(|word| !word.is_empty() && *word != declaration.name);
-        out.extend(words);
+            .filter(|word| !word.is_empty())
+            .collect();
+        let read = words
+            .windows(2)
+            .filter(|pair| pair[0] == "typeof")
+            .map(|pair| pair[1]);
+        out.extend(read);
     }
     out
 }
