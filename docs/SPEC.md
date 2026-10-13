@@ -5421,16 +5421,21 @@ ancestor directory competes to own the file, with two exceptions. First, a
 config in an ancestor directory does not compete when all of these hold:
 its written `exclude` removes the whole scope directory, no `files` entry of
 its own lies inside it, it cannot inherit `files` (no package or unreadable
-parent, and no parent that writes `files`), and nothing in a held TypeScript
-source outside the scope directory names a path inside it under that config's
-relative, `paths` or `baseUrl` lookup. That covers imports, re-exports, and
-the string literals of `import()`, `require()`, `/// <reference path>` and
-`declare module`, read from the source because the facts do not hold them. A source klin
-cannot read, an alias target it cannot work out, or a specifier with an
-escape counts as naming a path inside. Every held source counts, even one
+parent, and no parent that writes `files`), it is not itself uncertain (so
+an inherited `paths` or `baseUrl` keeps it), it writes and inherits no
+`rootDirs` or `typeRoots`, and nothing in a held TypeScript or JavaScript
+source outside the scope directory reaches inside it under that config's
+lookup. A specifier reaches the path its relative, `paths` or `baseUrl`
+lookup names, and anything under the directory of a held `package.json`
+whose `name` it starts with. The scan reads imports, re-exports, and the
+string literals of `import`, `from`, `import()` (after any comments),
+`require()`, `/// <reference path>` and `declare module` from the source
+text, comments included. A source klin cannot read, an alias target it
+cannot work out, a `#` name, or a specifier with an escape reaches an
+unknown place, which counts as inside. Every held source counts, even one
 outside that config's program, because klin does not model which sources a
-program holds. An `outDir` or `declarationDir` does not count as a written `exclude`
-here. Second, among the configs that remain, a `tsconfig.*.json` that writes
+program holds. An `outDir` or `declarationDir` does not count as a written
+`exclude` here. Second, among the configs that remain, a `tsconfig.*.json` that writes
 and inherits no `include`, `files`, `compilerOptions.paths` or
 `compilerOptions.baseUrl`, and that another one in its own
 directory reaches through held local `extends` without being reached back,
@@ -5495,7 +5500,9 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `an_ancestor_that_imports_into_what_it_excludes_still_competes`,
 `an_ancestor_that_may_inherit_files_still_competes`,
 `a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends`,
-`an_import_outside_the_ancestors_roots_still_keeps_it_competing` and
+`an_import_outside_the_ancestors_roots_still_keeps_it_competing`,
+`an_ancestor_with_an_inherited_or_virtual_lookup_still_competes`,
+`an_ancestor_reached_through_scripts_packages_or_comments_still_competes` and
 `a_config_that_excludes_the_nested_directory_does_not_drop_the_parent_it_extends` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`

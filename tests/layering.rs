@@ -1837,6 +1837,82 @@ fn a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends() {
     }
 }
 
+const OWN_ALIAS: &str = r#""baseUrl":".","paths":{"@/*":["other/*"]}"#;
+const WEB_EXCLUDED: &str = r#""include":["**/*.ts"],"exclude":["web"]"#;
+
+fn assert_each_a_hole(cases: Vec<(String, &[(&str, &str)])>) {
+    let proved: Vec<String> = cases
+        .into_iter()
+        .filter_map(|(root, files)| {
+            let tree = Tree::new();
+            for (file, text) in files {
+                tree.write(file, text);
+            }
+            let run = a_nested_alias(&tree, &root);
+            let hole = run.code == 0 && run.says("REVIEW:") && run.says("local paths alias");
+            (!hole).then(|| format!("{root} {files:?}: {}", run.out))
+        })
+        .collect();
+    assert!(proved.is_empty(), "{}", proved.join("\n\n"));
+}
+
+#[test]
+fn an_ancestor_with_an_inherited_or_virtual_lookup_still_competes() {
+    let options =
+        |extra: &str| format!(r#"{{"compilerOptions":{{{OWN_ALIAS},{extra}}},{WEB_EXCLUDED}}}"#);
+    assert_each_a_hole(vec![
+        (
+            format!(r#"{{"extends":"./config/base.json",{WEB_EXCLUDED}}}"#),
+            &[
+                (
+                    "config/base.json",
+                    r#"{"compilerOptions":{"baseUrl":"../web","paths":{"~/*":["*"]}}}"#,
+                ),
+                ("main.ts", "import \"~/model/index\";\n"),
+            ],
+        ),
+        (
+            options(r#""rootDirs":["app","web"]"#),
+            &[("app/main.ts", "import \"./model/index\";\n")],
+        ),
+        (
+            options(r#""typeRoots":["./web/types"]"#),
+            &[(
+                "web/types/shared/index.d.ts",
+                "import \"../../model/index\";\n",
+            )],
+        ),
+    ]);
+}
+
+#[test]
+fn an_ancestor_reached_through_scripts_packages_or_comments_still_competes() {
+    let sources: [&[(&str, &str)]; 6] = [
+        &[("main.js", "import \"./web/model/index\";\n")],
+        &[("main.ts", "import \"#model\";\n")],
+        &[
+            ("web/model/package.json", r#"{"name":"@acme/model"}"#),
+            ("main.ts", "import \"@acme/model\";\n"),
+        ],
+        &[
+            ("package.json", r#"{"name":"acme"}"#),
+            ("main.ts", "import \"acme/web/model/index\";\n"),
+        ],
+        &[(
+            "main.ts",
+            "export const f = () => import(/* webpackChunkName: \"m\" */ \"./web/model/index\");\n",
+        )],
+        &[("main.ts", "// import(\"./web/model/index\")\nexport {};\n")],
+    ];
+    let root = format!(r#"{{"compilerOptions":{{{OWN_ALIAS}}},{WEB_EXCLUDED}}}"#);
+    assert_each_a_hole(
+        sources
+            .into_iter()
+            .map(|files| (root.clone(), files))
+            .collect(),
+    );
+}
+
 #[test]
 fn an_import_outside_the_ancestors_roots_still_keeps_it_competing() {
     let tree = Tree::new();

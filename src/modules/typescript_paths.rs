@@ -50,7 +50,8 @@ struct Config {
     reached: BTreeSet<String>,
     inherits_files: bool,
     settings_only: bool,
-    targets: OnceCell<Vec<(usize, Option<String>)>>,
+    targets: OnceCell<Vec<(usize, Reach)>>,
+    unmodeled: bool,
     anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
@@ -76,6 +77,7 @@ impl Paths {
         let specifiers = Specifiers {
             topology,
             named: OnceCell::new(),
+            packages: OnceCell::new(),
         };
         let scopes = directories
             .into_iter()
@@ -115,12 +117,14 @@ impl Paths {
     }
 }
 
-/// What each TypeScript source names, read once and only when an ancestor may exclude a scope:
-/// its imports and re-exports, and the string literals in `import()`, `require()`,
-/// `/// <reference path>` and `declare module` forms that the facts do not hold. None is a source klin cannot read.
+/// What each TypeScript or JavaScript source names, read once and only when an ancestor may
+/// exclude a scope: its imports and re-exports, and the string literals of `import`, `from`,
+/// `import()`, `require()`, `/// <reference path>` and `declare module` forms read from its text.
+/// None is a source klin cannot read. Each held `package.json` name maps to its directory.
 struct Specifiers<'t, 'a> {
     topology: &'t Topology<'a>,
     named: OnceCell<Vec<Named<'t>>>,
+    packages: OnceCell<Vec<(String, String)>>,
 }
 
 type Named<'t> = (&'t str, Option<Vec<String>>);
@@ -132,22 +136,57 @@ impl<'t> Specifiers<'t, '_> {
             topology
                 .files()
                 .iter()
-                .filter(|file| typescript_source(file))
+                .filter(|file| script_source(file))
                 .map(|file| (file.as_str(), Self::named(topology, file)))
                 .collect()
         })
     }
 
     fn named(topology: &Topology, file: &str) -> Option<Vec<String>> {
-        let facts = topology.facts(file)?;
         let source = topology.read(file)?;
-        let mut named: Vec<String> = facts
-            .imports
-            .iter()
+        let mut named: Vec<String> = topology
+            .facts(file)
+            .into_iter()
+            .flat_map(|facts| &facts.imports)
             .filter_map(|import| import.module.clone())
             .collect();
         named.extend(loose(&String::from_utf8_lossy(&source))?);
         Some(named)
+    }
+
+    fn packages(&self) -> &[(String, String)] {
+        let topology = self.topology;
+        self.packages.get_or_init(|| {
+            topology
+                .files()
+                .iter()
+                .filter(|file| file.rsplit('/').next() == Some("package.json"))
+                .filter_map(|file| {
+                    let manifest = jsonc::parse(&topology.read(file)?).ok()?;
+                    let name = manifest.get("name")?.as_str()?.to_string();
+                    Some((name, directory(file).to_string()))
+                })
+                .collect()
+        })
+    }
+}
+
+/// What one specifier may reach under a config's lookup: one path, anything under a package
+/// directory, or a place klin cannot work out.
+enum Reach {
+    Path(String),
+    Within(String),
+    Unknown,
+}
+
+impl Reach {
+    fn enters(&self, scope: &str) -> bool {
+        let inside = |path: &str| path == scope || contains(scope, path);
+        match self {
+            Reach::Path(path) => inside(path),
+            Reach::Within(root) => inside(root) || contains(root, scope),
+            Reach::Unknown => true,
+        }
     }
 }
 
@@ -156,7 +195,7 @@ fn loose(source: &str) -> Option<Vec<String>> {
     let forms = FORMS
         .get_or_init(|| {
             regex::Regex::new(
-                r#"(?:\b(?:import|require)\s*\(\s*|<reference\s+path\s*=\s*|\bdeclare\s+module\s+)(?:"([^"]*)"|'([^']*)'|`([^`]*)`)"#,
+                r#"(?:\b(?:import|require)\s*\(\s*(?:/\*(?s:.)*?\*/\s*|//[^\n]*\n\s*)*|<reference\s+path\s*=\s*|\bdeclare\s+module\s+|\bfrom\s*|\bimport\s*)(?:"([^"]*)"|'([^']*)'|`([^`]*)`)"#,
             )
             .ok()
         })
@@ -172,8 +211,12 @@ fn loose(source: &str) -> Option<Vec<String>> {
     )
 }
 
-fn typescript_source(file: &str) -> bool {
-    crate::syntax::structural::language_of(file) == Some(crate::syntax::LanguageId::TypeScript)
+fn script_source(file: &str) -> bool {
+    use crate::syntax::LanguageId::{JavaScript, TypeScript};
+    matches!(
+        crate::syntax::structural::language_of(file),
+        Some(TypeScript | JavaScript)
+    )
 }
 
 fn contains(directory: &str, file: &str) -> bool {
@@ -266,27 +309,40 @@ impl Scope {
         scope
     }
 
-    /// The paths a specifier in `file` may name: relative, then a paths rule, then each `baseUrl`.
-    /// A specifier with an escape may spell any path, so it names an unknown one.
-    fn names(&self, file: &str, specifier: &str) -> Vec<Option<String>> {
-        if specifier.contains('\\') {
-            return vec![None];
+    /// What a specifier in `file` may reach: relative, then a paths rule or each `baseUrl`, and
+    /// any held package it names. An escape may spell any path and a `#` name follows a
+    /// `package.json` `imports` map, so both reach an unknown place.
+    fn reaches(&self, file: &str, specifier: &str, packages: &[(String, String)]) -> Vec<Reach> {
+        if specifier.contains('\\') || specifier.starts_with('#') {
+            return vec![Reach::Unknown];
         }
         if relative(specifier) {
             return joined(directory(file), specifier)
-                .map(Some)
+                .map(Reach::Path)
                 .into_iter()
                 .collect();
         }
-        match self.resolve(specifier, true) {
-            Some(found) => vec![found.ok()],
+        let mut reach: Vec<Reach> = match self.resolve(specifier, true) {
+            Some(Ok(path)) => vec![Reach::Path(path)],
+            Some(Err(_)) => vec![Reach::Unknown],
             None => self
                 .base_urls
                 .iter()
                 .filter_map(|base| joined(base, specifier))
-                .map(Some)
+                .map(Reach::Path)
                 .collect(),
-        }
+        };
+        reach.extend(
+            packages
+                .iter()
+                .filter(|(name, _)| {
+                    specifier
+                        .strip_prefix(name.as_str())
+                        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+                })
+                .map(|(_, root)| Reach::Within(root.clone())),
+        );
+        reach
     }
 
     fn insert(&mut self, pattern: &str, targets: &Value) {
@@ -552,6 +608,10 @@ const OWN_PROJECT: [&str; 4] = [
     "/compilerOptions/baseUrl",
 ];
 
+/// Options that let a program take files the import scan does not model, through virtual
+/// roots or automatic type packages.
+const UNMODELED: [&str; 2] = ["/compilerOptions/rootDirs", "/compilerOptions/typeRoots"];
+
 fn default_project(file: &str) -> bool {
     file.ends_with("/tsconfig.json") || file == "tsconfig.json"
 }
@@ -570,6 +630,9 @@ impl Config {
             directory: directory(file).to_string(),
             inherits_files: inherits(file, "/files", parsed),
             targets: OnceCell::new(),
+            unmodeled: UNMODELED
+                .into_iter()
+                .any(|pointer| value.pointer(pointer).is_some() || inherits(file, pointer, parsed)),
             settings_only: OWN_PROJECT.into_iter().all(|pointer| {
                 value.pointer(pointer).is_none() && !inherits(file, pointer, parsed)
             }),
@@ -597,6 +660,8 @@ impl Config {
     /// `exclude` leave it out, and no import from outside resolves into it under its rules.
     fn excludes(&self, scope: &str, specifiers: &Specifiers) -> bool {
         self.directory != scope
+            && !self.uncertain
+            && !self.unmodeled
             && !self.inherits_files
             && self.roots.excludes(scope)
             && !self.enters(scope, specifiers)
@@ -604,30 +669,30 @@ impl Config {
 
     fn enters(&self, scope: &str, specifiers: &Specifiers) -> bool {
         let all = specifiers.all();
-        let inside = |path: &str| path == scope || contains(scope, path);
-        self.targets(specifiers).iter().any(|(at, target)| {
-            !contains(scope, all[*at].0) && target.as_deref().is_none_or(inside)
-        })
+        self.targets(specifiers)
+            .iter()
+            .any(|(at, reach)| !contains(scope, all[*at].0) && reach.enters(scope))
     }
 
-    /// Each path a held source names under this config's own lookup, by its index in
-    /// `specifiers`, resolved once per config. None is a target klin cannot work out.
-    fn targets(&self, specifiers: &Specifiers) -> &[(usize, Option<String>)] {
+    /// What each held source reaches under this config's own lookup, by its index in
+    /// `specifiers`, resolved once per config.
+    fn targets(&self, specifiers: &Specifiers) -> &[(usize, Reach)] {
         self.targets.get_or_init(|| {
             let mut alone = Scope::of(&[self]);
             alone.uncertain = false;
+            let packages = specifiers.packages();
             let mut targets = Vec::new();
             for (at, (file, named)) in specifiers.all().iter().enumerate() {
                 let Some(named) = named else {
-                    targets.push((at, None));
+                    targets.push((at, Reach::Unknown));
                     continue;
                 };
                 for specifier in named {
                     targets.extend(
                         alone
-                            .names(file, specifier)
+                            .reaches(file, specifier, packages)
                             .into_iter()
-                            .map(|target| (at, target)),
+                            .map(|reach| (at, reach)),
                     );
                 }
             }
