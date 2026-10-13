@@ -46,6 +46,7 @@ struct Config {
     file: String,
     directory: String,
     reached: BTreeSet<String>,
+    inherits_files: bool,
     anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
@@ -70,7 +71,10 @@ impl Paths {
             .collect();
         let scopes = directories
             .into_iter()
-            .map(|directory| (directory.to_string(), Scope::compile(directory, &configs)))
+            .map(|directory| {
+                let scope = Scope::compile(directory, &configs, topology);
+                (directory.to_string(), scope)
+            })
             .collect();
         Self { scopes }
     }
@@ -154,18 +158,23 @@ struct Wildcard {
 }
 
 impl Scope {
-    fn compile(directory: &str, configs: &[Config]) -> Self {
-        let candidates: Vec<&Config> = configs
+    fn compile(directory: &str, configs: &[Config], topology: &Topology) -> Self {
+        let applicable: Vec<&Config> = configs
             .iter()
             .filter(|config| {
                 config.directory == directory || contains(&config.directory, directory)
             })
+            .filter(|config| !config.excludes(directory, topology))
             .collect();
-        let owners: Vec<&Config> = candidates
+        let owners: Vec<&Config> = applicable
             .iter()
             .copied()
-            .filter(|config| config.competes(directory, &candidates))
+            .filter(|config| !config.extended(&applicable))
             .collect();
+        Self::of(&owners)
+    }
+
+    fn of(owners: &[&Config]) -> Self {
         let mut scope = Self {
             roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
             anchor: owners.first().and_then(|config| config.anchor.clone()),
@@ -261,6 +270,10 @@ fn target(targets: &Value, wildcard: bool) -> Option<String> {
         .as_str()
         .filter(|target| target.matches('*').count() <= usize::from(wildcard) && !absolute(target))
         .map(str::to_string)
+}
+
+pub(super) fn relative(specifier: &str) -> bool {
+    matches!(specifier, "." | "..") || specifier.starts_with("./") || specifier.starts_with("../")
 }
 
 fn absolute(path: &str) -> bool {
@@ -408,38 +421,118 @@ fn reached(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
     seen
 }
 
+/// Whether TypeScript may hand this config a `files` list from its extends chain: no own
+/// `files`, and a parent that writes one or that klin cannot read.
+fn inherits_files(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    if parsed[file].get("files").is_some() {
+        return false;
+    }
+    let mut seen = BTreeSet::new();
+    let mut pending = vec![file.to_string()];
+    while let Some(file) = pending.pop() {
+        let Some(value) = parsed.get(&file).filter(|value| !value.is_null()) else {
+            return true;
+        };
+        if !seen.insert(file.clone()) {
+            continue;
+        }
+        if seen.len() > 1 && value.get("files").is_some() {
+            return true;
+        }
+        let written = value
+            .get("extends")
+            .map_or(0, |extends| extends.as_array().map_or(1, Vec::len));
+        let parents = parents(&file, value);
+        if parents.len() != written {
+            return true;
+        }
+        pending.extend(parents.into_iter().map(|parent| held(parent, parsed)));
+    }
+    false
+}
+
+fn default_project(file: &str) -> bool {
+    file.ends_with("/tsconfig.json") || file == "tsconfig.json"
+}
+
 impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
         let anchor = Anchor::read(file, value);
+        let reached = reached(file, parsed);
+        let cyclic = reached.contains(file)
+            || reached
+                .iter()
+                .any(|parent| self::reached(parent, parsed).contains(parent));
         Self {
             file: file.to_string(),
             directory: directory(file).to_string(),
-            reached: reached(file, parsed),
-            uncertain: Self::uncertain(file, parsed, anchor.as_ref()),
+            inherits_files: inherits_files(file, parsed),
+            uncertain: cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
+            reached,
             anchor,
             rules: rules(file, parsed),
             roots: Roots::read(file, value, value.get("extends").is_some()),
         }
     }
 
-    /// A config another in its directory extends, outside a cycle, only supplies settings, and an
-    /// ancestor whose written `exclude` removes the scope directory does not compile it.
-    fn competes(&self, directory: &str, candidates: &[&Config]) -> bool {
-        let extended = candidates.iter().any(|other| {
-            other.directory == self.directory
-                && other.reached.contains(&self.file)
-                && !self.reached.contains(&other.file)
-        });
-        let excluded = self.directory != directory && self.roots.excludes(directory);
-        !extended && !excluded
+    /// A `tsconfig.*.json` that another applicable config in its directory extends, outside a
+    /// cycle, only supplies settings.
+    fn extended(&self, applicable: &[&Config]) -> bool {
+        !default_project(&self.file)
+            && applicable.iter().any(|other| {
+                other.directory == self.directory
+                    && other.reached.contains(&self.file)
+                    && !self.reached.contains(&other.file)
+            })
+    }
+
+    /// An ancestor leaves a directory out of its program when its own `files` and written
+    /// `exclude` leave it out, and no import from outside resolves into it under its rules.
+    fn excludes(&self, scope: &str, topology: &Topology) -> bool {
+        self.directory != scope
+            && !self.inherits_files
+            && self.roots.excludes(scope)
+            && !self.enters(scope, topology)
+    }
+
+    fn enters(&self, scope: &str, topology: &Topology) -> bool {
+        let mut alone = Scope::of(&[self]);
+        alone.uncertain = false;
+        let inside = |path: &str| path == scope || contains(scope, path);
+        topology
+            .files()
+            .iter()
+            .filter(|file| !contains(scope, file))
+            .filter_map(|file| Some((file, topology.facts(file)?)))
+            .any(|(file, facts)| {
+                facts
+                    .imports
+                    .iter()
+                    .filter_map(|import| import.module.as_deref())
+                    .any(|specifier| {
+                        if relative(specifier) {
+                            return joined(directory(file), specifier)
+                                .is_some_and(|path| inside(&path));
+                        }
+                        match alone.resolve(specifier, true) {
+                            Some(Ok(path)) => inside(&path),
+                            Some(Err(_)) => true,
+                            None => alone
+                                .base_urls
+                                .iter()
+                                .filter_map(|base| joined(base, specifier))
+                                .any(|path| inside(&path)),
+                        }
+                    })
+            })
     }
 
     fn uncertain(file: &str, parsed: &BTreeMap<String, Value>, anchor: Option<&Anchor>) -> bool {
         let value = &parsed[file];
         let own_paths = value.pointer("/compilerOptions/paths").is_some()
             && anchor.and_then(Anchor::base_url).is_some();
-        !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
+        !default_project(file)
             || value.is_null()
             || (value.get("extends").is_some() && !own_paths)
             || value.get("references").is_some()

@@ -5417,14 +5417,19 @@ the nearest config that writes the option decides, and TypeScript reads `[]`
 as the default, a plain lookup. A package parent is not read, so its resolution
 options, such as `moduleSuffixes` or `rootDirs`, are outside this guarantee.
 Every `tsconfig.json` or `tsconfig.*.json` in a file's directory or an
-ancestor directory competes to own the file, with two exceptions. A config
-that another config in its own directory reaches through held local
-`extends`, and does not reach back, supplies settings and does not compete.
-A config in an ancestor directory whose written `exclude` removes the whole
-scope directory, with no own `files` entry inside it, does not compete
-either. An `outDir` or `declarationDir` does not count as a written
-`exclude` here. Two configs that still compete, such as two that extend each
-other, leave every alias under them a hole.
+ancestor directory competes to own the file, with two exceptions. First, a
+config in an ancestor directory does not compete when all of these hold:
+its written `exclude` removes the whole scope directory, no `files` entry of
+its own lies inside it, it cannot inherit `files` (no package or unreadable
+parent, and no parent that writes `files`), and no import or re-export in a
+held file outside the scope directory resolves into it under that config's
+relative, `paths` or `baseUrl` lookup. An `outDir` or `declarationDir` does
+not count as a written `exclude` here. Second, among the configs that remain,
+a `tsconfig.*.json` that another one in its own directory reaches through
+held local `extends`, and does not reach back, supplies settings and does
+not compete. A `tsconfig.json` always competes, because it is the default
+project. A config whose held local extends chain holds a cycle proves no
+alias. Two configs that still compete leave every alias under them a hole.
 Other multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
@@ -5475,8 +5480,12 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots`,
 `a_sibling_base_config_the_owner_extends_is_not_a_second_owner`,
 `a_nested_config_that_extends_an_ancestor_owns_what_the_ancestor_excludes`,
-`sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole` and
-`configs_that_extend_each_other_leave_the_alias_a_hole` in
+`sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole`,
+`configs_that_extend_each_other_leave_the_alias_a_hole`,
+`a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project`,
+`an_ancestor_that_imports_into_what_it_excludes_still_competes`,
+`an_ancestor_that_may_inherit_files_still_competes` and
+`a_config_that_excludes_the_nested_directory_does_not_drop_the_parent_it_extends` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in

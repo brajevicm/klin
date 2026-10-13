@@ -1683,21 +1683,133 @@ fn sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole() {
 
 #[test]
 fn configs_that_extend_each_other_leave_the_alias_a_hole() {
-    let tree = Tree::new();
-    tree.write(
-        "tsconfig.base.json",
-        &format!(r#"{{"extends":"./tsconfig.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
-    );
-    let run = an_alias_from_model_to_view(
-        &tree,
-        &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
-    );
+    let cycles: [&[(&str, &str)]; 2] = [
+        &[("tsconfig.base.json", "./tsconfig.json")],
+        &[
+            ("tsconfig.base.json", "./tsconfig.shared.json"),
+            ("tsconfig.shared.json", "./tsconfig.base.json"),
+        ],
+    ];
+    for cycle in cycles {
+        let tree = Tree::new();
+        for (config, parent) in cycle {
+            tree.write(
+                config,
+                &format!(r#"{{"extends":"{parent}",{OWN_PATHS},{OWN_ROOTS}}}"#),
+            );
+        }
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
+        );
+        assert_a_hole(&run);
+    }
+}
+
+fn assert_a_hole(run: &harness::Run) {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("REVIEW:") && run.says("local paths alias"),
         "{}",
         run.out
     );
+}
+
+#[test]
+fn a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project() {
+    for include in [r#"["tests"]"#, r#"["**/*.ts"]"#] {
+        let tree = Tree::new();
+        tree.write(
+            "tsconfig.test.json",
+            &format!(
+                r#"{{"extends":"./tsconfig.json","compilerOptions":{{"baseUrl":".","paths":{{"@/*":["tests/*"]}}}},"include":{include}}}"#
+            ),
+        );
+        let run = an_alias_from_model_to_view(&tree, &format!(r#"{{{OWN_PATHS},{OWN_ROOTS}}}"#));
+        assert_a_hole(&run);
+    }
+}
+
+const ROOT_PATHS: &str =
+    r#""compilerOptions":{"baseUrl":".","paths":{"@/*":["other/*"],"~/*":["web/*"]}}"#;
+
+fn a_nested_alias(tree: &Tree, root: &str) -> harness::Run {
+    tree.write("klin.json", WEB);
+    tree.write("tsconfig.json", root);
+    tree.write(
+        "web/tsconfig.json",
+        &format!(
+            r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["./*"]}}}},{OWN_ROOTS}}}"#
+        ),
+    );
+    tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    tree.run(&["check", "layering"])
+}
+
+#[test]
+fn an_ancestor_that_imports_into_what_it_excludes_still_competes() {
+    for (import, proved) in [
+        ("./other/y", true),
+        ("./web/model/index", false),
+        ("~/model/index", false),
+    ] {
+        let tree = Tree::new();
+        tree.write("main.ts", &format!("import \"{import}\";\n"));
+        tree.write("other/y.ts", "export const y = 1;\n");
+        let run = a_nested_alias(
+            &tree,
+            &format!(r#"{{{ROOT_PATHS},"include":["**/*.ts"],"exclude":["web"]}}"#),
+        );
+        if proved {
+            assert_eq!(run.code, 1, "{import}: {}", run.out);
+            assert!(run.says("model → view"), "{import}: {}", run.out);
+        } else {
+            assert_a_hole(&run);
+        }
+    }
+}
+
+#[test]
+fn an_ancestor_that_may_inherit_files_still_competes() {
+    for (parent, base, proved) in [
+        ("./config/base.json", "{}", true),
+        (
+            "./config/base.json",
+            r#"{"files":["../web/model/index.ts"]}"#,
+            false,
+        ),
+        ("package/config", "{}", false),
+    ] {
+        let tree = Tree::new();
+        tree.write("config/base.json", base);
+        let run = a_nested_alias(
+            &tree,
+            &format!(
+                r#"{{"extends":"{parent}",{ROOT_PATHS},"include":["**/*.ts"],"exclude":["web"]}}"#
+            ),
+        );
+        if proved {
+            assert_eq!(run.code, 1, "{parent} {base}: {}", run.out);
+            assert!(run.says("model → view"), "{parent} {base}: {}", run.out);
+        } else {
+            assert_a_hole(&run);
+        }
+    }
+}
+
+#[test]
+fn a_config_that_excludes_the_nested_directory_does_not_drop_the_parent_it_extends() {
+    let tree = Tree::new();
+    tree.write(
+        "tsconfig.app.json",
+        r#"{"extends":"./tsconfig.json","exclude":["web"]}"#,
+    );
+    let run = a_nested_alias(
+        &tree,
+        &format!(r#"{{{ROOT_PATHS},"include":["**/*.ts"],"exclude":[]}}"#),
+    );
+    assert_a_hole(&run);
 }
 
 #[test]
