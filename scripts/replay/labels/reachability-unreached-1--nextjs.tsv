@@ -1,0 +1,30 @@
+commit	file	line	label	reason	reviewed
+f9652b452a4dc006af947c29301f4845efec892a	components/chat/artifact-messages.tsx	0	appropriate	new component nothing imports; deleted later	
+3651670fb9fc0f8deff26915730e05b71b0be918	components/sidebar-toggle.tsx	0	appropriate	redesign removed its last import; it was unused until wired again later	
+64ca2ac79086bfc0199887b3e4d9e32185681189	tailwind.config.ts	0	not-appropriate	Tailwind reads its config by name; no import reaches it	
+aa0925261284ff62c6d9390484fde5e9fd1e38a7	app/api/auth/[...nextauth]/_route.ts	0	not-appropriate	a route a person disabled on purpose by renaming it	
+c606420fe76984ecf33d5b842b284232e975555a	components/ui/badge.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+c606420fe76984ecf33d5b842b284232e975555a	components/ui/calendar.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+c606420fe76984ecf33d5b842b284232e975555a	components/ui/sheet.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/accordion.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/aspect-ratio.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/checkbox.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/collapsible.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/command.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/context-menu.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/dialog.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/hover-card.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/menubar.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/navigation-menu.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/popover.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/progress.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/radio-group.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/scroll-area.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/select.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/separator.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/slider.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/switch.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/tabs.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/textarea.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/toggle.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/tooltip.tsx	0	not-appropriate	shadcn kit vendored in bulk, no components.json yet; unused primitives kept on purpose	
