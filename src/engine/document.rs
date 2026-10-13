@@ -301,14 +301,20 @@ fn reviewed(told: Vec<Told>) -> Vec<Told> {
         .collect()
 }
 
-/// One ratchet result split into its failures and the review items of its ride-along rows.
+/// One ratchet result split into its failures and the review items of its ride-along rows. A
+/// split drops the text's groups, whose leads index the unsplit list.
 fn parted(
     failed: Vec<Failed>,
     (unit, condition): (&str, &str),
     failure: impl FnOnce(Vec<Failed>) -> Ratchet,
 ) -> Vec<Told> {
-    let (riders, failed): (Vec<Failed>, Vec<Failed>) =
+    let (riders, mut failed): (Vec<Failed>, Vec<Failed>) =
         failed.into_iter().partition(|finding| finding.rides_along);
+    if !riders.is_empty() {
+        for finding in &mut failed {
+            finding.lead = None;
+        }
+    }
     let failing = (!failed.is_empty()).then(|| failure(failed));
     let riding = (!riders.is_empty()).then(|| Ratchet::RidesAlong {
         unit: unit.to_string(),
@@ -984,13 +990,19 @@ impl CheckDocument {
         (code, axes): (u8, Axes),
         told: Vec<Told>,
     ) -> (u8, Vec<Told>) {
-        if !args.at_stop() || code != 1 || axes.judgement == Judgement::Fail {
+        let failed = told.iter().any(|item| {
+            matches!(
+                item,
+                Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+            )
+        });
+        if !args.at_stop() || !failed || axes.judgement == Judgement::Fail {
             return (code, told);
         }
         let (told, riders) = riding(told);
         let text = render::stop(&riders, false);
         printed(gate, "FAIL", (&riders, &text), &mut self.riding);
-        (0, told)
+        (if code == 1 { 0 } else { code }, told)
     }
 
     /// The files the run could not measure, sorted once: the `measurement-lost` row and its
@@ -1650,18 +1662,25 @@ mod tests {
 
     fn failing(rides_along: bool) -> Failed {
         Failed {
-            id: format!("id-{rides_along}"),
-            file: format!("src/{rides_along}.ts"),
+            id: tier(rides_along).to_string(),
+            file: format!("src/{}.ts", tier(rides_along)),
             line: 3,
             values: Values::new(),
             shown: "count 1".to_string(),
             was: None,
-            text: format!("site {rides_along}"),
+            text: format!("site of a {}", tier(rides_along)),
             fix_advice: "Fix it.".to_string(),
             matched: Matched::Nothing,
             ceiling: None,
             lead: None,
             rides_along,
+        }
+    }
+
+    fn tier(rides_along: bool) -> &'static str {
+        match rides_along {
+            true => "rider",
+            false => "blocker",
         }
     }
 
@@ -1697,9 +1716,9 @@ mod tests {
     }
 
     fn ran(view: View, gates: &[Gate]) -> (CheckDocument, String) {
-        let root = std::env::temp_dir().join(format!("klin-ride-along-{}", std::process::id()));
-        std::fs::create_dir_all(&root).expect("a scratch tree");
-        let project = Project::of(Config::empty(&root.join("klin.json")), &root);
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let root = dir.path();
+        let project = Project::of(Config::empty(&root.join("klin.json")), root);
         let args = Args {
             changed: true,
             view,
@@ -1733,9 +1752,9 @@ mod tests {
         let (doc, out) = ran(View::Stop, &[rider(), blocker()]);
 
         assert_eq!(doc.failed(), 1, "{out}");
-        assert!(out.contains("src/true.ts:3"), "{out}");
-        assert!(out.contains("src/false.ts:3"), "{out}");
-        assert!(doc.reported().contains(&"id-true".to_string()), "{out}");
+        assert!(out.contains("src/rider.ts:3"), "{out}");
+        assert!(out.contains("src/blocker.ts:3"), "{out}");
+        assert!(doc.reported().contains(&"rider".to_string()), "{out}");
     }
 
     #[test]
@@ -1743,7 +1762,20 @@ mod tests {
         let (doc, out) = ran(View::Stop, &[rider()]);
 
         assert_eq!(doc.failed(), 0, "{out}");
-        assert!(!out.contains("src/true.ts"), "{out}");
+        assert!(!out.contains("src/rider.ts"), "{out}");
+    }
+
+    #[test]
+    fn a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them() {
+        let erred = gate("erred", |_, out| {
+            found(true, out)?;
+            Err(Error("the tool stopped".to_string()))
+        });
+        let (doc, out) = ran(View::Stop, &[erred]);
+
+        assert_eq!(doc.failed(), 0, "{out}");
+        assert!(out.contains("the tool stopped"), "{out}");
+        assert!(!out.contains("src/rider.ts"), "{out}");
     }
 
     #[test]
@@ -1784,8 +1816,8 @@ mod tests {
         let findings = document["findings"].as_array().expect("findings");
 
         assert_eq!(findings.len(), 1, "{document}");
-        assert_eq!(findings[0]["file"], "src/false.ts", "{document}");
-        assert_eq!(document["reviews"][0]["file"], "src/true.ts", "{document}");
+        assert_eq!(findings[0]["file"], "src/blocker.ts", "{document}");
+        assert_eq!(document["reviews"][0]["file"], "src/rider.ts", "{document}");
         assert_eq!(document["judgement"], "fail", "{document}");
     }
 

@@ -1408,21 +1408,28 @@ parallel. Section 18.4 defines the contract it must obey.
 ### 9.6 A ride-along row
 
 A row in the ride-along tier of ADR 0073 has an N above 3 and at most 10 per
-100 changes, and a safe remedy. A row records its tier where the check
-declares its rows, and the ratchet sets the tier on each finding of the row.
+100 changes, and a safe remedy. A row is one rule of a check, such as one
+kind of escape, or the whole check where it has one rule. The check's
+evaluator names the tier of each row from the finding's values, and the
+ratchet sets that tier on each finding.
 No shipped row is in this tier yet. #581 and #582 may add the first ones.
 
 At the Stop:
 
 1. A finding of a ride-along row never blocks a Stop on its own. A Stop whose
    only failing findings come from ride-along rows does not block, prints
-   none of them, spends no gate block and leaves the verdict green.
-2. When another finding blocks the Stop, the ride-along findings appear in
-   the same gate block. A gate that also fails for a finding of a blocking
+   none of them, spends no gate block and leaves the verdict green. This
+   holds when the gate that found them also erred.
+2. When another finding fails the Stop, the ride-along findings appear in
+   the same report. That is the gate block, or the report of a Stop that
+   spends no block because the budget is spent or the history moved
+   (section 6.6). A gate that also fails for a finding of a blocking
    row prints them in its own block. A gate that fails for ride-along
    findings alone prints them, with their remedy, after the other gates.
 3. A blocking Stop records the ride-along findings it showed as asked, as it
    does every finding it shows (section 8.2).
+4. The Stop's check document keeps them as findings. A gate whose only
+   failures ride along has the judgement `review`, so the run does not fail.
 
 At `klin check`, a finding of a ride-along row is a `ride-along` review item.
 It never fails the run and never changes the exit code. Its `reason` is the
@@ -2609,8 +2616,8 @@ Enforced means klin's quality policy. It does not mean the project's build,
 tests or type checks. The project's CI owns those (section 12.2).
 
 A deleted test, an unmatched accepted entry and a finding of a ride-along
-row (section 9.6) are review items at this level. The Action shows them in the job summary and as annotations (section
-12.3). They do not fail CI. A person's code review decides them.
+row (section 9.6) are review items at this level. The Action shows them in
+the job summary and as annotations (section 12.3). They do not fail CI. A person's code review decides them.
 
 The README MUST name both levels and say which one a setup reaches.
 
@@ -2924,6 +2931,7 @@ Result model and exit codes:
   one. The pins are
   `a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding`,
   `a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing`,
+  `a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them`,
   `at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change`
   and
   `at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one`
