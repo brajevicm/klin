@@ -245,17 +245,14 @@ fn new_sites(heading: &str, failed: &[Failed], whole: bool, out: &mut String) {
             )
         })
         .collect();
-    match whole {
-        true => block(out, heading, rows.into_iter()),
-        false if rows.len() > SHOWN => {
-            let _ = writeln!(
-                out,
-                "{} — klin check --changed lists every site",
-                capped(heading, &rows)
-            );
-        }
-        false => listed(out, heading, &rows),
+    if whole {
+        return block(out, heading, rows.into_iter());
     }
+    let rest = match rows.len() > SHOWN {
+        true => " — klin check --changed lists every site",
+        false => "",
+    };
+    let _ = writeln!(out, "{}{rest}", capped(heading, &rows));
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside

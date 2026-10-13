@@ -230,7 +230,7 @@ fn failed_gates<'a>(wanted: &[&'a Gate], ran: &[Result<(Ran, u64), &str>]) -> Ve
 }
 
 /// One gate's run and how long it took, or why the base could not be laid out for it.
-fn measured<'a>(
+fn run<'a>(
     args: &Args,
     gate: &Gate,
     project: &Project,
@@ -922,7 +922,7 @@ impl CheckDocument {
     ) {
         let ran: Vec<_> = wanted
             .iter()
-            .map(|gate| measured(args, gate, project, against))
+            .map(|gate| run(args, gate, project, against))
             .collect();
         let failed = failed_gates(wanted, &ran);
         for (gate, ran) in wanted.iter().zip(ran) {

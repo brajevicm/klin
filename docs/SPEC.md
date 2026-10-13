@@ -1559,8 +1559,8 @@ Per evidence kind:
   `klin setup`".
 
 The Stop text is a bounded repair queue. A gate lists at most 20 new sites.
-When it leaves out sites, it says how many and that `klin check --changed`
-lists every one. Repeated evidence that a family identifies safely is shown
+When it leaves out new sites, it says how many and that `klin check
+--changed` lists every one. Repeated evidence that a family identifies safely is shown
 once.
 
 The Stop text leaves out provenance that does not change the repair:
