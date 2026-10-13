@@ -191,3 +191,42 @@ fn a_tracked_env_file_is_read_and_an_ignored_one_is_not() {
     assert!(run.says("FAIL: 1 new secret(s)"), "{}", run.out);
     assert!(run.says(".env.production:1"), "{}", run.out);
 }
+
+#[test]
+fn a_key_in_a_test_file_fails() {
+    let tree = Tree::new();
+    tree.write("src/app.test.ts", &source(&openai()));
+
+    let run = tree.run(&["check", "secrets"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/app.test.ts:1"), "{}", run.out);
+}
+
+#[test]
+fn a_token_cut_short_by_an_ellipsis_or_a_slack_placeholder_passes() {
+    let tree = Tree::new();
+    let lines = format!(
+        "const A = \"{}...\";\nconst B = \"{}\";\n",
+        openai(),
+        token("xoxb-", "your-bot-token-goes-here")
+    );
+    tree.write("src/app.ts", &lines);
+
+    let run = tree.run(&["check", "secrets"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_key_that_ends_in_a_dash_before_its_quote_fails() {
+    let tree = Tree::new();
+    let lines = format!(
+        "const A = \"{}\";\nconst B = \"{}\";\n",
+        token("AIza", &[&body(34), "-"].concat()),
+        token("glpat-", &[&body(19), "-"].concat())
+    );
+    tree.write("src/app.ts", &lines);
+
+    let run = tree.run(&["check", "secrets"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL: 2 new secret(s)"), "{}", run.out);
+}

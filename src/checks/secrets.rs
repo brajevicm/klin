@@ -1,9 +1,9 @@
 //! `secrets`: a literal shaped like a live vendor token. A site is one file plus a redacted
 //! fingerprint of the token, the vendor prefix and a hash, and never the token or its line, so
 //! no output, journal record or accepted entry holds the key. Its ratcheted value is `count`,
-//! the matches of that token in the file. Nothing is derived. Spec 9.1, 16.3.
+//! the matches of that token in the file. Nothing is derived. Spec 9.1, 16.3, B.8.2.1.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::LazyLock;
 
@@ -48,19 +48,24 @@ const VENDORS: &[(&str, &str, &str)] = &[
         r"[A-Za-z0-9_]{82}\b",
     ),
     ("AWS access key", "AKIA", r"[A-Z0-9]{16}\b"),
-    ("Slack token", "xox", r"[abposr]-[A-Za-z0-9-]{10,}"),
-    ("Google API key", "AIza", r"[A-Za-z0-9_-]{35}\b"),
-    ("GitLab token", "glpat-", r"[A-Za-z0-9_-]{20}\b"),
+    (
+        "Slack token",
+        "xox",
+        r"[abposr]-[0-9]{8,}-[A-Za-z0-9-]{20,}",
+    ),
+    ("Google API key", "AIza", r"[A-Za-z0-9_-]{35}"),
+    ("GitLab token", "glpat-", r"[A-Za-z0-9_-]{20,}"),
 ];
 
 /// The words a documented example or a test token holds, which no live key does.
 const PLACEHOLDERS: &[&str] = &["test", "xxx", "example"];
 
-/// One pattern for every vendor, so a file is scanned once.
+/// One pattern for every vendor, so a file is scanned once, with one group per vendor in table
+/// order.
 fn token() -> Result<Regex, Error> {
     let vendors: Vec<String> = VENDORS
         .iter()
-        .map(|(_, prefix, rest)| format!("{}{rest}", regex::escape(prefix)))
+        .map(|(_, prefix, rest)| format!("({}{rest})", regex::escape(prefix)))
         .collect();
     Regex::new(&format!(r"\b(?:{})", vendors.join("|"))).map_err(|why| {
         Error(format!(
@@ -185,13 +190,17 @@ fn findings(
     changes: Option<&[Change]>,
 ) -> Result<Read, Error> {
     let found = selected(scope, tree)?;
-    let changed = |rel: &str| changes.is_none_or(|all| all.iter().any(|change| change.path == rel));
-    let mut seen: BTreeMap<(String, String), (u64, &str, u64)> = BTreeMap::new();
+    let changed: Option<BTreeSet<&str>> =
+        changes.map(|all| all.iter().map(|change| change.path.as_str()).collect());
+    let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
     let mut measured = Vec::new();
     let mut work = ContentCost::default();
     for file in &found.kept {
         let rel = files::relative(file, root);
-        if changed(&rel) {
+        if changed
+            .as_ref()
+            .is_none_or(|changed| changed.contains(rel.as_str()))
+        {
             let bytes = std::fs::read(file).map_err(|why| Error::unreadable(file, why))?;
             work.reads += 1;
             tally(token, &rel, &String::from_utf8_lossy(&bytes), &mut seen);
@@ -200,13 +209,13 @@ fn findings(
     }
     let findings = seen
         .into_iter()
-        .map(|((file, text), (line, vendor, count))| {
+        .map(|((file, text), tally)| {
             let mut values = Values::new();
-            values.insert(LABEL.into(), vendor.into());
-            values.insert("count".into(), count.into());
+            values.insert(LABEL.into(), tally.vendor.into());
+            values.insert("count".into(), tally.count.into());
             Finding {
                 file,
-                line,
+                line: tally.line,
                 text,
                 values,
                 body: None,
@@ -230,30 +239,40 @@ fn findings(
     })
 }
 
-/// Each live-shaped token in one file, at the site of its fingerprint, with the line of its
-/// first match and how many times the file holds it.
-fn tally(
-    token: &Regex,
-    rel: &str,
-    text: &str,
-    seen: &mut BTreeMap<(String, String), (u64, &'static str, u64)>,
-) {
-    for found in token.find_iter(text) {
-        let key = found.as_str();
-        if placeholder(key) || text[found.end()..].starts_with("...") {
-            continue;
-        }
-        let Some((vendor, prefix, _)) = VENDORS
+/// One token's site in one file: the vendor, the line of its first match, and how many times
+/// the file holds it.
+struct Tally {
+    vendor: &'static str,
+    line: u64,
+    count: u64,
+}
+
+/// Each live-shaped token in one file, at the site of its fingerprint.
+fn tally(token: &Regex, rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
+    for found in token.captures_iter(text) {
+        let Some((at, key)) = found
             .iter()
-            .find(|(_, prefix, _)| key.starts_with(prefix))
+            .skip(1)
+            .enumerate()
+            .find_map(|(at, group)| Some((at, group?)))
         else {
             continue;
         };
-        let line = text[..found.start()].matches('\n').count() as u64 + 1;
-        let print = format!("{prefix}...{}", ratchet::site_id(SECTION, vendor, key));
+        if placeholder(key.as_str()) || text[key.end()..].starts_with("...") {
+            continue;
+        }
+        let (vendor, prefix, _) = VENDORS[at];
+        let print = format!(
+            "{prefix}...{}",
+            ratchet::site_id(SECTION, vendor, key.as_str())
+        );
         seen.entry((rel.to_string(), print))
-            .and_modify(|(_, _, count)| *count += 1)
-            .or_insert((line, vendor, 1));
+            .and_modify(|tally| tally.count += 1)
+            .or_insert_with(|| Tally {
+                vendor,
+                line: text[..key.start()].matches('\n').count() as u64 + 1,
+                count: 1,
+            });
     }
 }
 

@@ -4576,8 +4576,8 @@ file the tree does not ignore. A token is a match of one vendor's prefix and
 the rest at its usual length: `sk-proj-` and 40 or more characters,
 `sk-ant-` and a kind with two digits and 80 or more characters, `sk_live_`
 and 24 or more, `ghp_` and 36, `github_pat_` and 82, `AKIA` and 16, `xox`
-with one of `a`, `b`, `p`, `o`, `s` or `r` and 10 or more, `AIza` and 35,
-and `glpat-` and 20. A token that holds `test`, `xxx` or `example` in any
+with one of `a`, `b`, `p`, `o`, `s` or `r`, a dash, 8 or more digits, a
+dash and 20 or more characters, `AIza` and 35, and `glpat-` and 20 or more. A token that holds `test`, `xxx` or `example` in any
 case, or that `...` follows, is a placeholder and is not a site. A site is
 one file plus the fingerprint: the vendor prefix, `...` and a hash of the
 vendor and the whole token, the same FNV-1a hash as the identity of 11.2.
@@ -4592,8 +4592,11 @@ person accepts a key with the fingerprint as the entry's `text`. Pinned by
 `no_text_json_or_journal_holds_the_key`,
 `a_token_that_holds_a_placeholder_word_passes`,
 `a_person_accepts_a_secret_without_writing_the_key`,
-`a_key_the_base_holds_passes_where_its_line_moved` and
-`a_tracked_env_file_is_read_and_an_ignored_one_is_not` in
+`a_key_the_base_holds_passes_where_its_line_moved`,
+`a_tracked_env_file_is_read_and_an_ignored_one_is_not`,
+`a_key_in_a_test_file_fails`,
+`a_token_cut_short_by_an_ellipsis_or_a_slack_placeholder_passes` and
+`a_key_that_ends_in_a_dash_before_its_quote_fails` in
 `tests/secrets.rs`. Known limit: a key of another vendor, a key split
 across a concatenation and a key in a file of no language klin knows, such
 as JSON or YAML, are not read. A prompt that holds a key still lands in the
