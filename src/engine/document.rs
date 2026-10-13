@@ -14,8 +14,8 @@ use crate::config::file::MEASUREMENT_LOST;
 use crate::config::scope::{Moved, Moves};
 use crate::contract;
 use crate::contract::check::{
-    Activation, Caller, Cause, Class, Context, Hole, Incomplete, NO_SOURCE_ROOT, Plain, Reason,
-    Records, Sink, Told, UNBUILT,
+    Activation, Caller, Cause, Class, Context, Debt, Hole, Incomplete, NO_SOURCE_ROOT, Plain,
+    Reason, Records, Sink, Told, UNBUILT,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Seen, Unmeasured};
@@ -24,7 +24,7 @@ use crate::engine::catalogue;
 use crate::engine::plan::{Gate, Plan, State, every_check};
 use crate::engine::render::{self, Finding, GateRecords, Note, Review, Slot};
 use crate::sys::changed::Change;
-use crate::sys::error::{ErrorKind, Fault};
+use crate::sys::error::{Error, ErrorKind, Fault};
 use crate::window::base::{self, Prior, Window};
 use crate::{engine::diagnostics, facts::survey, sys::clock};
 
@@ -48,6 +48,9 @@ pub struct Args {
     pub view: View,
     /// Whether the run requested the footprint's counters. Spec B.13.
     pub footprint: bool,
+    /// Whether the run leaves every integration alone, so it runs no project command, as the
+    /// baseline of `setup` does. Spec 11.2.
+    pub without_integrations: bool,
 }
 
 impl Args {
@@ -305,6 +308,9 @@ impl Counts {
 /// One row of the document's capabilities. Spec 11.7.
 struct Capability {
     name: String,
+    /// The catalogue check the row runs, which for a `sarif` entry is not its name.
+    check: &'static str,
+    debt: Debt,
     kind: &'static str,
     placement: &'static [&'static str],
     state: State,
@@ -322,6 +328,8 @@ impl Capability {
     fn active(gate: &Gate, axes: Axes, records: &Records) -> Capability {
         Capability {
             name: gate.name.clone(),
+            check: gate.check.name,
+            debt: gate.check.judges.debt,
             kind: gate.check.kind(),
             placement: gate.check.placement.names(),
             state: State::Active,
@@ -340,6 +348,8 @@ impl Capability {
     fn inapplicable(check: &catalogue::Row, named: Option<Axes>) -> Capability {
         Capability {
             name: check.name.to_string(),
+            check: check.name,
+            debt: check.judges.debt,
             kind: check.kind(),
             placement: check.placement.names(),
             state: State::NotApplicable,
@@ -357,6 +367,8 @@ impl Capability {
     fn lost(axes: Axes, accepted: u64) -> Capability {
         Capability {
             name: MEASUREMENT_LOST.to_string(),
+            check: MEASUREMENT_LOST,
+            debt: Debt::Held,
             kind: "built-in",
             placement: &["stop", "check"],
             state: State::Active,
@@ -440,6 +452,63 @@ impl Measured {
     }
 }
 
+/// One capability as `setup` reports it: the findings the ratchet passed, which are the floor,
+/// the ones it did not, and how many files it measured of the ones it found where it counts
+/// files. Spec 11.2.
+pub struct Floor {
+    pub gate: String,
+    /// The catalogue check the gate runs, which for a `sarif` entry is not its name.
+    pub check: &'static str,
+    pub standing: Standing,
+    pub held: usize,
+    pub failing: usize,
+    pub coverage: Option<FilesMeasured>,
+}
+
+/// How many files a capability measured of the ones it found. Spec 11.2.
+#[derive(Clone, Copy)]
+pub struct FilesMeasured {
+    pub measured: usize,
+    pub found: usize,
+}
+
+/// A gate the run lists in no capability row: one a person set to `false`, or an integration
+/// the run left alone. Spec 11.2.
+struct Unrun {
+    gate: String,
+    check: &'static str,
+}
+
+impl Unrun {
+    fn of(gate: &Gate) -> Unrun {
+        Unrun {
+            gate: gate.name.clone(),
+            check: gate.check.name,
+        }
+    }
+
+    fn floor(&self, standing: Standing) -> Floor {
+        Floor {
+            gate: self.gate.clone(),
+            check: self.check,
+            standing,
+            held: 0,
+            failing: 0,
+            coverage: None,
+        }
+    }
+}
+
+/// How one capability stood in the run `setup` reads its floor from. Spec 11.2.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Standing {
+    Measured,
+    /// The capability does not run in this tree, or a person set it to `false`.
+    Off,
+    /// An integration, whose command the run left alone.
+    Skipped,
+}
+
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
 pub struct CheckDocument {
@@ -449,6 +518,10 @@ pub struct CheckDocument {
     axes: Axes,
     /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
     stopped: bool,
+    /// The checks a person set to `false`, which the document lists nowhere. Spec 11.2.
+    excluded: Vec<Unrun>,
+    /// The integrations the run left alone, which the document lists nowhere. Spec 11.2.
+    skipped: Vec<Unrun>,
     capabilities: Vec<Capability>,
     findings: Vec<Finding>,
     notes: Vec<Note>,
@@ -472,6 +545,16 @@ pub struct CheckDocument {
     /// Whether a file the base parsed is lost to a parse, which a person may hold where the
     /// grammar lags. Spec 7.2.
     grammar_lag: bool,
+}
+
+/// The findings a capability's ratchet passed that are debt, as its check counts debt.
+/// Spec 11.2.
+fn held_debt(row: &Capability) -> usize {
+    let passed = match row.debt {
+        Debt::Held => row.held,
+        Debt::Accepted => row.accepted,
+    };
+    passed.map_or(0, |count| count as usize)
 }
 
 impl CheckDocument {
@@ -532,6 +615,58 @@ impl CheckDocument {
         self.stopped = true;
         self.problems
             .push(Problem::of_run(fault.kind, &fault.error.to_string()));
+    }
+
+    /// What `setup` says the run holds as its floor: each capability in the run's order, then
+    /// each check a person set to `false`, then each integration the run left alone. The first
+    /// error of the run, a check's included, where one kept any capability from measuring, and
+    /// why the measurement is incomplete where it is, because then no floor is known. Spec 11.2.
+    pub fn floor(&self) -> Result<Vec<Floor>, Error> {
+        if let Some(problem) = self.problems.first() {
+            return Err(Error(match &problem.check {
+                Some(check) => format!("{check}: {}", problem.message),
+                None => problem.message.clone(),
+            }));
+        }
+        if self.totals().incomplete {
+            return Err(Error(match self.holes.first() {
+                Some(hole) => hole.text.clone(),
+                None => "a check could not measure everything it found, which klin check names"
+                    .to_string(),
+            }));
+        }
+        let ran = self.capabilities.iter().map(|row| Floor {
+            gate: row.name.clone(),
+            check: row.check,
+            standing: match row.state {
+                State::Active => Standing::Measured,
+                _ => Standing::Off,
+            },
+            held: held_debt(row),
+            failing: self.failing(&row.name),
+            coverage: row.coverage.as_ref().map(|counts| FilesMeasured {
+                measured: counts.measured,
+                found: counts.found,
+            }),
+        });
+        let excluded = self.excluded.iter().map(|gate| gate.floor(Standing::Off));
+        let skipped = self
+            .skipped
+            .iter()
+            .map(|gate| gate.floor(Standing::Skipped));
+        Ok(ran.chain(excluded).chain(skipped).collect())
+    }
+
+    /// The integrations a run left alone, which `setup` names as blind spots. Spec 11.2.
+    pub fn skip(&mut self, gates: &[&Gate]) {
+        self.skipped = gates.iter().map(|gate| Unrun::of(gate)).collect();
+    }
+
+    fn failing(&self, gate: &str) -> usize {
+        self.findings
+            .iter()
+            .filter(|finding| finding.failing() && finding.check.as_deref() == Some(gate))
+            .count()
     }
 
     /// How many gates failed, counting the built-in row of the lost files. Spec 10.4.
@@ -931,6 +1066,17 @@ impl CheckDocument {
 
     /// The rows of the capabilities that do not apply, which a whole run lists. Spec 11.7.
     fn not_applicable(&mut self, plan: &Plan) {
+        self.excluded = plan
+            .excluded
+            .iter()
+            .filter_map(|name| {
+                let check = catalogue::CATALOGUE.iter().find(|row| row.name == name)?;
+                Some(Unrun {
+                    gate: name.clone(),
+                    check: check.name,
+                })
+            })
+            .collect();
         self.capabilities.extend(
             plan.needs_a_section
                 .iter()

@@ -851,6 +851,73 @@ impl Sink<'_> {
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
+/// What a check's selection comes to in a tree: how many it judges, or why it can judge none
+/// until a person settles its section, as a run of it would refuse. Spec 11.6.
+pub enum Count {
+    Selected(usize),
+    Unsettled(String),
+}
+
+/// A check's count of what it judges, of one entry where `klin policy` names one, such as a
+/// convention.
+pub type Counter = fn(&Project, Option<&str>) -> Result<Count, Error>;
+
+/// What a check counts when `klin policy` says what it judges. Spec 11.6.
+#[derive(Clone, Copy)]
+pub enum Unit {
+    Files,
+    Documents,
+    Manifests,
+    TestFiles,
+}
+
+impl Unit {
+    /// The word for one, and the word for any other number.
+    fn words(self) -> (&'static str, &'static str) {
+        match self {
+            Unit::Files => ("file", "files"),
+            Unit::Documents => ("document", "documents"),
+            Unit::Manifests => ("manifest", "manifests"),
+            Unit::TestFiles => ("test file", "test files"),
+        }
+    }
+
+    pub fn count(self, count: usize) -> &'static str {
+        let (one, many) = self.words();
+        match count {
+            1 => one,
+            _ => many,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        self.words().1
+    }
+}
+
+/// What one check judges in a tree, counted from its selection with no file read, which
+/// `klin policy` prints beside its state. Spec 11.6.
+#[derive(Clone, Copy)]
+pub struct Judges {
+    pub unit: Unit,
+    /// The size of the selection in this tree, and `None` for a check only a run can count.
+    pub count: Option<Counter>,
+    /// Why an Automatic check does not apply to a tree that lacks its facts.
+    pub absent: &'static str,
+    /// Which findings its ratchet passed are debt the floor of `setup` holds. Spec 11.2.
+    pub debt: Debt,
+}
+
+/// The findings a ratchet passed that are debt. Spec 11.2.
+#[derive(Clone, Copy)]
+pub enum Debt {
+    /// Every finding the ratchet held.
+    Held,
+    /// Only the findings an accepted entry passed, for a check that judges what is present and
+    /// fine as well, such as every test the base holds.
+    Accepted,
+}
+
 /// The values a check derives from the configuration, the survey and the derivation commit, with
 /// where each came from, and no file of either tree measured. The check's own run tells the same
 /// list, so a run and `klin policy` cannot disagree. Spec 11.6.

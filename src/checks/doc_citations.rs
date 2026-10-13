@@ -121,6 +121,17 @@ pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Err
     Ok(vec![said.into()])
 }
 
+/// How many documents this gate judges in the working tree: each one the survey found that
+/// the tree still holds. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    let root = project.root();
+    let documents = &project.facts().found.documents;
+    Ok(documents
+        .iter()
+        .filter(|document| root.join(document).exists())
+        .count())
+}
+
 /// What this gate discovered: one document per entry, and the ones it read. A document the
 /// working tree no longer holds is found and not measured, because only the base holds its
 /// citations. Spec 8.6.

@@ -1548,3 +1548,186 @@ fn setup_refuses_a_config_the_hooks_never_read() {
         "the hooks stayed inactive after setup"
     );
 }
+
+/// A first setup ends with what klin now holds as the floor, by check, and each check that
+/// judges nothing in this tree: an active one with the files it found and judged none of, and
+/// one that does not run as off. Spec 11.2, #587.
+#[test]
+fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub mod one;\npub mod two;\n");
+    for module in ["one", "two"] {
+        tree.write(
+            &format!("src/{module}.rs"),
+            "pub fn g(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+        );
+    }
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let lines: Vec<&str> = run.out.lines().collect();
+    assert_eq!(
+        lines[lines.len() - 2..],
+        [
+            "klin now holds today's debt as the floor: 2 escape hatches.",
+            "Only new problems block. Blind spots here: lockfile (0 of 1 files judged), \
+             reachability (0 of 0 files judged), doc-size (off), doc-citations (off), \
+             inventory (off), layering (off), conventions (off), sarif (off).",
+        ],
+        "{}",
+        run.out
+    );
+}
+
+/// A tree with no debt says so, rather than naming an empty floor. #587.
+#[test]
+fn setup_says_when_the_floor_holds_nothing() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin now holds today's debt as the floor: nothing, no check found a problem."),
+        "{}",
+        run.out
+    );
+}
+
+/// A finding the comparison base does not hold is not part of the floor: setup names it apart,
+/// as still failing `klin check`. Review 5500533966, #587.
+#[test]
+fn setup_names_a_finding_the_base_does_not_hold_apart_from_the_floor() {
+    let tree = Tree::new();
+    tree.write(
+        "src/lib.rs",
+        "pub fn g(x: Option<i32>) -> i32 {\n    x.unwrap_or(0)\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        "pub fn g(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin now holds today's debt as the floor: nothing yet."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("no check found a problem"), "{}", run.out);
+    assert!(
+        run.says("Not in the floor, so these still fail klin check: 1 escape hatch."),
+        "{}",
+        run.out
+    );
+}
+
+/// A check that could not measure its inputs leaves no floor to claim, even where the other
+/// checks completed. Review 5500533966, #587.
+#[test]
+fn setup_claims_no_floor_when_one_check_could_not_run() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.write("docs/notes.md", "Notes.\n");
+    tree.write("klin.json", r#"{"complexity": {"in": "docs"}}"#);
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin holds no floor yet: complexity: "),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("klin now holds"), "{}", run.out);
+}
+
+/// A check a person set to `false` judges nothing, so it is a blind spot. Review 5500533966.
+#[test]
+fn setup_names_a_check_a_person_set_to_false_as_off() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.write("klin.json", r#"{"escapes": false, "stubs": false}"#);
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("escapes (off)"), "{}", run.out);
+    assert!(run.says("stubs (off)"), "{}", run.out);
+}
+
+/// A test that is still there is no missing test, so a tree whose tests are all present holds
+/// none as debt. Review 5500742698.
+#[test]
+fn setup_counts_no_missing_test_where_every_test_is_present() {
+    let tree = Tree::new();
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("src/lib.rs", "pub fn f() -> i32 {\n    1\n}\n");
+    tree.write(
+        "tests/one.rs",
+        "#[test]\nfn one() {\n    assert_eq!(t::f(), 1);\n}\n",
+    );
+    tree.write(
+        "tests/two.rs",
+        "#[test]\nfn two() {\n    assert_eq!(t::f(), 1);\n}\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("missing test"), "{}", run.out);
+}
+
+/// setup measures without side effects outside klin's own state, so it runs no `sarif` entry's
+/// command, which may delete or write files, and names the entry as one it did not run.
+/// Review 5500742698.
+#[test]
+fn setup_runs_no_sarif_command_and_keeps_the_report() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "linter", "report": "linter.sarif", "run": "touch ran"}]}"#,
+    );
+    tree.write("src/a.ts", "one\n");
+    tree.write(
+        "linter.sarif",
+        r#"{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "t"}}, "results": []}]}"#,
+    );
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path("linter.sarif").is_file(), "{}", run.out);
+    assert!(!tree.path("ran").exists(), "{}", run.out);
+    assert!(run.says("linter (not run by setup)"), "{}", run.out);
+}
+
+/// A run klin could not measure completely holds no known floor: a tree whose source root the
+/// base held and the working tree lost measures nothing. Review 5501151491.
+#[test]
+fn setup_claims_no_floor_when_the_run_is_incomplete() {
+    let tree = Tree::new();
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+    tree.remove("src/lib.rs");
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("klin holds no floor yet: "), "{}", run.out);
+    assert!(!run.says("klin now holds"), "{}", run.out);
+}

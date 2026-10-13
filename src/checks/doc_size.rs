@@ -316,6 +316,12 @@ pub fn derive(project: &Project) -> Result<Vec<Provenance>, Error> {
     listing(project).map(|listing| listing.said)
 }
 
+/// How many documents this gate judges in the working tree, which `klin policy` prints.
+/// Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    Ok(listing(project)?.documents.len())
+}
+
 /// Every pinned document under its pin, then every instruction file the config does not pin
 /// under its derived ceiling. An instruction file the derivation commit lacks takes a fixed
 /// default, which reads nothing out of the working tree. Spec 4.3, 5.4.

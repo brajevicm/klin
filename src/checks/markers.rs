@@ -475,31 +475,15 @@ fn findings(
     let mut walk = Walk::over(skips.then(|| survey::tests(tree)));
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
-    let suffixes: Vec<&str> = search
-        .sets
-        .iter()
-        .flat_map(|set| set.suffixes.iter().map(String::as_str))
-        .collect();
-    let wanted = files::Wanted {
-        extensions: &suffixes,
-        skip_dirs: &files::default_skip_dirs(),
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: false,
-    };
-    for file in files::found(
-        tree.root(),
-        || tree.files(),
-        &[repo_root.to_path_buf()],
-        &wanted,
-    )?
-    .kept
-    {
+    let found = selected(search, tree)?;
+    excluded.extend(
+        found
+            .excluded
+            .iter()
+            .map(|file| files::relative(file, repo_root)),
+    );
+    for file in found.kept {
         let rel = files::relative(&file, repo_root);
-        if !search.scope.selects(&rel) {
-            excluded.insert(rel);
-            continue;
-        }
         measured.insert(rel.clone());
         if changed
             .as_ref()
@@ -518,6 +502,25 @@ fn findings(
         work: walk.work,
         unparsed: walk.unparsed,
     })
+}
+
+/// Every file of the languages this kind reads, hidden directories included, split by the
+/// section's scope.
+fn selected(search: &Search, tree: &Tree) -> Result<files::Found, Error> {
+    let suffixes: Vec<&str> = search
+        .sets
+        .iter()
+        .flat_map(|set| set.suffixes.iter().map(String::as_str))
+        .collect();
+    tree.scoped(&suffixes, false, |path| search.scope.selects(path))
+}
+
+/// How many files this kind's gate judges in the working tree, which `klin policy` prints.
+/// Spec 11.6.
+pub fn judges(kind: &Kind, project: &Project) -> Result<usize, Error> {
+    Ok(selected(&spec(kind, project)?.search, project.tree())?
+        .kept
+        .len())
 }
 
 fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>, refused: &[Unparsed]) -> Files {

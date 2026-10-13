@@ -306,27 +306,29 @@ fn measure(
     families: &[Family],
     unchanged: Option<&measurement::Unchanged>,
 ) -> Result<Measurement, Error> {
+    let found = tree.scoped(&extensions(families), true, |_| true)?;
+    measurement::measure(found, tree, unchanged)
+}
+
+fn extensions(families: &[Family]) -> Vec<&'static str> {
     let mut extensions: Vec<&str> = families
         .iter()
         .flat_map(|family| family.extensions.iter().copied())
         .collect();
     extensions.sort_unstable();
     extensions.dedup();
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &extensions,
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let found = files::found(
-        tree.root(),
-        || tree.files(),
-        &[tree.root().to_path_buf()],
-        &wanted,
-    )?;
-    measurement::measure(found, tree, unchanged)
+    extensions
+}
+
+/// How many files this gate judges in the working tree: each one a family holds. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    let families = families(project)?;
+    let found = project
+        .tree()
+        .scoped(&extensions(&families), true, |path| {
+            family_of(&families, path).is_some()
+        })?;
+    Ok(found.kept.len())
 }
 
 pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Error> {

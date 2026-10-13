@@ -110,22 +110,14 @@ impl<'a> Unchanged<'a> {
 /// public surface needs every module a path may reach. The selection is every structural
 /// language under the default skip set, and no scope narrows it.
 pub fn measure_all(tree: &Tree, unchanged: Option<&Unchanged>) -> Result<Measurement, Error> {
+    measure(every_structural(tree)?, tree, unchanged)
+}
+
+/// Every file of a structural language a walk of the tree reaches, which `measure_all`
+/// measures. Spec 11.6.
+pub fn every_structural(tree: &Tree) -> Result<Found, Error> {
     let extensions = selected_extensions(&[]).unwrap_or_default();
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &extensions,
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let found = files::found(
-        tree.root(),
-        || tree.files(),
-        &[tree.root().to_path_buf()],
-        &wanted,
-    )?;
-    measure(found, tree, unchanged)
+    tree.scoped(&extensions, true, |_| true)
 }
 
 /// The found files of one tree measured, each through the tree's one extraction of it, or the

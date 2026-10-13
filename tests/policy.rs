@@ -653,3 +653,155 @@ fn suggest_derives_from_the_commit_setup_pin_derives_from() {
         suggested.out
     );
 }
+
+/// Each capability names how many files it judges in this tree, from the files it selects and
+/// with no check run, and the reason where it does not apply. #587, spec 11.6.
+#[test]
+fn policy_names_what_each_check_judges_and_why_one_does_not_apply() {
+    let tree = tree(r#"{"complexity": {"in": "src"}}"#);
+    tree.write("src/other.rs", CLEAN);
+    tree.write("scripts/tool.rs", CLEAN);
+
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let complexity = block(&run.out, "complexity — runs");
+    assert!(
+        complexity.contains("judges: 2 files in this tree"),
+        "{}",
+        run.out
+    );
+    let escapes = block(&run.out, "escapes — runs");
+    assert!(
+        escapes.contains("judges: 3 files in this tree"),
+        "{}",
+        run.out
+    );
+    let lockfile = block(&run.out, "lockfile — not-applicable");
+    assert!(
+        lockfile.contains(
+            "judges: 0 manifests, because the tree holds no manifest klin reads a lockfile for"
+        ),
+        "{}",
+        run.out
+    );
+    let layering = block(&run.out, "layering — needs a section a person writes");
+    assert!(
+        layering.contains("judges: 0 files, because it runs only under a section a person writes"),
+        "{}",
+        run.out
+    );
+
+    let json = tree.run(&["policy", "--json"]).json();
+    assert_eq!(
+        capability(&json, "complexity")["judges"],
+        serde_json::json!({ "count": 2, "of": "files", "reason": null })
+    );
+    assert_eq!(capability(&json, "lockfile")["judges"]["count"], 0);
+}
+
+/// What `policy` counts for a check is what a whole `klin check` measures, for each check that
+/// runs here, so the two cannot disagree. #587, spec 11.6.
+#[test]
+fn policy_counts_what_a_check_measures() {
+    let tree = tree("{}");
+    tree.write("AGENTS.md", "Read the README.md first.\n");
+    tree.write("tests/one.rs", "#[test]\nfn one() {}\n");
+    tree.write("src/other.rs", CLEAN);
+    tree.base();
+
+    let policy = tree.run(&["policy", "--json"]).json();
+    let check = tree.run(&["check", "--json"]).json();
+    let mut compared = Vec::new();
+    for row in policy["capabilities"].as_array().into_iter().flatten() {
+        let name = row["name"].as_str().unwrap_or_default();
+        if row["state"] != "active" || row["judges"]["count"].is_null() || name == "public-api" {
+            continue;
+        }
+        let measured = &capability(&check, name)["coverage"]["measured"];
+        assert_eq!(
+            &row["judges"]["count"], measured,
+            "{name}: {policy}\n{check}"
+        );
+        compared.push(name.to_string());
+    }
+    assert!(compared.len() >= 6, "{compared:?}");
+}
+
+/// A convention a person must settle leaves the section unable to run, so `policy` says it
+/// judges no file until then, as `klin check conventions` refuses to run. Review 5500533966.
+#[test]
+fn policy_judges_no_convention_file_while_one_convention_is_unsettled() {
+    let tree = tree(
+        r#"{"conventions": {
+          "no-bad": { "code": "fn (", "remedy": "Write a pattern klin can read." },
+          "no-todo": { "text": "TODO", "remedy": "Do it." }
+        }}"#,
+    );
+
+    let run = tree.run(&["policy", "conventions"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let conventions = block(&run.out, "conventions — runs");
+    assert!(
+        conventions.contains("judges: no file until a person settles this:"),
+        "{}",
+        run.out
+    );
+    let json = tree.run(&["policy", "--json", "conventions"]).json();
+    assert_eq!(
+        capability(&json, "conventions")["judges"]["count"],
+        Value::Null
+    );
+}
+
+/// `policy conventions NAME` counts the files that one convention judges. Review 5500533966.
+#[test]
+fn policy_of_one_convention_counts_only_its_files() {
+    let tree = tree(
+        r#"{"conventions": {
+          "no-unwrap": { "text": "unwrap", "in": "src/lib.rs", "remedy": "Handle it." },
+          "no-todo": { "text": "TODO", "remedy": "Do it." }
+        }}"#,
+    );
+    tree.write("src/other.rs", CLEAN);
+
+    let one = tree.run(&["policy", "conventions", "no-unwrap"]);
+    assert_eq!(one.code, 0, "{}", one.out);
+    let conventions = block(&one.out, "conventions — runs");
+    assert!(
+        conventions.contains("judges: 1 file in this tree"),
+        "{}",
+        one.out
+    );
+    let json = tree
+        .run(&["policy", "--json", "conventions", "no-unwrap"])
+        .json();
+    assert_eq!(capability(&json, "conventions")["judges"]["count"], 1);
+}
+
+/// One convention a person must settle keeps the whole section from running, so `policy` of a
+/// valid convention beside it says so too. Review 5501151491.
+#[test]
+fn policy_of_a_valid_convention_beside_an_unsettled_one_judges_no_file() {
+    let tree = tree(
+        r#"{"conventions": {
+          "no-bad": { "code": "fn (", "remedy": "Write a pattern klin can read." },
+          "no-todo": { "text": "TODO", "remedy": "Do it." }
+        }}"#,
+    );
+
+    let run = tree.run(&["policy", "conventions", "no-todo"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let conventions = block(&run.out, "conventions — runs");
+    assert!(
+        conventions.contains("judges: no file until a person settles this:"),
+        "{}",
+        run.out
+    );
+    let json = tree
+        .run(&["policy", "--json", "conventions", "no-todo"])
+        .json();
+    assert_eq!(
+        capability(&json, "conventions")["judges"]["count"],
+        Value::Null
+    );
+}

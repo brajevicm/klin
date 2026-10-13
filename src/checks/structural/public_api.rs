@@ -161,6 +161,12 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
+/// How many files this gate reads in the working tree: every structural file, because a
+/// surface may reach any module. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    Ok(measurement::every_structural(project.tree())?.kept.len())
+}
+
 /// Every break the working tree makes against the base: a base surface the working tree lacks,
 /// once at the surface; and for every item of a surface both hold, an item gone where the file
 /// that declared it is still read, a measured

@@ -201,6 +201,14 @@ fn manifests(project: &Project) -> Vec<(&str, &'static Format)> {
         .collect()
 }
 
+/// How many manifests this gate judges in the working tree: each one it reads that the scope
+/// selects. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    let found = manifests(project);
+    let scope = scope(project, &found)?;
+    Ok(found.iter().filter(|(path, _)| scope.selects(path)).count())
+}
+
 /// Whether the tree holds a manifest this check reads, which is when it runs with no section.
 pub fn applies(project: &Project) -> bool {
     !manifests(project).is_empty()
@@ -241,7 +249,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let config = at.config();
     let found = manifests(at.project);
-    let scope = scope(at, &found)?;
+    let scope = scope(at.project, &found)?;
     out.tell(said(&found));
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
@@ -304,10 +312,10 @@ fn renamed<'a>(
 }
 
 /// The section's scope, refused when an `in` selects no manifest the survey found.
-fn scope(at: &Context, found: &[(&str, &Format)]) -> Result<Scope, Error> {
-    let config = at.config();
+fn scope(project: &Project, found: &[(&str, &Format)]) -> Result<Scope, Error> {
+    let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
-    let scope = Scope::read(config, at.project.moves(), SECTION, &values)?;
+    let scope = Scope::read(config, project.moves(), SECTION, &values)?;
     if scope.has_in() && !found.iter().any(|(path, _)| scope.selects(path)) {
         return Err(Error(format!(
             "{}: \"{SECTION}\" has an \"in\" scope with no applicable manifest",

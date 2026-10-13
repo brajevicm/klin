@@ -177,6 +177,11 @@ pub(super) struct Code {
 }
 
 impl Rule<'_> {
+    /// Whether this rule applies to the file and reads it, which is when a run judges it.
+    fn judges(&self, file: &str) -> bool {
+        self.convention.applies(file) && self.reads(file)
+    }
+
     /// Whether this rule reads the file at all: a code rule reads its own language only.
     pub(super) fn reads(&self, file: &str) -> bool {
         match &self.code {
@@ -629,6 +634,14 @@ impl Measured {
     }
 }
 
+/// How many of these places a rule judges, which `klin policy` prints. Spec 11.6.
+pub(super) fn judged(rules: &[Rule], places: &[Place]) -> usize {
+    places
+        .iter()
+        .filter(|place| rules.iter().any(|rule| rule.judges(&place.held)))
+        .count()
+}
+
 pub(super) fn measure(rules: &[Rule], places: &[Place]) -> Result<Measured, Error> {
     let mut tallies: Vec<Tally> = rules.iter().map(|_| Tally::new()).collect();
     let mut measured = Measured::default();
@@ -865,7 +878,7 @@ pub(super) fn holes<'a>(conventions: &'a [Convention], places: &[Place]) -> Vec<
 /// The rules that read this file, each of them counting it once.
 fn reading(rules: &[Rule], file: &str, read: &mut BTreeMap<String, usize>) -> Vec<usize> {
     let reading: Vec<usize> = (0..rules.len())
-        .filter(|at| rules[*at].convention.applies(file) && rules[*at].reads(file))
+        .filter(|at| rules[*at].judges(file))
         .collect();
     for at in &reading {
         *read.entry(rules[*at].convention.name.clone()).or_default() += 1;

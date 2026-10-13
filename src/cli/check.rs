@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use serde_json::json;
 
 use crate::config::file::{FILENAME, ignored, located, notes};
+use crate::contract::check::Activation;
 use crate::contract::project::Project;
 use crate::engine::against::against;
 use crate::engine::document::{Args, CheckDocument, View};
@@ -39,6 +40,7 @@ pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error>
             false => View::Text,
         },
         footprint: diagnostics::footprint_requested(),
+        without_integrations: false,
     };
     run(&args, start, out)
 }
@@ -50,12 +52,29 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         }
     }
     let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
-    Ok(checked(args, start, loaded, out))
+    Ok(checked(args, start, loaded, out).finish(args, out))
 }
 
-/// One `klin check`: each run-scope step under the kind of error it can raise, every selected
-/// gate, and the check document or its text. Spec 7, 11.3, 11.7.
-fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut String) -> u8 {
+/// The check document of a whole `klin check` from `start`, which `setup` reads its baseline
+/// from. Spec 11.2, 11.7.
+pub fn document(start: &Path) -> CheckDocument {
+    let args = Args {
+        view: View::Json,
+        without_integrations: true,
+        ..Args::default()
+    };
+    let loaded = Project::load(None, start, &catalogue::sections());
+    checked(&args, start, loaded, &mut String::new())
+}
+
+/// One `klin check`: each run-scope step under the kind of error it can raise, and every
+/// selected gate, as the check document. Spec 7, 11.3, 11.7.
+fn checked(
+    args: &Args,
+    start: &Path,
+    loaded: Result<Project, Error>,
+    out: &mut String,
+) -> CheckDocument {
     let located = located(args.config.as_deref(), start);
     let named_nothing =
         args.config.is_some() && !located.as_ref().is_some_and(|file| file.exists());
@@ -85,7 +104,7 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
         }
         report.stop(fault);
     }
-    report.finish(args, out)
+    report
 }
 
 fn measured(
@@ -106,7 +125,14 @@ fn measured(
         report.note(note);
     }
     let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
-    let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
+    let (mut wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
+    if args.without_integrations {
+        let (integrations, kept): (Vec<&Gate>, Vec<&Gate>) = wanted
+            .into_iter()
+            .partition(|gate| gate.check.activation == Activation::Integration);
+        report.skip(&integrations);
+        wanted = kept;
+    }
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
     Ok(())

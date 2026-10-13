@@ -5,7 +5,7 @@ use serde_json::{Map, Value, json};
 
 use crate::config;
 use crate::contract;
-use crate::contract::check::{Activation, Derivation, Told};
+use crate::contract::check::{Activation, Count, Derivation, Told, Unit};
 use crate::contract::project::Project;
 use crate::engine::plan::{Gate, Plan, State};
 use crate::engine::{catalogue, render};
@@ -143,19 +143,98 @@ struct Capability<'a> {
     name: &'a str,
     check: &'static catalogue::Row,
     state: State,
+    judges: Judged,
     lines: Vec<String>,
     values: Vec<Value>,
     limitations: Vec<&'static str>,
 }
 
+/// What one capability judges in this tree, counted in its check's unit. Spec 11.6.
+struct Judged {
+    unit: Unit,
+    what: Selection,
+}
+
+/// How much of the tree a capability selects.
+enum Selection {
+    /// A capability that runs, with the size of its selection.
+    Counted(usize),
+    /// A capability that does not run, which judges nothing, and why.
+    Idle(&'static str),
+    /// An integration, whose report names the files only a run reads.
+    OnlyARunCounts,
+    /// A capability whose section a person must settle before a run judges any file.
+    Unsettled(String),
+}
+
+impl Judged {
+    fn idle(check: &catalogue::Row, why: &'static str) -> Judged {
+        Judged {
+            unit: check.judges.unit,
+            what: Selection::Idle(why),
+        }
+    }
+
+    fn running(
+        check: &catalogue::Row,
+        project: &Project,
+        entry: Option<&str>,
+    ) -> Result<Judged, Fault> {
+        let what = match check.judges.count {
+            None => Selection::OnlyARunCounts,
+            Some(count) => match count(project, entry).map_err(fault(ErrorKind::Configuration))? {
+                Count::Selected(count) => Selection::Counted(count),
+                Count::Unsettled(why) => Selection::Unsettled(why),
+            },
+        };
+        Ok(Judged {
+            unit: check.judges.unit,
+            what,
+        })
+    }
+
+    fn line(&self) -> String {
+        let unit = self.unit;
+        match &self.what {
+            Selection::Counted(count) => {
+                format!("judges: {count} {} in this tree", unit.count(*count))
+            }
+            Selection::Idle(reason) => format!("judges: 0 {}, because {reason}", unit.name()),
+            Selection::OnlyARunCounts => format!(
+                "judges: the {} its report names, which only a run counts",
+                unit.name()
+            ),
+            Selection::Unsettled(why) => {
+                format!("judges: no file until a person settles this: {why}")
+            }
+        }
+    }
+
+    fn json(&self) -> Value {
+        let (count, reason) = match &self.what {
+            Selection::Counted(count) => (Some(*count), None),
+            Selection::Idle(reason) => (Some(0), Some(reason.to_string())),
+            Selection::OnlyARunCounts => (None, None),
+            Selection::Unsettled(why) => (None, Some(why.clone())),
+        };
+        json!({ "count": count, "of": self.unit.name(), "reason": reason })
+    }
+}
+
 impl<'a> Capability<'a> {
     /// A capability that does not run, which says only what limits it.
-    fn inactive(name: &'a str, check: &'static catalogue::Row, state: State) -> Capability<'a> {
+    fn inactive(
+        name: &'a str,
+        check: &'static catalogue::Row,
+        state: State,
+        why: &'static str,
+    ) -> Capability<'a> {
         let limitations = limitations(check, &Map::new());
         Capability {
             name,
             check,
             state,
+            judges: Judged::idle(check, why),
             lines: limitation_lines(&limitations),
             values: Vec::new(),
             limitations,
@@ -170,6 +249,7 @@ impl<'a> Capability<'a> {
             "activation": self.check.activation.name(),
             "placement": self.check.placement.names(),
             "state": self.state.name(),
+            "judges": self.judges.json(),
             "values": self.values,
             "limitations": self.limitations,
         })
@@ -183,6 +263,7 @@ impl<'a> Capability<'a> {
             self.check.placement.names().join(", ")
         );
         let _ = writeln!(out, "{UNDER}activation: {}", self.check.activation.name());
+        let _ = writeln!(out, "{UNDER}{}", self.judges.line());
         for line in &self.lines {
             let _ = writeln!(out, "{UNDER}{line}");
         }
@@ -288,7 +369,12 @@ fn inactive<'a>(args: &Policy, plan: &'a Plan) -> Vec<Capability<'a>> {
             let check = catalogue::CATALOGUE
                 .iter()
                 .find(|check| check.name == name)?;
-            Some(Capability::inactive(name, check, State::Excluded))
+            Some(Capability::inactive(
+                name,
+                check,
+                State::Excluded,
+                "a person set it to false",
+            ))
         });
     let needed = plan
         .needs_a_section
@@ -299,7 +385,7 @@ fn inactive<'a>(args: &Policy, plan: &'a Plan) -> Vec<Capability<'a>> {
                 Activation::Automatic => State::NotApplicable,
                 Activation::Policy | Activation::Integration => State::NeedsPolicy,
             };
-            Capability::inactive(check.name, check, state)
+            Capability::inactive(check.name, check, state, check.judges.absent)
         });
     excluded.chain(needed).collect()
 }
@@ -351,6 +437,7 @@ fn capability<'a>(
         name: &gate.name,
         check,
         state: State::Active,
+        judges: Judged::running(check, project, args.entry.as_deref())?,
         lines,
         values,
         limitations,

@@ -1,4 +1,5 @@
 pub mod agent;
+pub mod baseline;
 pub mod check;
 pub mod policy;
 pub mod report;
