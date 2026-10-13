@@ -1563,18 +1563,32 @@ fn module_suffixes_a_config_writes_or_inherits_leave_its_aliases_a_hole() {
 }
 
 #[test]
-fn a_child_that_writes_empty_module_suffixes_overrides_its_parent() {
-    let tree = Tree::new();
-    tree.write(
-        "base.json",
-        r#"{"compilerOptions":{"moduleSuffixes":[".native"]}}"#,
-    );
-    let run = an_alias_from_model_to_view(
-        &tree,
-        r#"{"extends":"./base.json","compilerOptions":{"baseUrl":".","paths":{"@/*":["web/*"]},"moduleSuffixes":[""]},"include":["**/*.ts"],"exclude":[]}"#,
-    );
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("model → view"), "{}", run.out);
+fn empty_module_suffixes_nearer_the_child_override_a_parent() {
+    let paths = r#""baseUrl":".","paths":{"@/*":["web/*"]}"#;
+    let roots = r#""include":["**/*.ts"],"exclude":[]"#;
+    for (middle, suffixes, extends) in [
+        (None, r#","moduleSuffixes":[""]"#, "./base.json"),
+        (None, r#","moduleSuffixes":[]"#, "./base.json"),
+        (
+            Some(r#"{"extends":"./base.json","compilerOptions":{"moduleSuffixes":[""]}}"#),
+            "",
+            "./middle.json",
+        ),
+    ] {
+        let tree = Tree::new();
+        tree.write(
+            "base.json",
+            r#"{"compilerOptions":{"moduleSuffixes":[".native"]}}"#,
+        );
+        if let Some(middle) = middle {
+            tree.write("middle.json", middle);
+        }
+        let config =
+            format!(r#"{{"extends":"{extends}","compilerOptions":{{{paths}{suffixes}}},{roots}}}"#);
+        let run = an_alias_from_model_to_view(&tree, &config);
+        assert_eq!(run.code, 1, "{config}: {}", run.out);
+        assert!(run.says("model → view"), "{config}: {}", run.out);
+    }
 }
 
 #[test]

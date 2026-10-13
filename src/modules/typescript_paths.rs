@@ -376,10 +376,11 @@ fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
         if !seen.insert(parent.clone()) {
             continue;
         }
-        if suffixed(value) == Some(true) {
-            return true;
+        match suffixed(value) {
+            Some(true) => return true,
+            Some(false) => {}
+            None => pending.extend(parents(&parent, value)),
         }
-        pending.extend(parents(&parent, value));
     }
     false
 }
