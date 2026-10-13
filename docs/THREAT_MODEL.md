@@ -47,6 +47,11 @@ other file the coding agent can edit through its host.
 
 - klin reads this tree and reports what changed in it.
 - The guard can answer `deny` or `ask` on a tool call the host routes to it.
+- An edit tool call on `klin.json` passes only after the person replies
+  `approve <code>` to a code klin sent to the person alone (SPEC 10.8.2,
+  ADR 0074). The agent can read the state directory and may reach a host
+  transcript, so this is feedback too, and a proven shell write of
+  `klin.json` is always a deny.
 - The guarded set is exactly two things: this tree's `klin.json`, and this
   tree's own state directory, which is `.git/klin` unless `KLIN_STATE_DIR`
   names another place. A host's hook file, CODEOWNERS, a check's own

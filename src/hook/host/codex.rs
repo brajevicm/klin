@@ -2,19 +2,23 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
+use crate::hook::rewrite::{Chunk, Rewrite};
+
+use super::adapter::{
+    Adapter, Decision, Event, flag, input, plugin_named_klin, referred, refused, text,
+};
 
 /// The field Codex CLI adds to every turn-scoped event and Claude Code never sends.
 /// `permission_mode` is not it: both hosts send that one.
 const TURN: &str = "turn_id";
 const PATCH: &str = "apply_patch";
+const ADD: &str = "*** Add File: ";
+const UPDATE: &str = "*** Update File: ";
+const MOVE: &str = "*** Move to: ";
 /// The headers of the patch language that name a file. The text below them is data.
-const HEADERS: &[&str] = &[
-    "*** Add File: ",
-    "*** Delete File: ",
-    "*** Update File: ",
-    "*** Move to: ",
-];
+const HEADERS: &[&str] = &[ADD, "*** Delete File: ", UPDATE, MOVE];
+const END_OF_FILE: &str = "*** End of File";
+const END_OF_PATCH: &str = "*** End Patch";
 
 /// The file Codex lists its enabled plugins in, beside the hook file. Each plugin is a table
 /// named `[plugins."name@marketplace"]`, on by default and off under `enabled = false`.
@@ -67,13 +71,14 @@ impl Adapter for Codex {
     fn event(&'static self, payload: &Value) -> Event {
         let tool = text(payload.get("tool_name"));
         let command = input(payload, "command");
-        let (file_paths, command) = match tool == PATCH {
-            true => (patch_paths(&command), String::new()),
+        let (rewrites, command) = match tool == PATCH {
+            true => (patch_rewrites(&command), String::new()),
             false => (Vec::new(), command),
         };
         Event {
             tool,
-            file_paths,
+            file_paths: rewrites.iter().map(|(path, _)| path.clone()).collect(),
+            rewrites,
             command,
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
@@ -91,6 +96,7 @@ impl Adapter for Codex {
                 "klin: refused — {reason} Codex CLI has no question to ask on this event."
             )),
             Decision::Deny(reason) => refused(reason),
+            Decision::Refer { reason, person } => referred(reason, person),
         }
     }
 }
@@ -129,12 +135,96 @@ fn disabled(line: &str) -> bool {
     key.trim() == "enabled" && value.trim().starts_with("false")
 }
 
-fn patch_paths(patch: &str) -> Vec<String> {
-    patch
-        .lines()
-        .filter_map(|line| HEADERS.iter().find_map(|header| line.strip_prefix(header)))
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(str::to_string)
-        .collect()
+/// Each file a patch names, with what it writes there. A file the patch deletes or moves, and
+/// a section klin cannot read, is unread. Spec 10.8.2.
+fn patch_rewrites(patch: &str) -> Vec<(String, Rewrite)> {
+    let mut sections: Vec<(String, Rewrite)> = Vec::new();
+    for line in patch.lines() {
+        let Some((header, path)) = HEADERS
+            .iter()
+            .find_map(|header| line.strip_prefix(header).map(|path| (*header, path.trim())))
+        else {
+            if let Some((_, rewrite)) = sections.last_mut() {
+                read_body(rewrite, line);
+            }
+            continue;
+        };
+        if header == MOVE
+            && let Some((_, moved)) = sections.last_mut()
+        {
+            *moved = Rewrite::Unread;
+        }
+        let rewrite = match header {
+            ADD => Rewrite::Whole(String::new()),
+            UPDATE => Rewrite::Patched(Vec::new()),
+            _ => Rewrite::Unread,
+        };
+        if !path.is_empty() {
+            sections.push((path.to_string(), rewrite));
+        }
+    }
+    sections
+}
+
+/// One line under a section's header, in the patch language: `+` lines of a file it adds, and
+/// `@@` chunks of context, `-` and `+` lines of a file it updates. Anything else leaves the
+/// section unread.
+fn read_body(rewrite: &mut Rewrite, line: &str) {
+    if line == END_OF_PATCH {
+        return;
+    }
+    let read = match rewrite {
+        Rewrite::Whole(text) => line.strip_prefix('+').map(|added| {
+            text.push_str(added);
+            text.push('\n');
+        }),
+        Rewrite::Patched(chunks) => chunk_line(chunks, line),
+        _ => Some(()),
+    };
+    if read.is_none() {
+        *rewrite = Rewrite::Unread;
+    }
+}
+
+fn chunk_line(chunks: &mut Vec<Chunk>, line: &str) -> Option<()> {
+    if line == END_OF_FILE {
+        chunks.last_mut()?.end = true;
+        return Some(());
+    }
+    if let Some(marker) = line.strip_prefix("@@") {
+        chunks.push(Chunk {
+            anchor: anchor(marker)?,
+            ..Chunk::default()
+        });
+        return Some(());
+    }
+    if chunks.is_empty() {
+        chunks.push(Chunk::default());
+    }
+    changed_line(chunks.last_mut()?, line)
+}
+
+/// The line a `@@` marker names for its chunk to seek first: none for a bare `@@`, and the text
+/// after `@@ ` otherwise. Any other marker is unread.
+fn anchor(marker: &str) -> Option<Option<String>> {
+    match marker {
+        "" => Some(None),
+        marker => marker.strip_prefix(' ').map(|line| Some(line.to_string())),
+    }
+}
+
+/// A line of context, a line the chunk removes, or a line it adds. An empty line is context.
+fn changed_line(chunk: &mut Chunk, line: &str) -> Option<()> {
+    let mut chars = line.chars();
+    let (sign, text) = (chars.next(), chars.as_str().to_string());
+    match sign {
+        None | Some(' ') => {
+            chunk.old.push(text.clone());
+            chunk.new.push(text);
+        }
+        Some('-') => chunk.old.push(text),
+        Some('+') => chunk.new.push(text),
+        Some(_) => return None,
+    }
+    Some(())
 }

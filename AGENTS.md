@@ -36,9 +36,11 @@ to a CLI test once a shipped language reaches it.
 
 ## The rules klin enforces on itself
 
-Do not edit `klin.json` or the hooks to make a gate pass, and do not add an
-entry to the `accepted` list. That list records debt a person accepted. Only a
-person writes it, in a reviewed commit. A gate that fails names code to fix.
+Edit `klin.json` only when the person asks for that change, and only through
+the approval klin asks the person for (`docs/SPEC.md` 10.8.2). Never edit it
+or the hooks on your own to make a gate pass, and never add an `accepted`
+entry the person did not ask for. That list records debt a person approved,
+in the session or in review. A gate that fails names code to fix.
 
 ## Agent skills
 

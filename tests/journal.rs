@@ -638,19 +638,20 @@ fn a_guard_deny_for_the_state_directory_appends_a_line_with_state_write() {
     assert_eq!(field(line, &["reason"]), "state-write", "{line}");
 }
 
+/// A shell command never changes the configuration, so its proven write is a deny. Spec 10.8.2.
 #[test]
-fn a_guard_ask_naming_the_configuration_appends_a_line_with_config_mention() {
+fn a_guard_deny_naming_the_configuration_appends_a_line_with_config_mention() {
     let tree = tree(EVERY_GATE);
     let run = guard(
         &tree,
         r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#,
     );
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
 
     let lines = journal(&tree);
     let line = &lines[0];
     assert_eq!(field(line, &["kind"]), "guard", "{line}");
-    assert_eq!(field(line, &["decision"]), "ask", "{line}");
+    assert_eq!(field(line, &["decision"]), "deny", "{line}");
     assert_eq!(field(line, &["reason"]), "config-mention", "{line}");
 }
 
@@ -698,7 +699,7 @@ fn an_ask_a_host_delivers_as_a_refusal_is_journaled_as_a_deny() {
     let run = guard(
         &tree,
         r#"{"turn_id": "t-1", "tool_name": "Bash", "session_id": "s-8",
-            "tool_input": {"command": "rm klin.json"}}"#,
+            "tool_input": {"command": "rm .git/klin/turn"}}"#,
     );
     assert_eq!(run.code, 2, "{}", run.out);
 
@@ -707,7 +708,7 @@ fn an_ask_a_host_delivers_as_a_refusal_is_journaled_as_a_deny() {
     assert_eq!(field(line, &["kind"]), "guard", "{line}");
     assert_eq!(field(line, &["session"]), "s-8", "{line}");
     assert_eq!(field(line, &["decision"]), "deny", "{line}");
-    assert_eq!(field(line, &["reason"]), "config-mention", "{line}");
+    assert_eq!(field(line, &["reason"]), "state-mention", "{line}");
 }
 
 #[test]

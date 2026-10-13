@@ -1,3 +1,4 @@
+pub mod approval;
 pub mod budget;
 pub mod build;
 mod copy;
@@ -7,6 +8,7 @@ pub mod host;
 pub mod journal;
 mod lexer;
 pub mod radius;
+pub mod rewrite;
 pub mod stats;
 pub mod stop;
 pub mod turn;

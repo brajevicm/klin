@@ -453,8 +453,12 @@ impl Audit {
 
 /// What a guard line's reason names, in the person's words. A reason this binary does not know
 /// reads as a tool call. Spec 11.4.
-const GUARDED: [(&str, &str); 6] = [
+const GUARDED: [(&str, &str); 7] = [
     ("config-write", "an edit to klin.json"),
+    (
+        "config-approval",
+        "an edit to klin.json klin asked you to approve",
+    ),
     ("state-write", "an edit to klin's own state"),
     ("config-mention", "a command that named klin.json"),
     ("state-mention", "a command that named klin's own state"),

@@ -57,12 +57,23 @@ fn denied(run: &Run, what: &str) {
     assert!(run.says("refused"), "{what}: {}", run.out);
 }
 
-/// An ask is exit 0 with the decision on stdout, and its reason quotes what matched.
+/// A proven shell write. On the configuration it is a deny with no approval, because only an
+/// edit the person approves changes it. On klin's own state it is an ask, exit 0 with the
+/// decision on stdout. Either reason quotes what matched. Spec 10.8.2.
 #[track_caller]
 fn asked(run: &Run, quoted: &str, what: &str) {
-    assert_eq!(run.code, 0, "{what}: {}", run.out);
-    assert!(run.says(ASK), "{what}: {}", run.out);
-    assert!(run.says(&format!(r#"\"{quoted}\""#)), "{what}: {}", run.out);
+    match quoted.ends_with("klin.json") {
+        true => {
+            denied(run, what);
+            assert!(!run.says(ASK), "{what}: {}", run.out);
+            assert!(run.says(&format!("\"{quoted}\"")), "{what}: {}", run.out);
+        }
+        false => {
+            assert_eq!(run.code, 0, "{what}: {}", run.out);
+            assert!(run.says(ASK), "{what}: {}", run.out);
+            assert!(run.says(&format!(r#"\"{quoted}\""#)), "{what}: {}", run.out);
+        }
+    }
 }
 
 #[track_caller]

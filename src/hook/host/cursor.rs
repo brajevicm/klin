@@ -197,7 +197,7 @@ impl Adapter for Cursor {
             Decision::Ask(reason) => deny(&format!(
                 "klin: refused — {reason} Cursor did not enforce a question on this event."
             )),
-            Decision::Deny(reason) => deny(reason),
+            Decision::Deny(reason) | Decision::Refer { reason, .. } => deny(reason),
         }
     }
 

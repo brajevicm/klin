@@ -27,13 +27,13 @@ const AN_AMBIGUOUS_COMMAND: &str = r#"{
   "hook_event_name": "PreToolUse",
   "session_id": "s1",
   "tool_name": "Bash",
-  "tool_input": {"command": "rm klin.json"}
+  "tool_input": {"command": "rm .git/klin/turn"}
 }"#;
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 /// Claude Code sends `permission_mode` on most events, and so does Codex. Only `turn_id` is Codex's.
-const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm klin.json"}}"#;
+const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm .git/klin/turn"}}"#;
 /// Codex CLI's event shape, from its hooks reference. `docs/HOST_COMPATIBILITY.md` records
 /// which Codex version last carried it.
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
@@ -43,7 +43,7 @@ const A_CODEX_THIRD_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1",
 /// Cursor's event shape, measured on Cursor 3.20.21 on 2026-09-16; the payloads carry that
 /// version. `docs/cursor-compatibility.md` holds the measurements, `docs/HOST_COMPATIBILITY.md`
 /// the support row.
-const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm klin.json"}}"#;
+const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm .git/klin/turn"}}"#;
 const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
 const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;
 const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
@@ -97,12 +97,12 @@ fn an_ambiguous_call_asks_claude_and_denies_a_host_without_ask() {
     let asked = guard(&["--host", "claude"], AN_AMBIGUOUS_COMMAND);
     assert_eq!(asked.code, 0, "{}", asked.out);
     assert!(asked.says(r#""permissionDecision":"ask""#), "{}", asked.out);
-    assert!(asked.says("klin.json"), "{}", asked.out);
+    assert!(asked.says(".git/klin/turn"), "{}", asked.out);
 
     let denied = guard(&["--host", "borg"], AN_AMBIGUOUS_COMMAND);
     assert_eq!(denied.code, 2, "{}", denied.out);
     assert!(!denied.says("permissionDecision"), "{}", denied.out);
-    assert!(denied.says("klin.json"), "{}", denied.out);
+    assert!(denied.says(".git/klin/turn"), "{}", denied.out);
 }
 
 #[test]
@@ -761,7 +761,7 @@ fn a_named_host_it_does_not_know_is_read_as_claude_and_says_so() {
 #[test]
 fn a_codex_event_uses_codex_decisions_for_shell_and_mcp_calls() {
     for name in ["Bash", "mcp__server__tool"] {
-        let run = guard(&[], &codex(name, "rm klin.json"));
+        let run = guard(&[], &codex(name, "rm .git/klin/turn"));
         assert_eq!(run.code, 2, "{name}: {}", run.out);
         assert!(run.says("no question to ask"), "{name}: {}", run.out);
     }

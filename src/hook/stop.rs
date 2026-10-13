@@ -23,7 +23,7 @@ use crate::sys::error::{Error, ErrorKind, Fault, fault};
 use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
-    hook::{build, handoff, journal, stats, turn},
+    hook::{approval, build, handoff, journal, stats, turn},
     sys::{
         clock, release,
         release::{Audience, News, Route},
@@ -73,6 +73,7 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         "klin: nothing judged — {problem}. Only a person edits that file, so this stop blocks \
          nothing."
     );
+    approval::ended(root);
     let mut log = journal::Stop::begun(Some(event), "invalid".to_string());
     let lock = state::ready(root)
         .ok()
@@ -156,6 +157,9 @@ fn stopped(
     torn_down(project, &mut log);
     let exit = exit_code(code, event.as_ref());
     log.blocked = code == BLOCKED;
+    if !log.blocked {
+        approval::ended(root);
+    }
     let moved = log.advisory.is_some();
     let advised = matches!(leaves, Leaves::Fresh);
     let fresh = fresh.filter(|_| advised);

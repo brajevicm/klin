@@ -116,7 +116,10 @@ fn a_generic_pre_tool_reads_no_write_out_of_a_tool_name() {
 #[test]
 fn a_generic_ambiguous_command_fails_closed_instead_of_asking() {
     let tree = failing();
-    let run = guard(&tree, json!({"tool": "shell", "command": "rm klin.json"}));
+    let run = guard(
+        &tree,
+        json!({"tool": "shell", "command": "rm .git/klin/turn"}),
+    );
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
