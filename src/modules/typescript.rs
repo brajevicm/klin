@@ -8,7 +8,6 @@
 use std::collections::BTreeMap;
 
 use super::resolver::{Attachment, Builder, Topology, directory, joined};
-use super::typescript_paths::relative;
 
 /// Each script extension with the TypeScript extensions a specifier written with it stands for.
 const STANDS_FOR: &[(&str, &[&str])] = &[
@@ -239,6 +238,10 @@ fn package_name(specifier: &str) -> bool {
         Some(name) => named(name),
         None => false,
     }
+}
+
+fn relative(specifier: &str) -> bool {
+    matches!(specifier, "." | "..") || specifier.starts_with("./") || specifier.starts_with("../")
 }
 
 /// The TypeScript files a relative specifier may name, joined to the importing file's directory.

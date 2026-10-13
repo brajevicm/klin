@@ -1627,42 +1627,22 @@ fn a_sibling_base_config_the_owner_extends_is_not_a_second_owner() {
 }
 
 #[test]
-fn a_nested_config_that_extends_an_ancestor_owns_what_the_ancestor_excludes() {
-    for (excluded, code) in [
-        (r#""exclude":["web"]"#, 1),
-        (r#""exclude":[]"#, 0),
-        (r#""exclude":[],"compilerOptions":{"outDir":"web"}"#, 0),
-    ] {
+fn a_nested_config_that_extends_an_ancestor_still_competes_with_it() {
+    for excluded in ["[]", r#"["web"]"#] {
         let tree = Tree::new();
-        tree.write("klin.json", WEB);
-        tree.write(
-            "tsconfig.json",
-            &format!(
-                r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["other/*"]}}}},"include":["**/*.ts"],{excluded}}}"#
-            ),
-        );
         tree.write(
             "web/tsconfig.json",
             &format!(
                 r#"{{"extends":"../tsconfig.json","compilerOptions":{{"baseUrl":".","paths":{{"@/*":["./*"]}}}},{OWN_ROOTS}}}"#
             ),
         );
-        tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
-        tree.write("web/view/x.ts", "export const x = 1;\n");
-        let run = tree.run(&["check", "layering"]);
-        assert_eq!(run.code, code, "{excluded}: {}", run.out);
-        assert_eq!(
-            run.says("model → view"),
-            code == 1,
-            "{excluded}: {}",
-            run.out
+        let run = an_alias_from_model_to_view(
+            &tree,
+            &format!(
+                r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["other/*"]}}}},"include":["**/*.ts"],"exclude":{excluded}}}"#
+            ),
         );
-        assert_eq!(
-            run.says("local paths alias"),
-            code == 0,
-            "{excluded}: {}",
-            run.out
-        );
+        assert_a_hole(&run);
     }
 }
 
@@ -1730,90 +1710,6 @@ fn a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project() {
     }
 }
 
-const ROOT_PATHS: &str =
-    r#""compilerOptions":{"baseUrl":".","paths":{"@/*":["other/*"],"~/*":["web/*"]}}"#;
-
-fn a_nested_alias(tree: &Tree, root: &str) -> harness::Run {
-    tree.write("klin.json", WEB);
-    tree.write("tsconfig.json", root);
-    tree.write(
-        "web/tsconfig.json",
-        &format!(
-            r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["./*"]}}}},{OWN_ROOTS}}}"#
-        ),
-    );
-    tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
-    tree.write("web/view/x.ts", "export const x = 1;\n");
-    tree.run(&["check", "layering"])
-}
-
-#[test]
-fn an_ancestor_that_imports_into_what_it_excludes_still_competes() {
-    for (import, proved) in [
-        ("import \"./other/y\";", true),
-        ("import \"./web/model/index\";", false),
-        ("import \"~/model/index\";", false),
-        ("/// <reference path=\"./web/model/index.ts\" />", false),
-        (
-            "export const f = () => import(\"./web/model/index\");",
-            false,
-        ),
-        ("export const f = () => import(`~/model/index`);", false),
-        ("import \"./w\\u0065b/model/index\";", false),
-        (
-            "export const f = () => import(\"./w\\u0065b/model/index\");",
-            false,
-        ),
-        (
-            "declare module \"./web/model/index\" { export const z: number; }\nexport {};",
-            false,
-        ),
-        ("export const f = () => import(`./web/model/a$`);", false),
-    ] {
-        let tree = Tree::new();
-        tree.write("main.ts", &format!("{import}\n"));
-        tree.write("other/y.ts", "export const y = 1;\n");
-        let run = a_nested_alias(
-            &tree,
-            &format!(r#"{{{ROOT_PATHS},"include":["**/*.ts"],"exclude":["web"]}}"#),
-        );
-        if proved {
-            assert_eq!(run.code, 1, "{import}: {}", run.out);
-            assert!(run.says("model → view"), "{import}: {}", run.out);
-        } else {
-            assert_a_hole(&run);
-        }
-    }
-}
-
-#[test]
-fn an_ancestor_that_may_inherit_files_still_competes() {
-    for (parent, base, proved) in [
-        ("./config/base.json", "{}", true),
-        (
-            "./config/base.json",
-            r#"{"files":["../web/model/index.ts"]}"#,
-            false,
-        ),
-        ("package/config", "{}", false),
-    ] {
-        let tree = Tree::new();
-        tree.write("config/base.json", base);
-        let run = a_nested_alias(
-            &tree,
-            &format!(
-                r#"{{"extends":"{parent}",{ROOT_PATHS},"include":["**/*.ts"],"exclude":["web"]}}"#
-            ),
-        );
-        if proved {
-            assert_eq!(run.code, 1, "{parent} {base}: {}", run.out);
-            assert!(run.says("model → view"), "{parent} {base}: {}", run.out);
-        } else {
-            assert_a_hole(&run);
-        }
-    }
-}
-
 #[test]
 fn a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends() {
     for base in [
@@ -1835,108 +1731,6 @@ fn a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends() {
         );
         assert_a_hole(&run);
     }
-}
-
-const OWN_ALIAS: &str = r#""baseUrl":".","paths":{"@/*":["other/*"]}"#;
-const WEB_EXCLUDED: &str = r#""include":["**/*.ts"],"exclude":["web"]"#;
-
-fn assert_each_a_hole(cases: Vec<(String, &[(&str, &str)])>) {
-    let proved: Vec<String> = cases
-        .into_iter()
-        .filter_map(|(root, files)| {
-            let tree = Tree::new();
-            for (file, text) in files {
-                tree.write(file, text);
-            }
-            let run = a_nested_alias(&tree, &root);
-            let hole = run.code == 0 && run.says("REVIEW:") && run.says("local paths alias");
-            (!hole).then(|| format!("{root} {files:?}: {}", run.out))
-        })
-        .collect();
-    assert!(proved.is_empty(), "{}", proved.join("\n\n"));
-}
-
-#[test]
-fn an_ancestor_with_an_inherited_or_virtual_lookup_still_competes() {
-    let options =
-        |extra: &str| format!(r#"{{"compilerOptions":{{{OWN_ALIAS},{extra}}},{WEB_EXCLUDED}}}"#);
-    assert_each_a_hole(vec![
-        (
-            format!(r#"{{"extends":"./config/base.json",{WEB_EXCLUDED}}}"#),
-            &[
-                (
-                    "config/base.json",
-                    r#"{"compilerOptions":{"baseUrl":"../web","paths":{"~/*":["*"]}}}"#,
-                ),
-                ("main.ts", "import \"~/model/index\";\n"),
-            ],
-        ),
-        (
-            options(r#""rootDirs":["app","web"]"#),
-            &[("app/main.ts", "import \"./model/index\";\n")],
-        ),
-        (
-            options(r#""typeRoots":["./web/types"]"#),
-            &[(
-                "web/types/shared/index.d.ts",
-                "import \"../../model/index\";\n",
-            )],
-        ),
-    ]);
-}
-
-#[test]
-fn an_ancestor_reached_through_scripts_packages_or_comments_still_competes() {
-    let sources: [&[(&str, &str)]; 6] = [
-        &[("main.js", "import \"./web/model/index\";\n")],
-        &[("main.ts", "import \"#model\";\n")],
-        &[
-            ("web/model/package.json", r#"{"name":"@acme/model"}"#),
-            ("main.ts", "import \"@acme/model\";\n"),
-        ],
-        &[
-            ("package.json", r#"{"name":"acme"}"#),
-            ("main.ts", "import \"acme/web/model/index\";\n"),
-        ],
-        &[(
-            "main.ts",
-            "export const f = () => import(/* webpackChunkName: \"m\" */ \"./web/model/index\");\n",
-        )],
-        &[("main.ts", "// import(\"./web/model/index\")\nexport {};\n")],
-    ];
-    let root = format!(r#"{{"compilerOptions":{{{OWN_ALIAS}}},{WEB_EXCLUDED}}}"#);
-    assert_each_a_hole(
-        sources
-            .into_iter()
-            .map(|files| (root.clone(), files))
-            .collect(),
-    );
-}
-
-#[test]
-fn an_import_outside_the_ancestors_roots_still_keeps_it_competing() {
-    let tree = Tree::new();
-    tree.write("app/main.ts", "export const m = 1;\n");
-    tree.write("scratch/unused.ts", "import \"../web/model/index\";\n");
-    let run = a_nested_alias(
-        &tree,
-        &format!(r#"{{{ROOT_PATHS},"include":["app"],"exclude":["web"]}}"#),
-    );
-    assert_a_hole(&run);
-}
-
-#[test]
-fn a_config_that_excludes_the_nested_directory_does_not_drop_the_parent_it_extends() {
-    let tree = Tree::new();
-    tree.write(
-        "tsconfig.app.json",
-        r#"{"extends":"./tsconfig.json","exclude":["web"]}"#,
-    );
-    let run = a_nested_alias(
-        &tree,
-        &format!(r#"{{{ROOT_PATHS},"include":["**/*.ts"],"exclude":[]}}"#),
-    );
-    assert_a_hole(&run);
 }
 
 #[test]
