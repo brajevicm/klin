@@ -204,9 +204,33 @@ fn failure_output_names_the_fix_and_no_command_that_records_debt() {
 
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("Fix what the escape hides"), "{}", run.out);
+    assert!(
+        run.says("Handle the error instead of unwrapping"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("--write-baseline"), "{}", run.out);
     assert!(!run.says("Tighten"), "{}", run.out);
+}
+
+/// Spec 10.6.
+#[test]
+fn each_escape_kind_gets_its_own_remedy() {
+    let tree = tree();
+    tree.write("src/a.ts", "export const a = b as any;\n");
+
+    let typed = tree.run(&["check", "escapes"]);
+    assert_eq!(typed.code, 1, "{}", typed.out);
+    assert!(typed.says("Give the value its real type"), "{}", typed.out);
+    assert!(!typed.says("unwrap"), "{}", typed.out);
+
+    tree.remove("src/a.ts");
+    tree.write("src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
+
+    let erred = tree.run(&["check", "escapes"]);
+    assert_eq!(erred.code, 1, "{}", erred.out);
+    assert!(erred.says("Handle the error"), "{}", erred.out);
+    assert!(!erred.says("real type"), "{}", erred.out);
 }
 
 fn spread() -> Tree {
