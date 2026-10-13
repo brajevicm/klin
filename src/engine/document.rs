@@ -440,6 +440,15 @@ impl Measured {
     }
 }
 
+/// One capability as `setup` reports it: how many findings it holds as the floor, and how many
+/// files it measured of the ones it found where it counts files. Spec 11.2.
+pub struct Floor {
+    pub gate: String,
+    pub runs: bool,
+    pub findings: usize,
+    pub coverage: Option<(usize, usize)>,
+}
+
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
 pub struct CheckDocument {
@@ -532,6 +541,39 @@ impl CheckDocument {
         self.stopped = true;
         self.problems
             .push(Problem::of_run(fault.kind, &fault.error.to_string()));
+    }
+
+    /// What `setup` says the run holds as its floor: each capability in the run's order, with the
+    /// findings the ratchet passed and the ones it did not, and what it measured of what it found.
+    /// The run's error where one stopped it before any capability measured. Spec 11.2.
+    pub fn floor(&self) -> Result<Vec<Floor>, String> {
+        if let Some(problem) = self
+            .problems
+            .iter()
+            .find(|p| self.stopped && p.check.is_none())
+        {
+            return Err(problem.message.clone());
+        }
+        Ok(self
+            .capabilities
+            .iter()
+            .map(|row| Floor {
+                gate: row.name.clone(),
+                runs: matches!(row.state, State::Active),
+                findings: row.held.map_or(0, |held| held as usize) + self.failing(&row.name),
+                coverage: row
+                    .coverage
+                    .as_ref()
+                    .map(|counts| (counts.measured, counts.found)),
+            })
+            .collect())
+    }
+
+    fn failing(&self, gate: &str) -> usize {
+        self.findings
+            .iter()
+            .filter(|finding| finding.failing() && finding.check.as_deref() == Some(gate))
+            .count()
     }
 
     /// How many gates failed, counting the built-in row of the lost files. Spec 10.4.

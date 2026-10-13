@@ -4,7 +4,7 @@
 //! no check names the catalogue. ADR 0036.
 
 use crate::config::key::{Key, Languages, Section, SectionShape};
-use crate::contract::check::{Activation, Derivation, Judges, Needs, Placement, Run};
+use crate::contract::check::{Activation, Derivation, Judges, Needs, Placement, Run, Unit};
 use crate::contract::project::Project;
 use crate::{
     checks::{
@@ -100,7 +100,7 @@ pub const CATALOGUE: &[Row] = &[
         run: doc_size::gate,
         derivation: Derivation::Values(doc_size::derive),
         judges: Judges {
-            of: "documents",
+            unit: Unit::Documents,
             count: Some(doc_size::judges),
             absent: "the tree holds no agent instruction file",
         },
@@ -126,7 +126,7 @@ pub const CATALOGUE: &[Row] = &[
         run: doc_citations::gate,
         derivation: Derivation::Values(doc_citations::derive),
         judges: Judges {
-            of: "documents",
+            unit: Unit::Documents,
             count: Some(doc_citations::judges),
             absent: "the tree holds no document",
         },
@@ -152,7 +152,7 @@ pub const CATALOGUE: &[Row] = &[
         run: lockfile::gate,
         derivation: Derivation::Values(lockfile::derive),
         judges: Judges {
-            of: "manifests",
+            unit: Unit::Manifests,
             count: Some(lockfile::judges),
             absent: "the tree holds no manifest klin reads a lockfile for",
         },
@@ -178,7 +178,7 @@ pub const CATALOGUE: &[Row] = &[
         run: escapes::gate,
         derivation: Derivation::Nothing,
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(escapes::judges),
             absent: "the tree holds no source root",
         },
@@ -204,7 +204,7 @@ pub const CATALOGUE: &[Row] = &[
         run: stubs::gate,
         derivation: Derivation::Nothing,
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(stubs::judges),
             absent: "the tree holds no source root",
         },
@@ -230,7 +230,7 @@ pub const CATALOGUE: &[Row] = &[
         run: inventory::gate,
         derivation: Derivation::Values(inventory::derive),
         judges: Judges {
-            of: "test files",
+            unit: Unit::TestFiles,
             count: Some(inventory::judges),
             absent: "the tree holds no test root and no file its test convention marks",
         },
@@ -256,7 +256,7 @@ pub const CATALOGUE: &[Row] = &[
         run: complexity::gate,
         derivation: Derivation::Values(complexity::derive),
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(complexity::judges),
             absent: "the tree holds no source root",
         },
@@ -282,7 +282,7 @@ pub const CATALOGUE: &[Row] = &[
         run: dead_symbols::gate,
         derivation: Derivation::Nothing,
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(dead_symbols::judges),
             absent: "the tree holds no source root",
         },
@@ -308,7 +308,7 @@ pub const CATALOGUE: &[Row] = &[
         run: reachability::gate,
         derivation: Derivation::Values(reachability::derive),
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(reachability::judges),
             absent: "the tree holds no source root",
         },
@@ -334,7 +334,7 @@ pub const CATALOGUE: &[Row] = &[
         run: layering::gate,
         derivation: Derivation::Nothing,
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(layering::judges),
             absent: "it runs only under a section a person writes",
         },
@@ -360,7 +360,7 @@ pub const CATALOGUE: &[Row] = &[
         run: public_api::gate,
         derivation: Derivation::ExplainedWhenNamed(public_api::explain),
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(public_api::judges),
             absent: "the tree holds no source root",
         },
@@ -386,7 +386,7 @@ pub const CATALOGUE: &[Row] = &[
         run: conventions::gate,
         derivation: Derivation::Explained(conventions::report::explain),
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: Some(conventions::judges),
             absent: "it runs only under a section a person writes",
         },
@@ -412,7 +412,7 @@ pub const CATALOGUE: &[Row] = &[
         run: sarif::gate,
         derivation: Derivation::Nothing,
         judges: Judges {
-            of: "files",
+            unit: Unit::Files,
             count: None,
             absent: "it runs only under a section a person writes",
         },

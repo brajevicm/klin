@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use serde_json::{Value, json};
+use serde_json::json;
 
 use crate::config::file::{FILENAME, ignored, located, notes};
 use crate::contract::project::Project;
@@ -55,13 +55,13 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 
 /// The check document of a whole `klin check` from `start`, which `setup` reads its baseline
 /// from. Spec 11.2, 11.7.
-pub fn document(start: &Path) -> Value {
+pub fn document(start: &Path) -> CheckDocument {
     let args = Args {
         view: View::Json,
         ..Args::default()
     };
     let loaded = Project::load(None, start, &catalogue::sections());
-    checked(&args, start, loaded, &mut String::new()).into_json()
+    checked(&args, start, loaded, &mut String::new())
 }
 
 /// One `klin check`: each run-scope step under the kind of error it can raise, and every

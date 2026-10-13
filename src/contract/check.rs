@@ -853,12 +853,44 @@ pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
 pub type Count = fn(&Project) -> Result<usize, Error>;
 
+/// What a check counts when `klin policy` says what it judges. Spec 11.6.
+#[derive(Clone, Copy)]
+pub enum Unit {
+    Files,
+    Documents,
+    Manifests,
+    TestFiles,
+}
+
+impl Unit {
+    /// The word for one, and the word for any other number.
+    fn words(self) -> (&'static str, &'static str) {
+        match self {
+            Unit::Files => ("file", "files"),
+            Unit::Documents => ("document", "documents"),
+            Unit::Manifests => ("manifest", "manifests"),
+            Unit::TestFiles => ("test file", "test files"),
+        }
+    }
+
+    pub fn count(self, count: usize) -> &'static str {
+        let (one, many) = self.words();
+        match count {
+            1 => one,
+            _ => many,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        self.words().1
+    }
+}
+
 /// What one check judges in a tree, counted from its selection with no file read, which
 /// `klin policy` prints beside its state. Spec 11.6.
 #[derive(Clone, Copy)]
 pub struct Judges {
-    /// What the check counts: files, documents, manifests or test files.
-    pub of: &'static str,
+    pub unit: Unit,
     /// The size of the selection in this tree, and `None` for a check only a run can count.
     pub count: Option<Count>,
     /// Why an Automatic check does not apply to a tree that lacks its facts.
