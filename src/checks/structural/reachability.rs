@@ -167,7 +167,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .map(|state| finding(state, None))
         .collect();
     prior.extend(app_findings(&before.apps, true).filter(|found| project.was_held(&found.file)));
-    let found = failing(&after_states, &after.apps);
+    let found = failing(&after_states, &after.apps, at.hook());
     let measured = measured(&found, (after_states.len(), unjudged), &after.apps);
     let said = out.covered(&covered(&after).coverage(None));
     let evaluator = evaluator();
@@ -201,14 +201,16 @@ fn measured(found: &[Finding], (members, unjudged): (usize, usize), now: &app::J
 }
 
 /// The working tree's findings: each unreached member of a family, with its first proven sibling,
-/// and each unreached file and unused export of an app.
-fn failing(states: &[State], now: &app::Judged) -> Vec<Finding> {
+/// and each unreached file and unused export of an app. An unused export blocks no Stop: `klin
+/// check` and CI judge it, so a vendored file that no rule recognizes holds no turn. ADR 0073.
+fn failing(states: &[State], now: &app::Judged, hook: bool) -> Vec<Finding> {
     let mut found: Vec<Finding> = states
         .iter()
         .filter(|state| state.unreached)
         .map(|state| finding(state, sibling(states, state)))
         .collect();
-    found.extend(app_findings(now, false));
+    let unused_judged = |found: &Finding| !(hook && found.values.contains_key(UNUSED));
+    found.extend(app_findings(now, false).filter(unused_judged));
     found
 }
 

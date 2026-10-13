@@ -14,7 +14,7 @@ use serde_json::Value;
 
 use crate::config::scope::{Scope, under_or_at};
 use crate::contract::coverage::Unresolved;
-use crate::facts::survey;
+use crate::facts::{files, survey};
 use crate::modules::resolver::{Doubt, Topology, directory, joined};
 use crate::modules::{self, Aliases, GraphCost, ModuleGraph};
 use crate::surface;
@@ -26,6 +26,35 @@ const MANIFEST: &str = "package.json";
 const KIT: &str = "components.json";
 const FRAMEWORK: &str = "next";
 const DEPENDENCIES: &[&str] = &["dependencies", "devDependencies", "peerDependencies"];
+/// The in-tree `.gitattributes` files of a tree with their texts, shallowest first.
+fn attributes(topology: &Topology) -> Vec<(String, String)> {
+    let mut held: Vec<&String> = topology
+        .files()
+        .iter()
+        .filter(|file| basename(file) == ".gitattributes")
+        .collect();
+    held.sort_by_key(|file| file.matches('/').count());
+    held.into_iter()
+        .filter_map(|file| Some((file.clone(), files::attribute_text(&topology.read(file)?))))
+        .collect()
+}
+
+/// The UI frameworks whose packages are apps: a package with no entry point that depends on one
+/// of these and not on `next` is an app klin does not judge, and says so.
+const UI_FRAMEWORKS: &[&str] = &[
+    "react",
+    "vue",
+    "svelte",
+    "solid-js",
+    "preact",
+    "react-router",
+    "@remix-run/react",
+    "astro",
+    "nuxt",
+    "@sveltejs/kit",
+    "expo",
+    "react-native",
+];
 const EVERY: &str = "*";
 const DEFAULT: &str = "default";
 const SCRIPTED: &[&str] = &[".ts", ".tsx", ".mts", ".cts"];
@@ -119,8 +148,10 @@ impl Kind {
     }
 }
 
-/// What a package manifest makes of its package: a library, which states an entry point or
-/// cannot be read, a Next.js app, or an app of a framework klin does not recognize. ADR 0044.
+/// What a package manifest makes of its package: a Next.js app, an app of a UI framework klin
+/// does not judge, or anything else, such as a library that states an entry point, a command a
+/// `bin` names, a workspace root, a package of tools, or a manifest klin cannot read. A package
+/// with an entry point, a `bin` or `workspaces` is no app. ADR 0044.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Role {
     Library,
@@ -141,15 +172,22 @@ impl Package {
     fn read(manifest: &str, bytes: Option<Vec<u8>>) -> Package {
         let parsed: Option<Value> = bytes.and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let fields = parsed.as_ref().and_then(Value::as_object);
-        let depends = |field: &&str| {
-            fields
-                .and_then(|held| held.get(*field)?.as_object())
-                .is_some_and(|held| held.contains_key(FRAMEWORK))
+        let depends = |names: &[&str]| {
+            DEPENDENCIES.iter().any(|field| {
+                fields
+                    .and_then(|held| held.get(*field)?.as_object())
+                    .is_some_and(|held| names.iter().any(|name| held.contains_key(*name)))
+            })
         };
-        let role = match fields.is_some_and(|held| !surface::declares_entry(held)) {
-            false => Role::Library,
-            true if DEPENDENCIES.iter().any(depends) => Role::NextApp,
-            true => Role::UnknownApp,
+        let app = fields.is_some_and(|held| {
+            !surface::declares_entry(held)
+                && !held.contains_key("bin")
+                && !held.contains_key("workspaces")
+        });
+        let role = match app {
+            true if depends(&[FRAMEWORK]) => Role::NextApp,
+            true if depends(UI_FRAMEWORKS) => Role::UnknownApp,
+            _ => Role::Library,
         };
         Package {
             manifest: manifest.to_string(),
@@ -302,6 +340,8 @@ fn owned<'t>(topology: &'t Topology, packages: &[Package]) -> BTreeMap<usize, Ve
 /// of several held files leads to each of them, and one that names no held file to none.
 struct Walk<'g> {
     topology: &'g Topology<'g>,
+    /// The in-tree `.gitattributes` texts, read once, which mark vendored files.
+    attributes: Vec<(String, String)>,
     module_of: HashMap<&'g str, usize>,
     next: Vec<Vec<usize>>,
     sites: HashMap<(usize, u64), Vec<usize>>,
@@ -318,6 +358,7 @@ impl<'g> Walk<'g> {
             .flat_map(|(at, module)| module.sources.iter().map(move |file| (file.as_str(), at)))
             .collect();
         let mut walk = Walk {
+            attributes: attributes(topology),
             topology,
             module_of,
             next: vec![Vec::new(); graph.modules.len()],
@@ -331,6 +372,12 @@ impl<'g> Walk<'g> {
             walk.doubted(hole);
         }
         walk
+    }
+
+    /// Whether the tree's `.gitattributes` mark a file `linguist-vendored` or
+    /// `linguist-generated`, so its code is not the repository's own.
+    fn vendored(&self, file: &str) -> bool {
+        !self.attributes.is_empty() && files::form(file, &self.attributes).vendored
     }
 
     fn lead(&mut self, from: usize, start_byte: u64, to: usize) {
@@ -446,8 +493,7 @@ impl App<'_, '_> {
             let Some(module) = self.walk.module_of.get(file).copied() else {
                 continue;
             };
-            let vendored = kit.as_deref().is_some_and(|kit| under_or_at(file, kit));
-            if vendored || !self.scope.selects(&now) {
+            if self.left_out(file, kit.as_deref()) || !self.scope.selects(&now) {
                 out.excluded.insert(now);
                 continue;
             }
@@ -464,6 +510,15 @@ impl App<'_, '_> {
             }
             out.judged.insert(now);
         }
+    }
+
+    /// Whether a file is code the app holds and did not write, or a route a person turned off:
+    /// a file of the kit, a file `.gitattributes` mark vendored or generated, or a private
+    /// name under `app/`. Neither rule judges it.
+    fn left_out(&self, file: &str, kit: Option<&str>) -> bool {
+        kit.is_some_and(|kit| under_or_at(file, kit))
+            || self.walk.vendored(file)
+            || private(relative(&self.package.directory, file))
     }
 
     /// What keeps the package from being judged: an alias configuration klin cannot prove, and a
@@ -709,6 +764,16 @@ fn rooted(stem: &str, at: &str) -> Option<Kind> {
         config if at.is_empty() && config.ends_with(".config") => Some(Kind::Program),
         _ => None,
     }
+}
+
+/// Whether a path under `app/` or `src/app/` is private by the Next.js convention: a folder or a
+/// file whose name starts with `_` is opted out of routing, as a person disables a route by
+/// renaming it.
+fn private(relative: &str) -> bool {
+    let routes = ["app/", "src/app/"]
+        .into_iter()
+        .find_map(|root| relative.strip_prefix(root));
+    routes.is_some_and(|below| below.split('/').any(|name| name.starts_with('_')))
 }
 
 /// Whether a file is one app mode judges: neither a test, by the test convention of 8.2, nor a

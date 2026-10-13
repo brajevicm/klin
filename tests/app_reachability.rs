@@ -509,6 +509,92 @@ fn an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged() {
 }
 
 #[test]
+fn an_unused_export_blocks_no_stop_and_fails_at_check() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "components/header.tsx",
+        "export function Header() {\n  return null;\n}\n\nexport function Banner() {\n  return null;\n}\n",
+    );
+
+    let stop = tree.stop();
+    let check = reachability(&tree);
+
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert_eq!(check.code, 1, "{}", check.out);
+    assert!(check.says("export Banner"), "{}", check.out);
+}
+
+#[test]
+fn a_private_file_or_folder_under_app_is_not_judged() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "app/api/auth/_route.ts",
+        "export async function GET() {\n  return new Response(\"off\");\n}\n",
+    );
+    tree.write(
+        "app/_components/card.tsx",
+        "export function Card() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_file_gitattributes_marks_vendored_gets_neither_rule() {
+    let tree = app();
+    tree.write(
+        ".gitattributes",
+        "components/ai-elements/** linguist-vendored\n",
+    );
+    tree.write(
+        "components/ai-elements/message.tsx",
+        "export function Message() {\n  return null;\n}\n",
+    );
+    tree.write(
+        "components/header.tsx",
+        "import { Message } from \"./ai-elements/message\";\n\nexport function Header() {\n  return Message();\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "components/ai-elements/message.tsx",
+        "export function Message() {\n  return null;\n}\n\nexport const messageVariants = {};\n",
+    );
+    tree.write(
+        "components/ai-elements/tool.tsx",
+        "export function Tool() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_package_that_is_no_app_gets_no_note() {
+    let tree = app();
+    tree.write(
+        "tools/package.json",
+        r#"{"name":"tools","private":true,"devDependencies":{"typescript":"5.9.3"}}"#,
+    );
+    tree.write("tools/run.ts", "console.log(\"tools\");\n");
+    tree.write(
+        "cli/package.json",
+        r#"{"name":"cli","bin":"./main.ts","dependencies":{"react":"19.0.0"}}"#,
+    );
+    tree.write("cli/main.ts", "console.log(\"cli\");\n");
+    tree.base();
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("could not prove"), "{}", run.out);
+}
+
+#[test]
 fn a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads() {
     let tree = app();
     tree.write(

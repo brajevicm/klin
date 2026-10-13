@@ -4927,7 +4927,9 @@ reads through `typeof` is used, so `export type Size = (typeof sizes)[number]`
 uses `sizes`, and so does a `type Size` that `export type { Size }` exposes;
 any other word of a contract, such as a property name, uses nothing. The remedy imports the export where it is needed or drops the
 `export`, and deletes no code: `dead-symbols` judges the private declaration
-left behind. So the row sits in the safe-remedy tier of ADR 0073. The
+left behind. So the row sits in the safe-remedy tier of ADR 0073, and an
+unused export blocks no Stop: `klin check` and CI judge it, so vendored code no
+rule recognizes holds no agent's turn. The
 check resolves each use through the graph and never by name, so a reached
 file that declares `generateId` is not used by an import of another file's
 `generateId`. Next.js reads these exports from the file kind named, so they
@@ -4949,8 +4951,13 @@ vendored kit. With no `components.json`, `components/ui` at the package root
 or under `src/` holds it, where a kit is vendored by hand. A kit file is
 judged neither for reach nor for its exports, and coverage counts it as
 excluded, because a kit is vendored whole and keeps primitives nothing uses
-yet. Any other vendored directory, such as the `components/ai-elements` a
-registry installs, is narrowed with `except`. The section's `in` and `except` narrow an app's judged files
+yet. A file the in-tree `.gitattributes` mark `linguist-vendored` or
+`linguist-generated`, the marks GitHub reads, is judged by neither rule as
+well; that mark is no form of 7.2 and makes no hole. Any other vendored
+directory, such as the `components/ai-elements` a registry installs, is
+narrowed with `except` or marked so. A file or folder under `app/` or
+`src/app/` whose name starts with `_` is private by the Next.js convention, as
+a person disables a route by renaming it, and is judged by neither rule. The section's `in` and `except` narrow an app's judged files
 and exports as they narrow the families, and coverage counts a file they take
 out as excluded.
 
@@ -4960,8 +4967,13 @@ reaches each of them and takes its names from each. An alias configuration
 klin cannot prove, as 8.2.1 words a `paths` rule or a `baseUrl` it cannot
 prove, or a file the grammar refused, in a file of the app that is no test and
 no declaration file turns the whole app off: the run reports it as a hole and judges no file of the app. A package
-with no entry point that owns a TypeScript file and does not name `next`, such
-as a React Router app, is a hole too, and nothing of it is judged. These holes
+with no entry point, no `bin` and no `workspaces` that owns a TypeScript file
+and names a UI framework but not `next` (`react`, `vue`, `svelte`, `solid-js`,
+`preact`, `react-router`, `@remix-run/react`, `astro`, `nuxt`,
+`@sveltejs/kit`, `expo` or `react-native`), such as a React Router app, is a
+hole too, and nothing of it is judged. Any other package with no entry point,
+such as a package of tools, a command or a workspace root, is no app and gets
+no note. These holes
 are notes where the base holds them, review items at `klin check` where the
 change opened them, and notes at the Stop (7.2), and never a FAIL. A member of
 a derived family that an app owns is judged by app mode alone, so one file
@@ -4999,6 +5011,10 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_value_a_type_a_local_export_clause_exposes_reads_through_typeof_is_used`,
 `an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged`,
 `a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads`,
+`an_unused_export_blocks_no_stop_and_fails_at_check`,
+`a_private_file_or_folder_under_app_is_not_judged`,
+`a_file_gitattributes_marks_vendored_gets_neither_rule`,
+`a_package_that_is_no_app_gets_no_note`,
 `the_judged_count_includes_the_entries`,
 `a_file_the_section_excepts_is_excluded_and_not_judged`,
 `an_orphan_the_base_held_stays_a_note`,
@@ -5009,8 +5025,9 @@ Pinned by `a_new_component_nothing_imports_fails`,
 where the script only lints or formats it, so `eslint src/legacy.ts` hides
 that file's `unreached` finding; an import from a file of another language,
 such as MDX, reaches nothing; a `.d.ts` target is not resolved; a `require()`
-and an `import()` whose specifier is no string literal are no edge; a private
-`_folder` under `app/` still holds convention files; and an import of a
+and an `import()` whose specifier is no string literal are no edge; a
+convention file under a private `_folder` still counts as an entry, though
+Next.js routes none; and an import of a
 directory whose `package.json` may name another entry point reaches its index
 file alone. The performance case is the fixture's `KLIN_PERF_APP=1` variant,
 whose web package states no entry point and depends on `next`.
