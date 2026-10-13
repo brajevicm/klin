@@ -16,7 +16,7 @@ use crate::config::scope::{Scope, under_or_at};
 use crate::contract::coverage::Unresolved;
 use crate::facts::survey;
 use crate::modules::resolver::{Doubt, Topology, directory, joined};
-use crate::modules::{self, Aliases, ModuleGraph};
+use crate::modules::{self, Aliases, GraphCost, ModuleGraph};
 use crate::surface;
 use crate::syntax::LanguageId;
 use crate::syntax::structural::facts::{Declaration, Visibility};
@@ -220,6 +220,7 @@ pub(super) struct Judged {
     pub judged: HashSet<String>,
     pub excluded: HashSet<String>,
     pub holes: Vec<Unresolved>,
+    pub graph: GraphCost,
 }
 
 pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
@@ -250,6 +251,7 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
         return out;
     }
     let graph = modules::build(&topology);
+    out.graph = graph.cost();
     let walk = Walk::of(&topology, &graph);
     let used = walk.used();
     for (at, files) in &owned {
