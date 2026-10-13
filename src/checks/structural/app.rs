@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 use serde_json::Value;
 
-use crate::config::scope::Scope;
+use crate::config::scope::{Scope, under_or_at};
 use crate::contract::coverage::Unresolved;
 use crate::facts::survey;
 use crate::modules::resolver::{Doubt, Topology, directory, joined};
@@ -188,15 +188,18 @@ pub(super) struct Unused {
     pub name: String,
 }
 
-/// What app mode found in one tree, under current paths: each judged file with whether no entry
-/// reaches it, each unused export, how many exports it judged, every file of an app package,
-/// which no family judges, and the holes that kept a package from being judged.
+/// What app mode found in one tree, under current paths: each judged file that is no entry with
+/// whether no entry reaches it, each unused export, how many exports it judged, every file of an
+/// app package, which no family judges, the files it judged, entries included, the files the
+/// section's scope took out, and the holes that kept a package from being judged.
 #[derive(Default)]
 pub(super) struct Judged {
     pub files: Vec<(String, bool)>,
     pub unused: Vec<Unused>,
     pub exports: usize,
     pub owned: HashSet<String>,
+    pub judged: HashSet<String>,
+    pub excluded: HashSet<String>,
     pub holes: Vec<Unresolved>,
 }
 
@@ -213,7 +216,8 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     let mut out = Judged::default();
     for (at, files) in &owned {
         let package = &packages[*at];
-        if package.app && !package.next {
+        let selected = files.iter().any(|file| scope.selects(&current(file)));
+        if package.app && !package.next && selected {
             out.holes.push(Unresolved {
                 file: current(&package.manifest),
                 line: 0,
@@ -258,7 +262,7 @@ fn owned<'t>(topology: &'t Topology, packages: &[Package]) -> BTreeMap<usize, Ve
         let deepest = packages
             .iter()
             .enumerate()
-            .filter(|(_, package)| holds(&package.directory, file))
+            .filter(|(_, package)| within(&package.directory, file))
             .max_by_key(|(_, package)| package.directory.len());
         if let Some((at, _)) = deepest {
             out.entry(at).or_default().push(file);
@@ -414,13 +418,15 @@ impl App<'_, '_> {
                 continue;
             };
             if !self.scope.selects(&now) {
+                out.excluded.insert(now);
                 continue;
             }
+            out.judged.insert(now.clone());
             let kind = kinds.get(file).copied();
             if kind.is_none() {
                 out.files.push((now.clone(), !reached[module]));
             }
-            let kit = kit.as_deref().is_some_and(|kit| holds(kit, file));
+            let kit = kit.as_deref().is_some_and(|kit| under_or_at(file, kit));
             if reached[module] && !kit {
                 self.exports(file, (module, kind), &used, now, out);
             }
@@ -488,10 +494,7 @@ impl App<'_, '_> {
     /// The directory a `components.json` beside the manifest names as its `ui` alias, resolved
     /// through the package's own paths rules, and none where it names none klin can prove.
     fn kit(&self) -> Option<String> {
-        let file = match self.package.directory.as_str() {
-            "" => KIT.to_string(),
-            at => format!("{at}/{KIT}"),
-        };
+        let file = joined(&self.package.directory, KIT)?;
         let topology = self.walk.topology;
         let ui = topology
             .holds(&file)
@@ -526,15 +529,10 @@ impl App<'_, '_> {
     }
 }
 
-/// The alias a `components.json` names for its kit: `aliases.ui`, or `aliases.components` with
-/// `/ui` after it.
+/// The alias a `components.json` names for its kit: `aliases.ui`.
 fn ui_alias(bytes: &[u8]) -> Option<String> {
     let parsed: Value = serde_json::from_slice(bytes).ok()?;
-    let aliases = parsed.get("aliases")?;
-    match aliases.get("ui").and_then(Value::as_str) {
-        Some(ui) => Some(ui.to_string()),
-        None => Some(format!("{}/ui", aliases.get("components")?.as_str()?)),
-    }
+    Some(parsed.pointer("/aliases/ui")?.as_str()?.to_string())
 }
 
 /// Every name a file exports at its top, with the line that first exports it: its exported
@@ -579,13 +577,13 @@ fn kind(relative: &str) -> Option<Kind> {
     if let Some(kind) = rooted(stem, directory(relative)) {
         return Some(kind);
     }
-    if holds("app", relative) || holds("src/app", relative) {
+    if under_or_at(relative, "app") || under_or_at(relative, "src/app") {
         return CONVENTIONS
             .iter()
             .find(|held| **held == stem)
             .map(|held| Kind::Convention(held));
     }
-    (holds("pages", relative) || holds("src/pages", relative)).then_some(Kind::Pages)
+    (under_or_at(relative, "pages") || under_or_at(relative, "src/pages")).then_some(Kind::Pages)
 }
 
 /// The kind of a file Next.js reads at the package root or under `src/`, by its name.
@@ -620,11 +618,9 @@ fn relative<'f>(directory: &str, file: &'f str) -> &'f str {
     }
 }
 
-fn holds(directory: &str, file: &str) -> bool {
-    directory.is_empty()
-        || file
-            .strip_prefix(directory)
-            .is_some_and(|rest| rest.starts_with('/'))
+/// Whether a package directory holds a file, the tree root holding every file.
+fn within(directory: &str, file: &str) -> bool {
+    directory.is_empty() || under_or_at(file, directory)
 }
 
 fn basename(path: &str) -> &str {

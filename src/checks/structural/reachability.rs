@@ -166,16 +166,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .collect();
     prior.extend(app_findings(&was).filter(|found| project.was_held(&found.file)));
     let found = failing(&after_states, &now);
-    let measured = Measured::Reachability {
-        judged: after_states.len() + now.files.len(),
-        unreached: found
-            .iter()
-            .filter(|found| found.values.contains_key(UNREACHED))
-            .count(),
-        unjudged,
-        exports: now.exports,
-        unused: now.unused.len(),
-    };
+    let measured = measured(&found, (after_states.len(), unjudged), &now);
     let said = out.covered(&covered(&after, (&families, &now)).coverage(None));
     let evaluator = evaluator();
     let code = evaluator.evaluate(
@@ -195,6 +186,21 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     app_holes(at, (&was, &now), out);
     base_note(&held_before, &was, project, out);
     Ok(code)
+}
+
+/// What the OK line says the check judged: the families' members and the app files, with how
+/// many are unreached, and the exports app mode judged.
+fn measured(found: &[Finding], (members, unjudged): (usize, usize), now: &app::Judged) -> Measured {
+    Measured::Reachability {
+        judged: members + now.files.len(),
+        unreached: found
+            .iter()
+            .filter(|found| found.values.contains_key(UNREACHED))
+            .count(),
+        unjudged,
+        exports: now.exports,
+        unused: now.unused.len(),
+    }
 }
 
 /// The working tree's findings: each unreached member of a family, with its first proven sibling,
@@ -231,17 +237,7 @@ fn app_findings(judged: &app::Judged) -> impl Iterator<Item = Finding> + '_ {
 
 /// The app packages klin could not judge in the working tree, beside the ones the base held.
 fn app_holes(at: &Context, (was, now): (&app::Judged, &app::Judged), out: &mut Sink) {
-    let base = || {
-        was.holes
-            .iter()
-            .map(|hole| coverage::Unresolved {
-                file: hole.file.clone(),
-                line: hole.line,
-                text: hole.text.clone(),
-                why: hole.why.clone(),
-            })
-            .collect()
-    };
+    let base = || was.holes.clone();
     holes::unresolved_said((&now.holes, base), Unresolvable::App, at, out);
 }
 
@@ -701,9 +697,17 @@ fn finding(state: &State, sibling: Option<&str>) -> Finding {
 /// The measured tree's files kept to the families' members and the files app mode judges:
 /// judged, no adapter, dropped by an exclusion, and refused by the grammar. Spec 8.6.
 fn covered(measured: &Measurement, (families, apps): (&[Family], &app::Judged)) -> coverage::Files {
-    let judged = |file: &String| apps.owned.contains(file) || family_of(families, file).is_some();
+    let family = |file: &String| family_of(families, file).is_some();
+    let judged = |file: &String| apps.judged.contains(file) || family(file);
     let member = |files: &[String]| -> Vec<String> {
         files.iter().filter(|file| judged(file)).cloned().collect()
+    };
+    let unreadable = |files: &[String]| -> Vec<String> {
+        files
+            .iter()
+            .filter(|file| apps.owned.contains(*file) || family(file))
+            .cloned()
+            .collect()
     };
     let all = measured
         .files
@@ -714,9 +718,12 @@ fn covered(measured: &Measurement, (families, apps): (&[Family], &app::Judged)) 
     coverage::Files {
         measured: member(&measured.files.measured),
         not_measured: member(&measured.files.not_measured),
-        unreadable: member(&measured.files.unreadable),
+        unreadable: unreadable(&measured.files.unreadable),
         excluded: all
-            .filter(|file| !judged(file) && families.iter().any(|family| family.selects(file)))
+            .filter(|file| {
+                apps.excluded.contains(*file)
+                    || !judged(file) && families.iter().any(|family| family.selects(file))
+            })
             .cloned()
             .collect(),
     }

@@ -370,6 +370,25 @@ fn a_file_a_package_script_runs_is_an_entry() {
 }
 
 #[test]
+fn a_file_the_section_excepts_is_excluded_and_not_judged() {
+    let tree = app();
+    tree.write(
+        "klin.json",
+        r#"{"reachability":{"except":["components/footer.tsx"]}}"#,
+    );
+    tree.base();
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("1 excluded"), "{}", run.out);
+}
+
+#[test]
 fn an_orphan_the_base_held_stays_a_note() {
     let tree = app();
     tree.write(

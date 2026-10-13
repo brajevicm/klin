@@ -341,17 +341,10 @@ fn counted_aside(counted: &Counted) -> String {
 }
 
 /// What `reachability` judged: files, and the exports app mode judged where it judged any.
-fn reachability_phrase(measured: &Measured) -> String {
-    let Measured::Reachability {
-        judged,
-        unreached,
-        unjudged,
-        exports,
-        unused,
-    } = measured
-    else {
-        return String::new();
-    };
+fn reachability_phrase(
+    (judged, unreached, unjudged): (usize, usize, usize),
+    (exports, unused): (usize, usize),
+) -> String {
     let exports = match exports {
         0 => String::new(),
         _ => format!(", {exports} export(s) judged, {unused} unused"),
@@ -370,7 +363,16 @@ fn measured_phrases(measured: &Measured) -> (String, String, String) {
         Measured::DeadSymbols { judged, dead } => state(format!(
             "{judged} declaration(s) judged, {dead} dead symbol(s)"
         )),
-        Measured::Reachability { .. } => state(reachability_phrase(measured)),
+        Measured::Reachability {
+            judged,
+            unreached,
+            unjudged,
+            exports,
+            unused,
+        } => state(reachability_phrase(
+            (*judged, *unreached, *unjudged),
+            (*exports, *unused),
+        )),
         Measured::Complexity(complexity) => (
             format!(
                 "{} function(s) judged, {} over the gate{}",

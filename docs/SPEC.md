@@ -4930,13 +4930,14 @@ are never unused there, and a renamed export counts by its exported name:
 `onRouterTransitionStart` in an `instrumentation-client`; and
 `getServerSideProps`, `getStaticProps`, `getStaticPaths` and `config` under
 `pages/`. Where a `components.json` sits beside the manifest, the directory
-its `aliases.ui` names, or its `aliases.components` with `/ui` after it,
-resolved through the app's tsconfig `paths`, holds a vendored kit: its files
+its `aliases.ui` names, resolved through the app's tsconfig `paths`, holds a
+vendored kit: its files
 are judged for reach and not for their exports, so a new kit file nothing
 imports still fails. With no `components.json` no kit rule applies, and a
 person narrows the check with `except`; klin does not guess a kit from a
 directory name. The section's `in` and `except` narrow an app's judged files
-and exports as they narrow the families.
+and exports as they narrow the families, and coverage counts a file they take
+out as excluded.
 
 An import that names no file the tree holds, such as generated types, reaches
 nothing and turns nothing off. An import that may name several held files
@@ -4973,6 +4974,7 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_module_only_its_test_imports_fails_and_the_test_is_no_finding`,
 `a_kit_file_gets_the_file_rule_and_not_the_export_rule`,
 `a_file_a_package_script_runs_is_an_entry`,
+`a_file_the_section_excepts_is_excluded_and_not_judged`,
 `an_orphan_the_base_held_stays_a_note`,
 `a_file_that_loses_its_last_import_is_worsened` and
 `the_stop_blocks_a_turn_that_adds_an_orphan_component` in
