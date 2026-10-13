@@ -47,6 +47,9 @@ pub const NO_SOURCE_ROOT: &str = "no-source-root";
 /// The review item kind of a deleted test at `klin check`. Spec 9.2, 11.7.
 pub const DELETED_TEST: &str = "deleted-test";
 
+/// The review item kind of a finding of a ride-along row at `klin check`. ADR 0073, spec 9.6.
+pub const RIDE_ALONG: &str = "ride-along";
+
 /// The review item kind of an accepted entry that matched nothing, which only a person acts on.
 /// Spec 7.6.
 pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
@@ -473,6 +476,9 @@ pub struct Failed {
     /// The new finding whose group this one prints inside, for a gate whose text report groups
     /// what one change took away. Presentation only.
     pub lead: Option<usize>,
+    /// Whether the finding's row is in the ride-along tier, so it blocks no Stop on its own and
+    /// is a review item at `klin check`. ADR 0073, spec 9.6.
+    pub rides_along: bool,
 }
 
 /// An accepted entry that matched nothing this run: the entry, the check's words for its values,
@@ -684,6 +690,12 @@ pub enum Ratchet {
         failed: Vec<Failed>,
     },
     Worse {
+        unit: String,
+        condition: String,
+        failed: Vec<Failed>,
+    },
+    /// The findings of ride-along rows at `klin check`: review items. Spec 9.6.
+    RidesAlong {
         unit: String,
         condition: String,
         failed: Vec<Failed>,

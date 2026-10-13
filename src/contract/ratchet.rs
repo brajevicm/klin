@@ -454,6 +454,14 @@ pub struct Evaluator<'a> {
     /// groups what one change took away. A lead is a finding that prints inside no group.
     /// Presentation only: every finding keeps its own identity, record and count.
     pub nested: Option<Nesting>,
+    /// Whether a finding's row is in the ride-along tier of ADR 0073, read from its values.
+    /// Spec 9.6.
+    pub rides_along: fn(&Values) -> bool,
+}
+
+/// The tier of a gate whose every row blocks.
+pub fn every_row_blocks(_: &Values) -> bool {
+    false
 }
 
 impl Evaluator<'_> {
@@ -611,6 +619,7 @@ fn failed(gate: &str, finding: &Finding, entry: Option<&Values>, evaluator: &Eva
         matched,
         ceiling: evaluator.ceiling.map(str::to_string),
         lead: None,
+        rides_along: (evaluator.rides_along)(&finding.values),
     }
 }
 

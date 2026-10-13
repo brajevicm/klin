@@ -178,6 +178,12 @@ An observation that needs a person's judgement. It never fails a run and
 never asks the agent to clear it.
 _Avoid_: warning, soft failure
 
+**Ride-along row**:
+A row in the tier of ADR 0073 whose findings never block a Stop on their
+own. They appear only in a Stop that already blocks for another finding,
+and at `klin check` each one is a review item.
+_Avoid_: soft rule, warning row
+
 **Hole**:
 One explicit reason why a required measurement is not complete, such as
 `tool-error` or `nothing-measured`.

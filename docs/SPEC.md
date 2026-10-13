@@ -1405,6 +1405,31 @@ Nothing in this document makes these a product commitment (#475 section 16):
 Code duplication is a required product direction that #478 researches in
 parallel. Section 18.4 defines the contract it must obey.
 
+### 9.6 A ride-along row
+
+A row in the ride-along tier of ADR 0073 has an N above 3 and at most 10 per
+100 changes, and a safe remedy. A row records its tier where the check
+declares its rows, and the ratchet sets the tier on each finding of the row.
+No shipped row is in this tier yet. #581 and #582 may add the first ones.
+
+At the Stop:
+
+1. A finding of a ride-along row never blocks a Stop on its own. A Stop whose
+   only failing findings come from ride-along rows does not block, prints
+   none of them, spends no gate block and leaves the verdict green.
+2. When another finding blocks the Stop, the ride-along findings appear in
+   the same gate block. A gate that also fails for a finding of a blocking
+   row prints them in its own block. A gate that fails for ride-along
+   findings alone prints them, with their remedy, after the other gates.
+3. A blocking Stop records the ride-along findings it showed as asked, as it
+   does every finding it shows (section 8.2).
+
+At `klin check`, a finding of a ride-along row is a `ride-along` review item.
+It never fails the run and never changes the exit code. Its `reason` is the
+condition the row breaks. The text prints it under a `REVIEW:` line, and a
+gate whose only findings ride along prints no remedy. CI shows it in the job
+summary and as an annotation (section 16.2).
+
 ## 10. Host Protocol
 
 ### 10.1 One hidden ingress
@@ -1466,6 +1491,8 @@ The block budget of B.9.3 and ADR 0052 carries forward. In each prompt:
   2, nothing that the gates find blocks under that prompt.
 - **`measurement-lost`**: a code FAIL like any other.
 - **Deleted test**: section 9.2. It shares the FAIL's block.
+- **Ride-along finding**: section 9.6. It appears only in a block that
+  another finding spends, and spends no block on its own.
 - **Review item**: spends no block, except the ask of section 9.2.
 - **Opened gap, coverage note, hole, error**: spends **no** gate block, at
   block 1 or block 2, and does not keep the stamp red. A run-scope
@@ -2002,9 +2029,11 @@ A finding: `id`, `check` (null for `measurement-lost`), `kind` (`metric` or
 (string, what the finding breaks), `remedy` (string), and `identity` (section 8.4) when the family has one.
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
-`unmeasured`, `moved-pin`, `moved-skipped`), `file`, `line`, `text`, `reason`
-(the agent's reply for a deleted test, the gap reason for `unmeasured`, the
-old and new path for `moved-pin` and `moved-skipped`).
+`unmeasured`, `moved-pin`, `moved-skipped`, `ride-along`), `file`, `line`,
+`text`, `reason` (the agent's reply for a deleted test, the gap reason for
+`unmeasured`, the old and new path for `moved-pin` and `moved-skipped`, the
+condition the row breaks for `ride-along`), and `values` where the item has
+them.
 
 A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
@@ -2579,8 +2608,8 @@ reviewed commit by a person.
 Enforced means klin's quality policy. It does not mean the project's build,
 tests or type checks. The project's CI owns those (section 12.2).
 
-A deleted test and an unmatched accepted entry are review items at this
-level. The Action shows them in the job summary and as annotations (section
+A deleted test, an unmatched accepted entry and a finding of a ride-along
+row (section 9.6) are review items at this level. The Action shows them in the job summary and as annotations (section
 12.3). They do not fail CI. A person's code review decides them.
 
 The README MUST name both levels and say which one a setup reaches.
@@ -2887,6 +2916,18 @@ Result model and exit codes:
   `a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3` and
   `a_failing_gate_beside_a_work_limit_hole_exits_1_and_an_error_exits_2` in
   `src/engine/document.rs`;
+- a finding of a ride-along row appears in a Stop that blocks for another
+  finding, a Stop whose only findings ride along does not block, and at
+  `klin check` the finding is a `ride-along` review item and the exit does
+  not change (section 9.6). No shipped row is in the tier yet, so these are
+  `#[cfg(test)]` pins under the AGENTS.md exception until #581 or #582 ships
+  one. The pins are
+  `a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding`,
+  `a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing`,
+  `at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change`
+  and
+  `at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one`
+  in `src/engine/document.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities

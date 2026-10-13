@@ -529,6 +529,7 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
         ),
         format_metrics: show,
         nested: None,
+        rides_along: ratchet::every_row_blocks,
     }
 }
 
