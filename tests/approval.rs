@@ -263,3 +263,83 @@ fn a_codex_patch_of_the_configuration_is_put_to_the_person() {
     });
     refused(&feed(tree.root(), harness::AGENT, &event.to_string()));
 }
+
+/// Codex applies a patch's chunks by where they land in the file, not in the order the patch
+/// lists them, so a chunk that adds at the end may come before one that removes lines.
+#[test]
+fn a_codex_patch_that_adds_before_it_removes_is_put_to_the_person() {
+    let tree = tree();
+    let patch = "*** Begin Patch\n*** Update File: klin.json\n@@\n+}\n@@\n-  \"escapes\": true,\n-  \"complexity\": { \"cc\": 8, \"lines\": 8 }\n-}\n*** End Patch\n";
+    let event = json!({
+        "hook_event_name": "PreToolUse",
+        "session_id": "s-1",
+        "turn_id": "t-1",
+        "tool_use_id": "t-1",
+        "tool_name": "apply_patch",
+        "tool_input": { "command": patch },
+    });
+    let run = feed(tree.root(), harness::AGENT, &event.to_string());
+    referred(&run);
+    let told = answer(&run)["systemMessage"].to_string();
+    assert!(told.contains("removes escapes"), "{told}");
+    assert!(told.contains("removes complexity"), "{told}");
+}
+
+/// Codex finds a header after it trims the line, so an indented header still names the file,
+/// and any other `***` line klin does not know leaves the section unread.
+#[test]
+fn an_indented_codex_header_still_names_the_configuration() {
+    let tree = tree();
+    for patch in [
+        "*** Begin Patch\n  *** Update File: klin.json\n@@\n-  \"escapes\": true,\n+  \"escapes\": false,\n*** End Patch\n",
+        "*** Begin Patch\n*** Update File: klin.json\n@@\n-  \"escapes\": true,\n+  \"escapes\": false,\n*** Unknown marker\n*** End Patch\n",
+    ] {
+        let event = json!({
+            "hook_event_name": "PreToolUse",
+            "session_id": "s-1",
+            "turn_id": "t-1",
+            "tool_name": "apply_patch",
+            "tool_input": { "command": patch },
+        });
+        let run = feed(tree.root(), harness::AGENT, &event.to_string());
+        assert!(
+            run.code == 2 || answer(&run) != Value::Null,
+            "{patch}: {}",
+            run.out
+        );
+    }
+}
+
+/// A chunk at the end of the file can land on lines a chunk before it already replaced. klin
+/// cannot tell what Codex writes then, so it refuses with no approval.
+#[test]
+fn a_codex_patch_whose_chunks_overlap_is_refused() {
+    let tree = tree();
+    let patch = "*** Begin Patch\n*** Update File: klin.json\n@@\n-  \"complexity\": { \"cc\": 8, \"lines\": 8 }\n-}\n+}\n@@\n-  \"complexity\": { \"cc\": 8, \"lines\": 8 }\n-}\n+}\n*** End of File\n*** End Patch\n";
+    let event = json!({
+        "hook_event_name": "PreToolUse",
+        "session_id": "s-1",
+        "turn_id": "t-1",
+        "tool_name": "apply_patch",
+        "tool_input": { "command": patch },
+    });
+    refused(&feed(tree.root(), harness::AGENT, &event.to_string()));
+}
+
+/// A key is the agent's text. It cannot start a line of its own in what the person reads.
+#[test]
+fn a_key_cannot_write_a_line_of_the_summary() {
+    let tree = tree();
+    let keys = (0..30)
+        .map(|at| format!("\"k{at:02}\": 1, "))
+        .collect::<String>();
+    let new = format!("{{{keys}\"a\\nno setting changes\": 1, \"escapes\": false}}");
+    let run = write(&tree, &new, "t-1");
+    referred(&run);
+    let told = answer(&run)["systemMessage"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(!told.contains("\nno setting changes"), "{told}");
+    assert!(told.contains("escapes: true -> false"), "{told}");
+}

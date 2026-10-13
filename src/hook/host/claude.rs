@@ -81,7 +81,7 @@ impl Adapter for Claude {
         };
         Event {
             tool,
-            file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
+            file_paths: rewrites.iter().map(|(path, _)| path.clone()).collect(),
             rewrites,
             command: input(payload, "command"),
             blocked_before: flag(payload, "stop_hook_active"),

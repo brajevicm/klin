@@ -18,8 +18,6 @@ const PHRASE: &str = "approve";
 /// Letters and digits a person does not misread for one another.
 const ALPHABET: &[u8] = b"23456789ABCDEFGHJKMNPQRSTVWXYZ";
 const LENGTH: usize = 4;
-/// How many changes the person's summary names before it counts the rest.
-const SHOWN: usize = 20;
 
 /// The file the edit leaves, the hash of its code, whether the person approved it, and the
 /// identity of the tool call that used it. Every copy of klin's hooks for that one call passes.
@@ -69,7 +67,7 @@ pub fn prompted(at: &Path, prompt: &str) {
         return;
     };
     if request.approved {
-        let _ = std::fs::remove_file(at.join(FILE));
+        cleared(at);
     } else if approves(prompt, request.code) {
         request.approved = true;
         write(at, &request);
@@ -82,8 +80,12 @@ pub fn ended(root: &Path) {
     if let Some(at) = state::dir(root)
         && read(&at).is_some_and(|request| request.approved)
     {
-        let _ = std::fs::remove_file(at.join(FILE));
+        cleared(&at);
     }
+}
+
+fn cleared(at: &Path) {
+    let _ = std::fs::remove_file(at.join(FILE));
 }
 
 /// What the person reads: what the edit changes in the configuration, and the reply that
@@ -106,15 +108,12 @@ fn approves(prompt: &str, code: u64) -> bool {
     }
 }
 
+/// `RandomState` draws its keys from the system's random source.
 fn fresh() -> String {
-    let base = ALPHABET.len() as u64;
-    let mut seed = RandomState::new().hash_one(std::time::SystemTime::now());
-    (0..LENGTH)
-        .map(|_| {
-            let letter = ALPHABET[(seed % base) as usize];
-            seed /= base;
-            char::from(letter)
-        })
+    let seed = RandomState::new().hash_one(std::time::SystemTime::now());
+    seed.to_le_bytes()[..LENGTH]
+        .iter()
+        .map(|byte| char::from(ALPHABET[usize::from(*byte) % ALPHABET.len()]))
         .collect()
 }
 
@@ -127,11 +126,6 @@ fn summary(current: &str, result: &str) -> String {
     differences("", Some(&old), Some(&new), &mut lines);
     if lines.is_empty() {
         lines.push("no setting changes, only the text of the file".to_string());
-    }
-    let more = lines.len().saturating_sub(SHOWN);
-    lines.truncate(SHOWN);
-    if more > 0 {
-        lines.push(format!("and {more} more changes"));
     }
     lines.iter().map(|line| format!("  {line}\n")).collect()
 }
@@ -151,11 +145,20 @@ fn differences(path: &str, old: Option<&Value>, new: Option<&Value>, lines: &mut
     }
 }
 
+/// A key that is not a plain word prints as a JSON string, so the agent's text cannot start a
+/// line of what the person reads.
 fn fields(path: &str, old: &Map<String, Value>, new: &Map<String, Value>, lines: &mut Vec<String>) {
     for key in old.keys().chain(new.keys()).collect::<BTreeSet<_>>() {
+        let named = match key
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "_-$".contains(c))
+        {
+            true => key.clone(),
+            false => Value::from(key.as_str()).to_string(),
+        };
         let inner = match path {
-            "" => key.clone(),
-            path => format!("{path}.{key}"),
+            "" => named,
+            path => format!("{path}.{named}"),
         };
         differences(&inner, old.get(key), new.get(key), lines);
     }

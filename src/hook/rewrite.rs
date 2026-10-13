@@ -55,7 +55,8 @@ fn replaced(text: &str, edit: &Replacement) -> Option<String> {
 }
 
 /// Codex's own reading of a patch: each chunk seeks its anchor, then its old lines from where the
-/// chunk before ended, and the result ends with a newline. Codex falls back to a match that
+/// chunk before ended. The chunks then apply by where they land, last first, and the result
+/// ends with a newline. Chunks that overlap leave klin unable to tell what Codex writes. Codex falls back to a match that
 /// ignores whitespace; klin reads only the exact one, so such a patch is unread. Codex fails a
 /// section with no chunk.
 fn patched(current: &str, chunks: &[Chunk]) -> Option<String> {
@@ -66,7 +67,7 @@ fn patched(current: &str, chunks: &[Chunk]) -> Option<String> {
     if lines.last() == Some(&"") {
         lines.pop();
     }
-    let found = chunks
+    let mut found = chunks
         .iter()
         .scan(0, |from, chunk| {
             let placed = placed(&lines, chunk, *from);
@@ -74,6 +75,13 @@ fn patched(current: &str, chunks: &[Chunk]) -> Option<String> {
             Some(placed.map(|(at, _)| (at, chunk)))
         })
         .collect::<Option<Vec<_>>>()?;
+    found.sort_by_key(|(at, _)| *at);
+    let apart = found
+        .windows(2)
+        .all(|pair| pair[0].0 + pair[0].1.old.len() <= pair[1].0);
+    if !apart {
+        return None;
+    }
     for (at, chunk) in found.into_iter().rev() {
         lines.splice(
             at..at + chunk.old.len(),

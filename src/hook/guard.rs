@@ -124,27 +124,34 @@ impl Answer {
     fn decision(self, at: Option<&Path>, took: bool) -> (Decision, &'static str) {
         match self {
             Answer::Decided(decision, reason) => (decision, reason),
-            Answer::Approval { current, result } => {
-                (referred(at, took, &current, &result), "config-approval")
-            }
+            Answer::Approval { current, result } => referred(at, took, &current, &result),
         }
     }
 }
 
 /// The deny of a `klin.json` edit the person may approve. The copy of klin's hooks that took
 /// the call records the request and tells the person its code. A copy that yields denies with
-/// the same reason and tells nothing. Spec 10.8.2.
-fn referred(at: Option<&Path>, took: bool, current: &str, result: &str) -> Decision {
+/// the same reason and tells nothing. A request klin cannot record is the refusal of an edit
+/// with no approval. Spec 10.8.2.
+fn referred(
+    at: Option<&Path>,
+    took: bool,
+    current: &str,
+    result: &str,
+) -> (Decision, &'static str) {
     let code = took
         .then(|| at.and_then(|at| approval::requested(at, result)))
         .flatten();
     match code {
-        Some(code) => Decision::Refer {
-            reason: ASKED.to_string(),
-            person: approval::message(current, result, &code),
-        },
-        None if took => Decision::Deny(REFUSAL.to_string()),
-        None => Decision::Deny(ASKED.to_string()),
+        Some(code) => (
+            Decision::Refer {
+                reason: ASKED.to_string(),
+                person: approval::message(current, result, &code),
+            },
+            "config-approval",
+        ),
+        None if took => (Decision::Deny(REFUSAL.to_string()), "config-write"),
+        None => (Decision::Deny(ASKED.to_string()), "config-approval"),
     }
 }
 

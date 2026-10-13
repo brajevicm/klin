@@ -1721,9 +1721,10 @@ new request replaces it.
 
 What the person reads names each setting the edit adds, removes or changes,
 by its dotted path, such as `escapes: true -> false`. A list changes by the
-entries it gains and loses, so a new `accepted` entry is one line. The
-summary names at most 20 changes and counts the rest. It does not yet say
-whether a change loosens or tightens the policy (#575).
+entries it gains and loses, so a new `accepted` entry is one line. A key
+that is not a plain word prints as a JSON string, so no key starts a line of
+its own. The summary names every change. It does not yet say whether a
+change loosens or tightens the policy (#575).
 
 The resulting file comes from these payloads:
 
@@ -1734,9 +1735,10 @@ The resulting file comes from these payloads:
   without `replace_all`.
 - Codex `apply_patch`: an `*** Add File:` section's `+` lines, or an
   `*** Update File:` section's chunks, applied as Codex applies them with an
-  exact match. A section that deletes or moves the file, a section with no
-  chunk, and a chunk whose lines match only when whitespace is ignored are
-  unread.
+  exact match. klin finds a `***` marker after it trims the line, as Codex
+  does. A section that deletes or moves the file, a section with no chunk, a
+  marker klin does not know, chunks that overlap, and a chunk whose lines
+  match only when whitespace is ignored are unread.
 
 Any other payload, such as `NotebookEdit`, a Cursor edit or a harness event,
 is denied with the refusal of B.9.4 and no approval. So is an edit on a host

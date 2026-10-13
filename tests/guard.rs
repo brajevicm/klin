@@ -61,7 +61,7 @@ fn denied(run: &Run, what: &str) {
 /// edit the person approves changes it. On klin's own state it is an ask, exit 0 with the
 /// decision on stdout. Either reason quotes what matched. Spec 10.8.2.
 #[track_caller]
-fn asked(run: &Run, quoted: &str, what: &str) {
+fn written(run: &Run, quoted: &str, what: &str) {
     match quoted.ends_with("klin.json") {
         true => {
             denied(run, what);
@@ -176,14 +176,14 @@ fn asks_about_a_command_that_writes_every_argument_it_takes() {
         "sed -i '' 's/8/80/' klin.json",
         "perl -i -pe 's/a/b/' klin.json",
     ] {
-        asked(&bash_in(&tree, command), "klin.json", command);
+        written(&bash_in(&tree, command), "klin.json", command);
     }
-    asked(
+    written(
         &bash_in(&tree, &format!("rm {}", tree.at("klin.json"))),
         &tree.at("klin.json"),
         "an absolute path",
     );
-    asked(&bash_in(&tree, "rm -f ./klin.json"), "./klin.json", "a dot");
+    written(&bash_in(&tree, "rm -f ./klin.json"), "./klin.json", "a dot");
 }
 
 /// `cp` and `install` read their sources, so a backup of klin's own state through one of them is
@@ -359,7 +359,7 @@ fn a_command_that_writes_klins_own_state_is_denied_or_asked_about() {
         ("rm .git/klin/turn", ".git/klin/turn"),
         ("sed -i s/red/green/ .git/klin/turn", ".git/klin/turn"),
     ] {
-        asked(&bash_in(&tree, command), named, command);
+        written(&bash_in(&tree, command), named, command);
     }
 }
 
@@ -478,7 +478,7 @@ fn a_relative_path_names_a_file_from_where_the_guard_runs() {
         &feed(&tree.path("sub"), harness::AGENT, &event),
         "another project's configuration one directory down",
     );
-    asked(
+    written(
         &feed(&tree.path("sub"), harness::AGENT, &up),
         "../klin.json",
         "the tree's own configuration from below",
@@ -509,7 +509,7 @@ fn asks_about_a_writer_behind_a_prefix() {
         "time rm klin.json",
         "KLIN_STATE_DIR=/tmp/x rm klin.json",
     ] {
-        asked(&bash_in(&tree, command), "klin.json", command);
+        written(&bash_in(&tree, command), "klin.json", command);
     }
 }
 
@@ -535,10 +535,10 @@ fn asks_about_the_destination_of_a_copy() {
         ("cp -n source .git/klin/new", ".git/klin/new"),
         ("cp --update source .git/klin/new", ".git/klin/new"),
     ] {
-        asked(&bash_in(&tree, command), named, command);
+        written(&bash_in(&tree, command), named, command);
     }
     let absolute = format!("cp source {}", tree.at("klin.json"));
-    asked(
+    written(
         &bash_in(&tree, &absolute),
         &tree.at("klin.json"),
         "an absolute destination",
@@ -573,7 +573,7 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
         ("cd -P sub && cd .. && rm klin.json", "klin.json"),
         ("cd sub && make | tee ../klin.json", "../klin.json"),
     ] {
-        asked(&bash_in(&tree, command), named, command);
+        written(&bash_in(&tree, command), named, command);
     }
     for command in [
         "cd sub; echo x > ../klin.json",
@@ -582,7 +582,7 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
         denied(&bash_in(&tree, command), command);
     }
     let absolute = format!("cd {} && rm ../klin.json", tree.at("sub"));
-    asked(&bash_in(&tree, &absolute), "../klin.json", "an absolute cd");
+    written(&bash_in(&tree, &absolute), "../klin.json", "an absolute cd");
     for command in [
         "cd sub && rm klin.json",
         "cd \"$DIR\" && rm ../klin.json",
@@ -613,7 +613,7 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
 fn a_child_shell_keeps_its_cd_to_itself() {
     let tree = Tree::new();
     tree.write("sub/notes.md", "one\n");
-    asked(
+    written(
         &bash_in(&tree, "sh -c 'cd sub && rm ../klin.json'"),
         "../klin.json",
         "a cd inside the child",
@@ -622,7 +622,7 @@ fn a_child_shell_keeps_its_cd_to_itself() {
         &bash_in(&tree, "sh -c 'cd sub'; rm ../klin.json"),
         "a cd that stayed in the child",
     );
-    asked(
+    written(
         &bash_in(&tree, "eval 'cd sub'; rm ../klin.json"),
         "../klin.json",
         "eval runs in the same shell",
@@ -641,7 +641,7 @@ fn reads_a_literal_nested_command() {
         "sh <<'EOF'\nrm klin.json\nEOF",
         "bash -s <<EOF\ntrue\nrm klin.json\nEOF",
     ] {
-        asked(&bash_in(&tree, command), "klin.json", command);
+        written(&bash_in(&tree, command), "klin.json", command);
     }
     for command in [
         "bash -c \"echo x > klin.json\"",
@@ -690,7 +690,7 @@ fn a_quoted_path_with_spaces_resolves_as_one_path() {
         &bash_in(&tree, "echo x > \"my dir/../klin.json\""),
         "a quoted redirect target",
     );
-    asked(
+    written(
         &bash_in(&tree, "cd 'my dir' && cp ../notes.md ../klin.json"),
         "../klin.json",
         "a quoted cd",
@@ -748,7 +748,7 @@ fn a_copy_that_may_keep_the_destination_proves_only_a_new_one() {
 #[test]
 fn reads_nested_text_to_a_bounded_depth() {
     let tree = Tree::new();
-    asked(
+    written(
         &bash_in(&tree, "eval eval eval rm klin.json"),
         "klin.json",
         "three nested evals",
@@ -774,7 +774,7 @@ fn a_copy_of_directory_contents_proves_only_its_destination() {
         ("cp -a staging/. .git/klin", ".git/klin"),
         ("cp -R -t .git/klin/backup staging/", ".git/klin/backup"),
     ] {
-        asked(&bash_in(&tree, command), named, command);
+        written(&bash_in(&tree, command), named, command);
     }
 }
 
@@ -783,7 +783,7 @@ fn a_copy_of_directory_contents_proves_only_its_destination() {
 fn a_copy_with_parents_writes_the_source_path_under_the_destination() {
     let tree = Tree::new();
     tree.write("staging/.git/klin/turn", "x\n");
-    asked(
+    written(
         &bash_in(&tree, "cd staging && cp --parents .git/klin/turn .."),
         "../.git/klin/turn",
         "a state path rebuilt under the root",
@@ -799,7 +799,7 @@ fn the_overwrite_options_of_a_copy_settle_in_order() {
         "cp -n -i source klin.json",
         "cp --no-clobber --interactive source klin.json",
     ] {
-        asked(&bash_in(&tree, command), "klin.json", command);
+        written(&bash_in(&tree, command), "klin.json", command);
     }
     for command in [
         "cp --update=none source klin.json",
@@ -850,7 +850,7 @@ fn a_sourced_script_leaves_the_directory_unproven() {
 fn an_absolute_cd_places_the_directory_again() {
     let tree = Tree::new();
     let command = format!("cd \"$DIR\"; cd {} && rm klin.json", tree.root().display());
-    asked(
+    written(
         &bash_in(&tree, &command),
         "klin.json",
         "an absolute cd after a lost one",

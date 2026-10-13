@@ -135,15 +135,13 @@ fn disabled(line: &str) -> bool {
     key.trim() == "enabled" && value.trim().starts_with("false")
 }
 
-/// Each file a patch names, with what it writes there. A file the patch deletes or moves, and
+/// Each file a patch names, with what it writes there. Codex finds a header after it trims the
+/// line, and so does klin. A file the patch deletes or moves, and
 /// a section klin cannot read, is unread. Spec 10.8.2.
 fn patch_rewrites(patch: &str) -> Vec<(String, Rewrite)> {
     let mut sections: Vec<(String, Rewrite)> = Vec::new();
     for line in patch.lines() {
-        let Some((header, path)) = HEADERS
-            .iter()
-            .find_map(|header| line.strip_prefix(header).map(|path| (*header, path.trim())))
-        else {
+        let Some((header, path)) = header(line) else {
             if let Some((_, rewrite)) = sections.last_mut() {
                 read_body(rewrite, line);
             }
@@ -166,11 +164,25 @@ fn patch_rewrites(patch: &str) -> Vec<(String, Rewrite)> {
     sections
 }
 
+/// The header a line is, after Codex's trim, and the path it names.
+fn header(line: &str) -> Option<(&'static str, &str)> {
+    HEADERS.iter().find_map(|header| {
+        let path = line.trim().strip_prefix(header)?;
+        Some((*header, path.trim()))
+    })
+}
+
 /// One line under a section's header, in the patch language: `+` lines of a file it adds, and
-/// `@@` chunks of context, `-` and `+` lines of a file it updates. Anything else leaves the
-/// section unread.
+/// `@@` chunks of context, `-` and `+` lines of a file it updates. Codex reads a `***` marker
+/// after it trims the line, so a marker klin does not know, and anything else it cannot read,
+/// leaves the section unread.
 fn read_body(rewrite: &mut Rewrite, line: &str) {
-    if line == END_OF_PATCH {
+    let marker = line.trim();
+    if marker == END_OF_PATCH {
+        return;
+    }
+    if marker.starts_with("***") && marker != END_OF_FILE {
+        *rewrite = Rewrite::Unread;
         return;
     }
     let read = match rewrite {
@@ -187,7 +199,7 @@ fn read_body(rewrite: &mut Rewrite, line: &str) {
 }
 
 fn chunk_line(chunks: &mut Vec<Chunk>, line: &str) -> Option<()> {
-    if line == END_OF_FILE {
+    if line.trim() == END_OF_FILE {
         chunks.last_mut()?.end = true;
         return Some(());
     }
