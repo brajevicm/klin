@@ -6,11 +6,12 @@ use super::resolver::{Topology, directory, joined};
 use crate::sys::jsonc;
 
 pub(super) struct Paths {
+    /// One per held config, compiled once and shared by every scope it owns.
+    programs: Vec<Program>,
     scopes: HashMap<String, Scope>,
 }
 
 /// The directory paths targets resolve from: a written `baseUrl`, or the config's own directory.
-#[derive(Clone)]
 enum Anchor {
     Config(String),
     BaseUrl(String),
@@ -73,7 +74,8 @@ impl Paths {
             .into_iter()
             .map(|directory| (directory.to_string(), Scope::compile(directory, &configs)))
             .collect();
-        Self { scopes }
+        let programs = configs.into_iter().map(Program::compile).collect();
+        Self { programs, scopes }
     }
 
     /// Select ownership and root membership once per source file, before its imports.
@@ -84,14 +86,20 @@ impl Paths {
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                if scope.programs.iter().all(Program::is_empty) {
+                let owners: Vec<&Program> = scope
+                    .owners
+                    .iter()
+                    .map(|&index| &self.programs[index])
+                    .collect();
+                if owners.iter().all(|program| program.is_inert()) {
                     return None;
                 }
-                let root = scope
-                    .programs
-                    .iter()
-                    .any(|program| program.roots.contains(file));
-                return Some(FilePaths { scope, root });
+                let root = owners.iter().any(|program| program.roots.contains(file));
+                return Some(FilePaths {
+                    owners,
+                    base_url_unproved: scope.base_url_unproved,
+                    root,
+                });
             }
             if ancestor.is_empty() {
                 return None;
@@ -109,11 +117,11 @@ fn contains(directory: &str, file: &str) -> bool {
 }
 
 struct Scope {
-    /// One per owning config. An alias is proved only where every one resolves it the same way.
-    programs: Vec<Program>,
-    /// Whether a bare `baseUrl` import stays unproved: more than one owner, or one klin cannot
-    /// prove.
-    uncertain: bool,
+    /// The programs of the owning configs. An alias is proved only where every one resolves it
+    /// the same way.
+    owners: Vec<usize>,
+    /// More than one owner, or one klin cannot prove.
+    base_url_unproved: bool,
 }
 
 /// The roots and alias rules of one owning config.
@@ -125,30 +133,45 @@ struct Program {
     uncertain: bool,
 }
 
-#[derive(Clone, Copy)]
 pub(super) struct FilePaths<'a> {
-    scope: &'a Scope,
+    owners: Vec<&'a Program>,
+    base_url_unproved: bool,
     root: bool,
 }
 
 impl FilePaths<'_> {
-    pub(super) fn resolve(self, specifier: &str) -> Option<Result<String, String>> {
-        self.scope.resolve(specifier, self.root)
+    /// None means no owning config recognizes this specifier; Err means known local but
+    /// unproved, including owners that resolve it to different paths.
+    pub(super) fn resolve(&self, specifier: &str) -> Option<Result<String, String>> {
+        if let [only] = self.owners.as_slice() {
+            return only.resolve(specifier, self.root);
+        }
+        let resolved: Vec<_> = self
+            .owners
+            .iter()
+            .map(|program| program.resolve(specifier, self.root))
+            .collect();
+        match resolved.as_slice() {
+            [first @ Some(Ok(_)), rest @ ..] if rest.iter().all(|other| other == first) => {
+                first.clone()
+            }
+            _ if resolved.iter().all(Option::is_none) => None,
+            _ => Some(Err(unproved(specifier))),
+        }
     }
 
     /// The paths a bare specifier names under each `baseUrl` an owning config writes, and
     /// whether klin proves the one config and the file's root membership.
-    pub(super) fn under_base_url(self, specifier: &str) -> Option<(Vec<String>, bool)> {
+    pub(super) fn under_base_url(&self, specifier: &str) -> Option<(Vec<String>, bool)> {
         if absolute(specifier) {
             return None;
         }
         let bases: Vec<String> = self
-            .scope
-            .programs
+            .owners
             .iter()
             .filter_map(|program| joined(program.anchor.as_ref()?.base_url()?, specifier))
             .collect();
-        (!bases.is_empty()).then_some((bases, !self.scope.uncertain && self.root))
+        (!bases.is_empty()).then_some((bases, !self.base_url_unproved && self.root))
     }
 }
 
@@ -160,40 +183,21 @@ struct Wildcard {
 
 impl Scope {
     fn compile(directory: &str, configs: &[Config]) -> Self {
-        let candidates: Vec<&Config> = configs
-            .iter()
-            .filter(|config| {
-                config.directory == directory || contains(&config.directory, directory)
+        let candidates: Vec<usize> = (0..configs.len())
+            .filter(|&index| {
+                let config = &configs[index].directory;
+                config == directory || contains(config, directory)
             })
             .collect();
-        let owners: Vec<&Config> = candidates
-            .iter()
-            .copied()
-            .filter(|config| !config.extended(&candidates))
+        let competing: Vec<&Config> = candidates.iter().map(|&index| &configs[index]).collect();
+        let owners: Vec<usize> = candidates
+            .into_iter()
+            .filter(|&index| !configs[index].extended(&competing))
             .collect();
         Self {
-            uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
-            programs: owners.into_iter().map(Program::compile).collect(),
-        }
-    }
-
-    /// None means no owning config recognizes this specifier; Err means known local but
-    /// unproved, including owners that resolve it to different paths.
-    fn resolve(&self, specifier: &str, root: bool) -> Option<Result<String, String>> {
-        if let [only] = self.programs.as_slice() {
-            return only.resolve(specifier, root);
-        }
-        let resolved: Vec<_> = self
-            .programs
-            .iter()
-            .map(|program| program.resolve(specifier, root))
-            .collect();
-        match resolved.as_slice() {
-            [first @ Some(Ok(_)), rest @ ..] if rest.iter().all(|other| other == first) => {
-                first.clone()
-            }
-            _ if resolved.iter().all(Option::is_none) => None,
-            _ => Some(Err(unproved(specifier))),
+            base_url_unproved: owners.len() != 1
+                || owners.iter().any(|&index| configs[index].uncertain),
+            owners,
         }
     }
 }
@@ -203,10 +207,10 @@ fn unproved(specifier: &str) -> String {
 }
 
 impl Program {
-    fn compile(config: &Config) -> Self {
+    fn compile(config: Config) -> Self {
         let mut program = Self {
-            roots: config.roots.clone(),
-            anchor: config.anchor.clone(),
+            roots: config.roots,
+            anchor: config.anchor,
             exact: HashMap::new(),
             wildcards: Vec::new(),
             uncertain: config.uncertain,
@@ -220,7 +224,8 @@ impl Program {
         program
     }
 
-    fn is_empty(&self) -> bool {
+    /// Whether the config gives neither an alias rule nor a `baseUrl`.
+    fn is_inert(&self) -> bool {
         self.exact.is_empty()
             && self.wildcards.is_empty()
             && self.anchor.as_ref().and_then(Anchor::base_url).is_none()
@@ -536,20 +541,17 @@ impl Config {
 }
 
 /// A conservative root subset; import reachability never upgrades a non-root to proof.
-#[derive(Clone)]
 struct Roots {
     files: BTreeSet<String>,
     include: Option<RootPatterns>,
     exclude: Option<RootPatterns>,
 }
 
-#[derive(Clone)]
 struct RootPatterns {
     matching: Vec<RootPattern>,
     unknown: bool,
 }
 
-#[derive(Clone)]
 enum RootPattern {
     Exact(String),
     Subtree(String),
