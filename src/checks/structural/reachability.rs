@@ -279,7 +279,11 @@ fn sweeps(
         out,
     )?;
     let tree = at.project.tree();
-    let base = app::Base::of(sides.prior.root(), sides.prior.tree().files()?);
+    let base = app::Base::of(
+        sides.prior.root(),
+        sides.prior.tree().files()?,
+        sides.prior.renamed(),
+    );
     let side = app::Side {
         root: tree.root(),
         files: tree.files()?,
@@ -476,7 +480,7 @@ fn before(
     contract::check::at_base(at, lay, (SECTION, today), |prior, scope| {
         let before_families = base_families(families, &scope);
         let measured = measure(prior.tree(), &before_families, None)?;
-        let base = app::Base::of(prior.root(), prior.tree().files()?);
+        let base = app::Base::of(prior.root(), prior.tree().files()?, prior.renamed());
         let side = app::Side {
             root: prior.root(),
             files: prior.tree().files()?,

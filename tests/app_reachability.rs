@@ -579,6 +579,27 @@ fn a_kit_alias_the_change_writes_leaves_nothing_out() {
 }
 
 #[test]
+fn a_paths_rule_the_change_writes_moves_no_kit() {
+    let tree = app();
+    tree.write("tsconfig.json", ALIASED);
+    tree.write("components.json", r#"{"aliases":{"ui":"@/ui"}}"#);
+    tree.base();
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./lib/*"]}}}"#,
+    );
+    tree.write(
+        "lib/ui/orphan.tsx",
+        "export function Orphan() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("lib/ui/orphan.tsx"), "{}", run.out);
+}
+
+#[test]
 fn a_script_the_change_writes_makes_no_entry() {
     let tree = app();
     tree.base();
@@ -608,6 +629,39 @@ fn a_vendored_mark_the_change_writes_leaves_nothing_out() {
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("components/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_gitattributes_marks_only_where_the_base_held_it() {
+    let tree = app();
+    tree.write("vendor/.gitattributes", "*.tsx linguist-vendored\n");
+    tree.base();
+    tree.git(&["mv", "vendor/.gitattributes", "components/.gitattributes"]);
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("components/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_vendored_directory_stays_left_out() {
+    let tree = app();
+    tree.write("vendor/.gitattributes", "*.tsx linguist-vendored\n");
+    tree.write(
+        "vendor/kit.tsx",
+        "export function Kit() {\n  return null;\n}\n",
+    );
+    tree.base();
+    tree.git(&["mv", "vendor", "third-party"]);
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
 }
 
 #[test]

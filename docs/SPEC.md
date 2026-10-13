@@ -4948,7 +4948,7 @@ are never unused there, and a renamed export counts by its exported name:
 `onRouterTransitionStart` in an `instrumentation-client`; and
 `getServerSideProps`, `getStaticProps`, `getStaticPaths` and `config` under
 `pages/`. Where the base holds a `components.json` beside the manifest, the
-directory its `aliases.ui` names in the base, resolved through the app's
+directory its `aliases.ui` names in the base, resolved through the base's
 tsconfig `paths`, holds a vendored kit. With no `components.json`, `components/ui` at the package root
 or under `src/` holds it, where a kit is vendored by hand. A kit file is
 judged neither for reach nor for its exports, and coverage counts it as
@@ -4965,7 +4965,14 @@ longer routes, is judged by neither rule where the base held it, under that
 name or under the name a rename moved it from; a new file named so, a folder
 or any other file is judged as usual. Every exemption is read from the base,
 so a change never widens its own: the marks, the kit and the scripts it
-writes count once a person makes them part of the base. The section's `in` and `except` narrow an app's judged files
+writes count once a person makes them part of the base. The kit and each
+`.gitattributes` apply where the base holds them, and leave a file out by the
+path it has or the path the base held it at. A renamed `.gitattributes` or a
+changed `paths` rule moves no exemption onto other files, and a renamed kit or
+vendored directory stays left out
+(`a_paths_rule_the_change_writes_moves_no_kit`,
+`a_renamed_gitattributes_marks_only_where_the_base_held_it`,
+`a_renamed_vendored_directory_stays_left_out`). The section's `in` and `except` narrow an app's judged files
 and exports as they narrow the families, and coverage counts a file they take
 out as excluded.
 

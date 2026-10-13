@@ -27,20 +27,40 @@ const KIT: &str = "components.json";
 const FRAMEWORK: &str = "next";
 const DEPENDENCIES: &[&str] = &["dependencies", "devDependencies", "peerDependencies"];
 /// The base tree, which every exemption app mode grants is read from: its `.gitattributes`
-/// marks, its `components.json`, its package scripts, and the convention files it held that a
-/// leading `_` turns off. A change cannot widen its own exemptions: what it writes there counts
-/// once a person makes it part of the base.
+/// marks, its `components.json` and the paths rules that resolve it, its package scripts, and the
+/// convention files it held that a leading `_` turns off. A change cannot widen its own
+/// exemptions: what it writes there counts once a person makes it part of the base. The marks
+/// and the kit apply where the base holds them, to each file by the path the base holds it at, so
+/// a rename moves no exemption onto other files.
 pub(super) struct Base<'a> {
     root: &'a Path,
+    files: &'a [String],
     held: HashSet<&'a str>,
+    renamed: &'a HashMap<String, String>,
 }
 
 impl<'a> Base<'a> {
-    pub(super) fn of(root: &'a Path, files: &'a [String]) -> Base<'a> {
+    pub(super) fn of(
+        root: &'a Path,
+        files: &'a [String],
+        renamed: &'a HashMap<String, String>,
+    ) -> Base<'a> {
         Base {
             root,
+            files,
             held: files.iter().map(String::as_str).collect(),
+            renamed,
         }
+    }
+
+    /// The path the base holds a file at, by the path it has today.
+    fn was<'f>(&'f self, now: &'f str) -> &'f str {
+        self.renamed.get(now).map_or(now, String::as_str)
+    }
+
+    /// The base's TypeScript paths rules.
+    fn aliases(&self) -> Aliases {
+        Aliases::read(&modules::topology(self.root, self.files, &[], self.renamed))
     }
 
     fn holds(&self, file: &str) -> bool {
@@ -64,7 +84,10 @@ impl<'a> Base<'a> {
             .collect();
         held.sort_by_key(|file| (file.matches('/').count(), *file));
         held.into_iter()
-            .filter_map(|file| Some((file.to_string(), files::attribute_text(&self.read(file)?))))
+            .filter_map(|file| {
+                let text = files::attribute_text(&self.read(file)?);
+                Some((self.was(file).to_string(), text))
+            })
             .collect()
     }
 
@@ -536,7 +559,7 @@ impl App<'_, '_> {
             let Some(module) = self.walk.module_of.get(file).copied() else {
                 continue;
             };
-            if self.left_out(file, kit.as_deref()) || !self.scope.selects(&now) {
+            if self.left_out(file, &now, kit.as_deref()) || !self.scope.selects(&now) {
                 out.excluded.insert(now);
                 continue;
             }
@@ -558,10 +581,13 @@ impl App<'_, '_> {
     /// Whether a file is code the app holds and did not write, or a route a person turned off:
     /// a file of the kit, a file the base's `.gitattributes` mark vendored or generated, or a
     /// convention file under `app/` the base held that a leading `_` turns off. Neither rule
-    /// judges it.
-    fn left_out(&self, file: &str, kit: Option<&str>) -> bool {
-        kit.is_some_and(|kit| under_or_at(file, kit))
-            || self.walk.vendored(file)
+    /// judges it. The kit and the marks lie where the base holds them, and leave a file out by
+    /// the path it has or the one the base held it at, so a renamed kit stays left out.
+    fn left_out(&self, file: &str, now: &str, kit: Option<&str>) -> bool {
+        let paths = [now, self.base.was(now)];
+        paths
+            .iter()
+            .any(|path| kit.is_some_and(|kit| under_or_at(path, kit)) || self.walk.vendored(path))
             || private(relative(&self.package.directory, file)) && self.base.holds(file)
     }
 
@@ -627,18 +653,19 @@ impl App<'_, '_> {
     }
 
     /// The directory of the package's vendored kit: the `ui` alias the base's `components.json`
-    /// beside the manifest names, resolved through the package's own paths rules, and none where it
+    /// beside the manifest names, resolved through the base's paths rules, and none where it
     /// names none klin can prove. With no `components.json`, the `components/ui` directory at
     /// the package root or under `src/`, where a kit is vendored by hand.
     fn kit(&self) -> Option<String> {
         let file = joined(&self.package.directory, KIT)?;
-        let topology = self.walk.topology;
         if !self.base.holds(&file) {
             return self.vendored_by_hand();
         }
         let ui = self.base.read(&file).and_then(|bytes| ui_alias(&bytes))?;
-        let paths = Aliases::read(topology);
-        self.files.iter().find_map(|from| paths.resolve(from, &ui))
+        let paths = self.base.aliases();
+        self.files
+            .iter()
+            .find_map(|from| paths.resolve(self.base.was(&(self.current)(from)), &ui))
     }
 
     fn vendored_by_hand(&self) -> Option<String> {
