@@ -197,13 +197,27 @@ pub fn line(stop: &Stop) -> Value {
         "notice".into(),
         stop.notice.as_ref().map_or(Value::Null, |notice| {
             serde_json::json!({
-                "message": notice.message,
+                "message": derived_only(&notice.message),
                 "delivered": notice.delivered,
                 "stamp": notice.stamp,
             })
         }),
     );
     Value::Object(line)
+}
+
+/// A notice as the journal keeps it: without the `resolved:` lines, which are facts of the
+/// checkout and no derivation. Spec 5.4.
+fn derived_only(message: &str) -> String {
+    let kept: Vec<&str> = message
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("resolved: "))
+        .collect();
+    let mut out = kept.join("\n");
+    if message.ends_with('\n') {
+        out.push('\n');
+    }
+    out
 }
 
 /// The notices of the open window that only the journal holds: those a Stop left under the
