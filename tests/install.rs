@@ -1618,10 +1618,11 @@ fn setup_names_a_finding_the_base_does_not_hold_apart_from_the_floor() {
     let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("klin now holds today's debt as the floor: nothing, no check found a problem."),
+        run.says("klin now holds today's debt as the floor: nothing yet."),
         "{}",
         run.out
     );
+    assert!(!run.says("no check found a problem"), "{}", run.out);
     assert!(
         run.says("Not in the floor, so these still fail klin check: 1 escape hatch."),
         "{}",
@@ -1663,61 +1664,51 @@ fn setup_names_a_check_a_person_set_to_false_as_off() {
     assert!(run.says("stubs (off)"), "{}", run.out);
 }
 
-/// Two `sarif` entries share the words a report gives scanner findings, so setup counts them
-/// together and words the total once. Review 5500533966.
+/// A test that is still there is no missing test, so a tree whose tests are all present holds
+/// none as debt. Review 5500742698.
 #[test]
-fn setup_counts_the_findings_of_every_sarif_entry_together() {
+fn setup_counts_no_missing_test_where_every_test_is_present() {
     let tree = Tree::new();
     tree.write(
-        "klin.json",
-        r#"{"sarif": [
-            {"name": "eslint", "report": "eslint.sarif", "run": "cp eslint.in eslint.sarif"},
-            {"name": "ruff", "report": "ruff.sarif", "run": "cp ruff.in ruff.sarif"}
-        ]}"#,
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
     );
-    tree.write("src/a.ts", "one\ntwo\nthree\n");
+    tree.write("src/lib.rs", "pub fn f() -> i32 {\n    1\n}\n");
+    tree.write(
+        "tests/one.rs",
+        "#[test]\nfn one() {\n    assert_eq!(t::f(), 1);\n}\n",
+    );
+    tree.write(
+        "tests/two.rs",
+        "#[test]\nfn two() {\n    assert_eq!(t::f(), 1);\n}\n",
+    );
     tree.base();
-    tree.write("src/a.ts", "ONE\nTWO\nthree\n");
-    let result = |line: u64| {
-        format!(
-            r#"{{"ruleId": "r{line}", "message": {{"text": "m"}}, "locations": [{{"physicalLocation": {{"artifactLocation": {{"uri": "src/a.ts"}}, "region": {{"startLine": {line}}}}}}}]}}"#
-        )
-    };
-    let report = |results: &[String]| {
-        format!(
-            r#"{{"version": "2.1.0", "runs": [{{"tool": {{"driver": {{"name": "t"}}}}, "results": [{}]}}]}}"#,
-            results.join(", ")
-        )
-    };
-    tree.write("eslint.in", &report(&[result(1)]));
-    tree.write("ruff.in", &report(&[result(1), result(2)]));
 
     let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("Not in the floor, so these still fail klin check: 3 scanner findings."),
-        "{}",
-        run.out
-    );
+    assert!(!run.says("missing test"), "{}", run.out);
 }
 
-/// A check whose measurement is incomplete holds no known floor, so setup names it as a blind
-/// spot. A report older than the change it should describe is one. Review 5500533966.
+/// setup measures without side effects outside klin's own state, so it runs no `sarif` entry's
+/// command, which may delete or write files, and names the entry as one it did not run.
+/// Review 5500742698.
 #[test]
-fn setup_names_an_incomplete_check_as_a_blind_spot() {
+fn setup_runs_no_sarif_command_and_keeps_the_report() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif"}]}"#,
+        r#"{"sarif": [{"name": "linter", "report": "linter.sarif", "run": "touch ran"}]}"#,
     );
     tree.write("src/a.ts", "one\n");
     tree.write(
-        "eslint.sarif",
+        "linter.sarif",
         r#"{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "t"}}, "results": []}]}"#,
     );
     tree.base();
 
     let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("eslint (incomplete)"), "{}", run.out);
+    assert!(tree.path("linter.sarif").is_file(), "{}", run.out);
+    assert!(!tree.path("ran").exists(), "{}", run.out);
+    assert!(run.says("linter (not run by setup)"), "{}", run.out);
 }

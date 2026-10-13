@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::cli::check;
 use crate::engine::catalogue;
-use crate::engine::document::Floor;
+use crate::engine::document::{Floor, Standing};
 
 /// What `setup` ends with: the debt today's tree holds, which the Stop holds as its floor, and
 /// each check that judges nothing in this tree. Spec 11.2.
@@ -16,13 +16,17 @@ pub fn said(root: &Path, out: &mut String) {
         }
     };
     let held = counted(&floor, |row| row.held);
+    let failing = counted(&floor, |row| row.failing);
+    let floor_said = match (&held, &failing) {
+        (Some(held), _) => held.as_str(),
+        (None, Some(_)) => "nothing yet",
+        (None, None) => "nothing, no check found a problem",
+    };
     let _ = writeln!(
         out,
-        "klin now holds today's debt as the floor: {}.",
-        held.as_deref()
-            .unwrap_or("nothing, no check found a problem")
+        "klin now holds today's debt as the floor: {floor_said}."
     );
-    if let Some(failing) = counted(&floor, |row| row.failing) {
+    if let Some(failing) = failing {
         let _ = writeln!(
             out,
             "Not in the floor, so these still fail klin check: {failing}."
@@ -63,17 +67,18 @@ fn labelled(check: &str, count: usize) -> String {
 }
 
 /// Each check that judges nothing here: one that runs and judged none of the files it found,
-/// one a hole left incomplete, and one that does not run.
+/// one that does not run, and an integration setup did not run.
 fn blind(floor: &[Floor]) -> String {
     let said: Vec<String> = floor
         .iter()
-        .filter_map(|row| match (row.runs, row.incomplete, row.coverage) {
-            (false, _, _) => Some(format!("{} (off)", row.gate)),
-            (true, true, _) => Some(format!("{} (incomplete)", row.gate)),
-            (true, false, Some((0, found))) => {
-                Some(format!("{} (0 of {found} files judged)", row.gate))
-            }
-            (true, false, _) => None,
+        .filter_map(|row| {
+            let why = match (row.standing, row.coverage) {
+                (Standing::Off, _) => "off".to_string(),
+                (Standing::Skipped, _) => "not run by setup".to_string(),
+                (Standing::Measured, Some((0, found))) => format!("0 of {found} files judged"),
+                (Standing::Measured, _) => return None,
+            };
+            Some(format!("{} ({why})", row.gate))
         })
         .collect();
     match said.is_empty() {

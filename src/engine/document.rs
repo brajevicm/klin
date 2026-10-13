@@ -48,6 +48,9 @@ pub struct Args {
     pub view: View,
     /// Whether the run requested the footprint's counters. Spec B.13.
     pub footprint: bool,
+    /// Whether the run leaves every integration alone, so it runs no project command, as the
+    /// baseline of `setup` does. Spec 11.2.
+    pub without_integrations: bool,
 }
 
 impl Args {
@@ -452,12 +455,20 @@ pub struct Floor {
     pub gate: String,
     /// The catalogue check the gate runs, which for a `sarif` entry is not its name.
     pub check: &'static str,
-    pub runs: bool,
-    /// Whether a hole left the gate's measurement incomplete, so its floor is not known.
-    pub incomplete: bool,
+    pub standing: Standing,
     pub held: usize,
     pub failing: usize,
     pub coverage: Option<(usize, usize)>,
+}
+
+/// How one capability stood in the run `setup` reads its floor from. Spec 11.2.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Standing {
+    Measured,
+    /// The capability does not run in this tree, or a person set it to `false`.
+    Off,
+    /// An integration, whose command the run left alone.
+    Skipped,
 }
 
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
@@ -471,6 +482,8 @@ pub struct CheckDocument {
     stopped: bool,
     /// The checks a person set to `false`, which the document lists nowhere. Spec 11.2.
     excluded: Vec<(String, &'static str)>,
+    /// The integrations the run left alone, which the document lists nowhere. Spec 11.2.
+    skipped: Vec<(String, &'static str)>,
     capabilities: Vec<Capability>,
     findings: Vec<Finding>,
     notes: Vec<Note>,
@@ -494,6 +507,17 @@ pub struct CheckDocument {
     /// Whether a file the base parsed is lost to a parse, which a person may hold where the
     /// grammar lags. Spec 7.2.
     grammar_lag: bool,
+}
+
+/// The findings a capability's ratchet passed that are debt. `inventory` judges every test the
+/// base holds, a present one included, so only the sites an accepted entry passed are a missing
+/// test the floor holds. Spec 11.2.
+fn held_debt(row: &Capability) -> usize {
+    let passed = match row.check {
+        INVENTORY => row.accepted,
+        _ => row.held,
+    };
+    passed.map_or(0, |count| count as usize)
 }
 
 impl CheckDocument {
@@ -557,8 +581,9 @@ impl CheckDocument {
     }
 
     /// What `setup` says the run holds as its floor: each capability in the run's order, then
-    /// each check a person set to `false`. The first error of the run, a check's included, where
-    /// one kept any capability from measuring, because then no floor is known. Spec 11.2.
+    /// each check a person set to `false`, then each integration the run left alone. The first
+    /// error of the run, a check's included, where one kept any capability from measuring,
+    /// because then no floor is known. Spec 11.2.
     pub fn floor(&self) -> Result<Vec<Floor>, String> {
         if let Some(problem) = self.problems.first() {
             return Err(match &problem.check {
@@ -569,25 +594,41 @@ impl CheckDocument {
         let ran = self.capabilities.iter().map(|row| Floor {
             gate: row.name.clone(),
             check: row.check,
-            runs: matches!(row.state, State::Active),
-            incomplete: row.incomplete == Some(true),
-            held: row.held.map_or(0, |held| held as usize),
+            standing: match row.state {
+                State::Active => Standing::Measured,
+                _ => Standing::Off,
+            },
+            held: held_debt(row),
             failing: self.failing(&row.name),
             coverage: row
                 .coverage
                 .as_ref()
                 .map(|counts| (counts.measured, counts.found)),
         });
-        let excluded = self.excluded.iter().map(|(gate, check)| Floor {
-            gate: gate.clone(),
-            check,
-            runs: false,
-            incomplete: false,
-            held: 0,
-            failing: 0,
-            coverage: None,
-        });
-        Ok(ran.chain(excluded).collect())
+        let unrun = |rows: &[(String, &'static str)], standing| {
+            rows.iter()
+                .map(|(gate, check)| Floor {
+                    gate: gate.clone(),
+                    check,
+                    standing,
+                    held: 0,
+                    failing: 0,
+                    coverage: None,
+                })
+                .collect::<Vec<_>>()
+        };
+        Ok(ran
+            .chain(unrun(&self.excluded, Standing::Off))
+            .chain(unrun(&self.skipped, Standing::Skipped))
+            .collect())
+    }
+
+    /// The integrations a run left alone, which `setup` names as blind spots. Spec 11.2.
+    pub fn skip(&mut self, gates: &[&Gate]) {
+        self.skipped = gates
+            .iter()
+            .map(|gate| (gate.name.clone(), gate.check.name))
+            .collect();
     }
 
     fn failing(&self, gate: &str) -> usize {

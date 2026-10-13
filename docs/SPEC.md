@@ -1725,19 +1725,25 @@ exits 2, also under `--json`.
   names any other file is an invocation error, and `setup` writes nothing.
 - Prints what it changed and what it left as it was.
 - In a repository whose root holds a `klin.json` after the writes, ends with
-  a baseline that a whole `klin check` measures after the writes:
+  a baseline that a whole `klin check` measures after the writes. The
+  baseline runs no integration, because a `sarif` entry's `run` command may
+  delete its report or write other files, so setup writes nothing outside
+  klin's state directory.
   - `klin now holds today's debt as the floor:` with the findings the
     ratchet passed, which the base or an accepted entry holds, counted by
-    check in the words of `klin report`. The gates of one check, such as
-    every `sarif` entry, count together.
+    check in the words of `klin report`. The gates of one check count
+    together. `inventory` passes every test the base holds, a present one
+    included, so only the sites an accepted entry passed count as held
+    missing tests. Where nothing is held it says `nothing yet` when the next
+    line follows, and `nothing, no check found a problem` when it does not.
   - `Not in the floor, so these still fail klin check:` with the findings
     the ratchet did not pass, new or worsened, counted the same way. The
     line is left out when there are none.
   - `Only new problems block. Blind spots here:` with each check that
     judges nothing in this tree. An active check that measured no file prints
-    as `NAME (0 of N files judged)` with the files it found, one a hole left
-    incomplete prints as `NAME (incomplete)`, and one that does not run,
-    a check a person set to `false` included, prints as `NAME (off)`.
+    as `NAME (0 of N files judged)` with the files it found, one that does
+    not run, a check a person set to `false` included, prints as
+    `NAME (off)`, and an integration prints as `NAME (not run by setup)`.
 
   A count is of findings, the ratchet's unit, so one file's escapes of one
   kind count once. A run with any error, a run-scope error or one gate's,
@@ -1748,8 +1754,8 @@ exits 2, also under `--json`.
   `setup_names_a_finding_the_base_does_not_hold_apart_from_the_floor`,
   `setup_claims_no_floor_when_one_check_could_not_run`,
   `setup_names_a_check_a_person_set_to_false_as_off`,
-  `setup_counts_the_findings_of_every_sarif_entry_together` and
-  `setup_names_an_incomplete_check_as_a_blind_spot` in `tests/install.rs`.
+  `setup_counts_no_missing_test_where_every_test_is_present` and
+  `setup_runs_no_sarif_command_and_keeps_the_report` in `tests/install.rs`.
 - Exit 0 on success. Exit 2 on an invalid invocation or a write it could
   not make.
 
