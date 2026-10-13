@@ -4951,13 +4951,16 @@ vendored kit. With no `components.json`, `components/ui` at the package root
 or under `src/` holds it, where a kit is vendored by hand. A kit file is
 judged neither for reach nor for its exports, and coverage counts it as
 excluded, because a kit is vendored whole and keeps primitives nothing uses
-yet. A file the in-tree `.gitattributes` mark `linguist-vendored` or
-`linguist-generated`, the marks GitHub reads, is judged by neither rule as
-well; that mark is no form of 7.2 and makes no hole. Any other vendored
-directory, such as the `components/ai-elements` a registry installs, is
-narrowed with `except` or marked so. A file or folder under `app/` or
-`src/app/` whose name starts with `_` is private by the Next.js convention, as
-a person disables a route by renaming it, and is judged by neither rule. The section's `in` and `except` narrow an app's judged files
+yet. A file the base's in-tree `.gitattributes` mark `linguist-vendored` or
+`linguist-generated`, the marks GitHub reads, is judged by neither rule in
+either tree; that mark is no form of 7.2 and makes no hole. Only the base's
+marks count, so a mark a change writes leaves nothing out until a person makes
+it part of the base, as no change widens its own exemptions. Any other
+vendored directory, such as the `components/ai-elements` a registry installs,
+is narrowed with `except` or marked so. A convention file under `app/` or
+`src/app/` that a leading `_` turns off, such as `_route.ts`, which Next.js no
+longer routes, is judged by neither rule; a folder or any other file named so
+is judged as usual. The section's `in` and `except` narrow an app's judged files
 and exports as they narrow the families, and coverage counts a file they take
 out as excluded.
 
@@ -4967,13 +4970,14 @@ reaches each of them and takes its names from each. An alias configuration
 klin cannot prove, as 8.2.1 words a `paths` rule or a `baseUrl` it cannot
 prove, or a file the grammar refused, in a file of the app that is no test and
 no declaration file turns the whole app off: the run reports it as a hole and judges no file of the app. A package
-with no entry point, no `bin` and no `workspaces` that owns a TypeScript file
-and names a UI framework but not `next` (`react`, `vue`, `svelte`, `solid-js`,
+with no entry point that owns a TypeScript file and names a UI framework but
+not `next`, and states neither `bin` nor `workspaces`, (`react`, `vue`, `svelte`, `solid-js`,
 `preact`, `react-router`, `@remix-run/react`, `astro`, `nuxt`,
 `@sveltejs/kit`, `expo` or `react-native`), such as a React Router app, is a
 hole too, and nothing of it is judged. Any other package with no entry point,
 such as a package of tools, a command or a workspace root, is no app and gets
-no note. These holes
+no note. `bin` and `workspaces` decide only that note: a package with no entry
+point that depends on `next` is an app whatever else it states. These holes
 are notes where the base holds them, review items at `klin check` where the
 change opened them, and notes at the Stop (7.2), and never a FAIL. A member of
 a derived family that an app owns is judged by app mode alone, so one file
@@ -5012,7 +5016,9 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged`,
 `a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads`,
 `an_unused_export_blocks_no_stop_and_fails_at_check`,
-`a_private_file_or_folder_under_app_is_not_judged`,
+`a_convention_file_renamed_private_is_not_judged_and_a_private_folder_is`,
+`a_vendored_mark_the_change_writes_leaves_nothing_out`,
+`a_bin_or_workspaces_field_leaves_a_next_app_judged`,
 `a_file_gitattributes_marks_vendored_gets_neither_rule`,
 `a_package_that_is_no_app_gets_no_note`,
 `the_judged_count_includes_the_entries`,
@@ -5027,7 +5033,9 @@ that file's `unreached` finding; an import from a file of another language,
 such as MDX, reaches nothing; a `.d.ts` target is not resolved; a `require()`
 and an `import()` whose specifier is no string literal are no edge; a
 convention file under a private `_folder` still counts as an entry, though
-Next.js routes none; and an import of a
+Next.js routes none; an app whose change removes `next` from its manifest, or
+adds an entry point, leaves app mode with no note, as ADR 0044 reads the
+manifest of each tree; and an import of a
 directory whose `package.json` may name another entry point reaches its index
 file alone. The performance case is the fixture's `KLIN_PERF_APP=1` variant,
 whose web package states no entry point and depends on `next`.

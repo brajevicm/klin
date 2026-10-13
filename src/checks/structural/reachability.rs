@@ -275,12 +275,14 @@ fn sweeps(
         out,
     )?;
     let tree = at.project.tree();
+    let marks = app::marks(sides.prior.root(), sides.prior.tree().files()?);
     let side = app::Side {
         root: tree.root(),
         files: tree.files()?,
         facts: sides.after.facts(),
         renamed: &HashMap::new(),
         graph: at.project.graph(),
+        marks: &marks,
     };
     let apps = app::judged(side, scope);
     let after = Swept {
@@ -470,12 +472,14 @@ fn before(
     contract::check::at_base(at, lay, (SECTION, today), |prior, scope| {
         let before_families = base_families(families, &scope);
         let measured = measure(prior.tree(), &before_families, None)?;
+        let marks = app::marks(prior.root(), prior.tree().files()?);
         let side = app::Side {
             root: prior.root(),
             files: prior.tree().files()?,
             facts: measured.facts(),
             renamed: prior.renamed(),
             graph: prior.graph(),
+            marks: &marks,
         };
         let was = app::judged(side, &scope);
         Ok((measured, (before_families, was)))

@@ -526,7 +526,7 @@ fn an_unused_export_blocks_no_stop_and_fails_at_check() {
 }
 
 #[test]
-fn a_private_file_or_folder_under_app_is_not_judged() {
+fn a_convention_file_renamed_private_is_not_judged_and_a_private_folder_is() {
     let tree = app();
     tree.base();
     tree.write(
@@ -540,7 +540,44 @@ fn a_private_file_or_folder_under_app_is_not_judged() {
 
     let run = reachability(&tree);
 
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("app/_components/card.tsx"), "{}", run.out);
+    assert!(!run.says("_route.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_vendored_mark_the_change_writes_leaves_nothing_out() {
+    let tree = app();
+    tree.base();
+    tree.write(".gitattributes", "* linguist-vendored\n");
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("components/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_bin_or_workspaces_field_leaves_a_next_app_judged() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "package.json",
+        r#"{"name":"web","private":true,"bin":"./cli.js","workspaces":["packages/*"],"dependencies":{"next":"15.0.0"}}"#,
+    );
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("components/footer.tsx"), "{}", run.out);
 }
 
 #[test]

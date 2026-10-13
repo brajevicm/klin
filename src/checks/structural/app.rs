@@ -26,16 +26,21 @@ const MANIFEST: &str = "package.json";
 const KIT: &str = "components.json";
 const FRAMEWORK: &str = "next";
 const DEPENDENCIES: &[&str] = &["dependencies", "devDependencies", "peerDependencies"];
-/// The in-tree `.gitattributes` files of a tree with their texts, shallowest first.
-fn attributes(topology: &Topology) -> Vec<(String, String)> {
-    let mut held: Vec<&String> = topology
-        .files()
+/// The in-tree `.gitattributes` files of the base tree with their texts, shallowest first, whose
+/// `linguist-vendored` and `linguist-generated` marks leave files out of both trees' judgement.
+/// The base's marks alone count, so a mark a change writes leaves out nothing until a person
+/// makes it part of the base, as the change cannot widen its own exemptions.
+pub(super) fn marks(root: &Path, files: &[String]) -> Vec<(String, String)> {
+    let mut held: Vec<&String> = files
         .iter()
         .filter(|file| basename(file) == ".gitattributes")
         .collect();
     held.sort_by_key(|file| file.matches('/').count());
     held.into_iter()
-        .filter_map(|file| Some((file.clone(), files::attribute_text(&topology.read(file)?))))
+        .filter_map(|file| {
+            let bytes = std::fs::read(root.join(file)).ok()?;
+            Some((file.clone(), files::attribute_text(&bytes)))
+        })
         .collect()
 }
 
@@ -179,14 +184,12 @@ impl Package {
                     .is_some_and(|held| names.iter().any(|name| held.contains_key(*name)))
             })
         };
-        let app = fields.is_some_and(|held| {
-            !surface::declares_entry(held)
-                && !held.contains_key("bin")
-                && !held.contains_key("workspaces")
-        });
-        let role = match app {
+        let entryless = fields.is_some_and(|held| !surface::declares_entry(held));
+        let tool =
+            fields.is_some_and(|held| held.contains_key("bin") || held.contains_key("workspaces"));
+        let role = match entryless {
             true if depends(&[FRAMEWORK]) => Role::NextApp,
-            true if depends(UI_FRAMEWORKS) => Role::UnknownApp,
+            true if !tool && depends(UI_FRAMEWORKS) => Role::UnknownApp,
             _ => Role::Library,
         };
         Package {
@@ -231,6 +234,8 @@ pub(super) struct Side<'a> {
     pub facts: &'a [Rc<FileFacts>],
     pub renamed: &'a HashMap<String, String>,
     pub graph: &'a modules::Shared,
+    /// The base's `.gitattributes`, read by `marks`.
+    pub marks: &'a [(String, String)],
 }
 
 /// One file app mode judged that is no entry, and whether no entry reaches it.
@@ -293,7 +298,7 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     }
     let (graph, cost) = side.graph.get(&topology);
     out.graph = Some(cost);
-    let walk = Walk::of(&topology, &graph);
+    let walk = Walk::of(&topology, &graph, side.marks);
     let used = walk.used();
     for (at, files) in &owned {
         let package = &packages[*at];
@@ -340,8 +345,8 @@ fn owned<'t>(topology: &'t Topology, packages: &[Package]) -> BTreeMap<usize, Ve
 /// of several held files leads to each of them, and one that names no held file to none.
 struct Walk<'g> {
     topology: &'g Topology<'g>,
-    /// The in-tree `.gitattributes` texts, read once, which mark vendored files.
-    attributes: Vec<(String, String)>,
+    /// The base's `.gitattributes` texts, which mark vendored files.
+    attributes: &'g [(String, String)],
     module_of: HashMap<&'g str, usize>,
     next: Vec<Vec<usize>>,
     sites: HashMap<(usize, u64), Vec<usize>>,
@@ -349,7 +354,11 @@ struct Walk<'g> {
 }
 
 impl<'g> Walk<'g> {
-    fn of(topology: &'g Topology<'g>, graph: &'g ModuleGraph) -> Walk<'g> {
+    fn of(
+        topology: &'g Topology<'g>,
+        graph: &'g ModuleGraph,
+        attributes: &'g [(String, String)],
+    ) -> Walk<'g> {
         let module_of: HashMap<&str, usize> = graph
             .modules
             .iter()
@@ -358,7 +367,7 @@ impl<'g> Walk<'g> {
             .flat_map(|(at, module)| module.sources.iter().map(move |file| (file.as_str(), at)))
             .collect();
         let mut walk = Walk {
-            attributes: attributes(topology),
+            attributes,
             topology,
             module_of,
             next: vec![Vec::new(); graph.modules.len()],
@@ -374,10 +383,10 @@ impl<'g> Walk<'g> {
         walk
     }
 
-    /// Whether the tree's `.gitattributes` mark a file `linguist-vendored` or
+    /// Whether the base's `.gitattributes` mark a file `linguist-vendored` or
     /// `linguist-generated`, so its code is not the repository's own.
     fn vendored(&self, file: &str) -> bool {
-        !self.attributes.is_empty() && files::form(file, &self.attributes).vendored
+        !self.attributes.is_empty() && files::form(file, self.attributes).vendored
     }
 
     fn lead(&mut self, from: usize, start_byte: u64, to: usize) {
@@ -766,14 +775,16 @@ fn rooted(stem: &str, at: &str) -> Option<Kind> {
     }
 }
 
-/// Whether a path under `app/` or `src/app/` is private by the Next.js convention: a folder or a
-/// file whose name starts with `_` is opted out of routing, as a person disables a route by
-/// renaming it.
+/// Whether a file under `app/` or `src/app/` is a convention file a person turned off by
+/// renaming it with a leading `_`, such as `_route.ts`, which Next.js no longer routes. A folder
+/// or any other file named so is judged as usual, so a name alone hides no new code.
 fn private(relative: &str) -> bool {
-    let routes = ["app/", "src/app/"]
-        .into_iter()
-        .find_map(|root| relative.strip_prefix(root));
-    routes.is_some_and(|below| below.split('/').any(|name| name.starts_with('_')))
+    let routed = under_or_at(relative, "app") || under_or_at(relative, "src/app");
+    let disabled = basename(relative)
+        .rsplit_once('.')
+        .and_then(|(stem, _)| stem.strip_prefix('_'))
+        .is_some_and(|name| CONVENTIONS.contains(&name));
+    routed && disabled
 }
 
 /// Whether a file is one app mode judges: neither a test, by the test convention of 8.2, nor a
