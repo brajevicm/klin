@@ -116,8 +116,8 @@ impl Paths {
 }
 
 /// What each TypeScript source names, read once and only when an ancestor may exclude a scope:
-/// its imports and re-exports, and the string literals in `import()`, `require()` and
-/// `/// <reference path>` forms that the facts do not hold. None is a source klin cannot read.
+/// its imports and re-exports, and the string literals in `import()`, `require()`,
+/// `/// <reference path>` and `declare module` forms that the facts do not hold. None is a source klin cannot read.
 struct Specifiers<'t, 'a> {
     topology: &'t Topology<'a>,
     named: OnceCell<Vec<Named<'t>>>,
@@ -156,7 +156,7 @@ fn loose(source: &str) -> Option<Vec<String>> {
     let forms = FORMS
         .get_or_init(|| {
             regex::Regex::new(
-                r#"(?:\b(?:import|require)\s*\(\s*|<reference\s+path\s*=\s*)(?:"([^"]*)"|'([^']*)'|`([^`$]*)`)"#,
+                r#"(?:\b(?:import|require)\s*\(\s*|<reference\s+path\s*=\s*|\bdeclare\s+module\s+)(?:"([^"]*)"|'([^']*)'|`([^`]*)`)"#,
             )
             .ok()
         })
@@ -165,7 +165,9 @@ fn loose(source: &str) -> Option<Vec<String>> {
         forms
             .captures_iter(source)
             .filter_map(|found| found.iter().skip(1).flatten().next())
-            .map(|literal| literal.as_str().to_string())
+            .map(|literal| literal.as_str())
+            .filter(|literal| !literal.contains("${"))
+            .map(str::to_string)
             .collect(),
     )
 }
@@ -511,10 +513,10 @@ fn reached(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
     seen
 }
 
-/// Whether TypeScript may hand this config the value at `key`, a JSON pointer such as `/files`,
+/// Whether TypeScript may hand this config the value at `pointer`, such as `/files`,
 /// from its extends chain: no own value, and a parent that writes one or that klin cannot read.
-fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
-    if parsed[file].pointer(key).is_some() {
+fn inherits(file: &str, pointer: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    if parsed[file].pointer(pointer).is_some() {
         return false;
     }
     let mut seen = BTreeSet::new();
@@ -526,7 +528,7 @@ fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
         if !seen.insert(file.clone()) {
             continue;
         }
-        if seen.len() > 1 && value.pointer(key).is_some() {
+        if seen.len() > 1 && value.pointer(pointer).is_some() {
             return true;
         }
         let written = value
@@ -543,7 +545,7 @@ fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
 
 /// What a config that only supplies settings writes and inherits none of: roots that would make
 /// it a project of its own, and alias names that would give a file another local target.
-const SETTINGS_ONLY: [&str; 4] = [
+const OWN_PROJECT: [&str; 4] = [
     "/include",
     "/files",
     "/compilerOptions/paths",
@@ -568,9 +570,9 @@ impl Config {
             directory: directory(file).to_string(),
             inherits_files: inherits(file, "/files", parsed),
             targets: OnceCell::new(),
-            settings_only: SETTINGS_ONLY
-                .into_iter()
-                .all(|key| value.pointer(key).is_none() && !inherits(file, key, parsed)),
+            settings_only: OWN_PROJECT.into_iter().all(|pointer| {
+                value.pointer(pointer).is_none() && !inherits(file, pointer, parsed)
+            }),
             uncertain: cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
             reached,
             anchor,

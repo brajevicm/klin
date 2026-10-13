@@ -1764,6 +1764,11 @@ fn an_ancestor_that_imports_into_what_it_excludes_still_competes() {
             "export const f = () => import(\"./w\\u0065b/model/index\");",
             false,
         ),
+        (
+            "declare module \"./web/model/index\" { export const z: number; }\nexport {};",
+            false,
+        ),
+        ("export const f = () => import(`./web/model/a$`);", false),
     ] {
         let tree = Tree::new();
         tree.write("main.ts", &format!("{import}\n"));

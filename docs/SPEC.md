@@ -5424,8 +5424,8 @@ its own lies inside it, it cannot inherit `files` (no package or unreadable
 parent, and no parent that writes `files`), and nothing in a held TypeScript
 source outside the scope directory names a path inside it under that config's
 relative, `paths` or `baseUrl` lookup. That covers imports, re-exports, and
-the string literals of `import()`, `require()` and `/// <reference path>`,
-read from the source because the facts do not hold them. A source klin
+the string literals of `import()`, `require()`, `/// <reference path>` and
+`declare module`, read from the source because the facts do not hold them. A source klin
 cannot read, an alias target it cannot work out, or a specifier with an
 escape counts as naming a path inside. Every held source counts, even one
 outside that config's program, because klin does not model which sources a
@@ -5434,8 +5434,10 @@ here. Second, among the configs that remain, a `tsconfig.*.json` that writes
 and inherits no `include`, `files`, `compilerOptions.paths` or
 `compilerOptions.baseUrl`, and that another one in its own
 directory reaches through held local `extends` without being reached back,
-supplies settings and does not compete. A `tsconfig.json` always competes, because it is the default
-project. A config whose held local extends chain holds a cycle proves no
+supplies settings and does not compete. TypeScript can still compile such a
+config with its default roots, but with no `paths` or `baseUrl` it gives no
+alias another local target. A `tsconfig.json` always competes, because it is
+the default project. A config whose held local extends chain holds a cycle proves no
 alias. Two configs that still compete leave every alias under them a hole.
 Other multiple/nested or alternate
 tsconfigs, any other extends,
