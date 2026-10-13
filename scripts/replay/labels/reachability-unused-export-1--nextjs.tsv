@@ -1,0 +1,153 @@
+commit	file	line	label	reason	reviewed
+e42d3efd28ff7f4b5d4d4369a0faad355d39e620	lib/ai/models.ts	169	not-appropriate	return type of the exported getModelAvailability; judgment call	
+f9652b452a4dc006af947c29301f4845efec892a	app/(auth)/auth.ts	33	not-appropriate	destructured auth library API; one unused binding of the set	
+f9652b452a4dc006af947c29301f4845efec892a	components/chat/document.tsx	161	appropriate	existing export the change stranded by removing its importers	
+f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	139	not-appropriate	return type of the exported getAllGatewayModels; judgment call	
+f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	173	appropriate	new export nothing imports	
+f9652b452a4dc006af947c29301f4845efec892a	lib/ai/models.ts	179	appropriate	existing export the change stranded by removing its importers	
+3651670fb9fc0f8deff26915730e05b71b0be918	components/icons.tsx	771	not-appropriate	icon set file; unused icons are kept as a library	
+3651670fb9fc0f8deff26915730e05b71b0be918	components/icons.tsx	788	not-appropriate	icon set file; unused icons are kept as a library	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/client.ts	4	not-appropriate	better-auth setup line, the same idiom as the destructure on line 9	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/client.ts	9	not-appropriate	destructured auth library API; one unused binding of the set	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/constants.ts	2	appropriate	existing constant the change stranded by removing its importers	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	26	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom; the change removed its importer	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	41	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	61	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
+b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/db/schema.ts	72	not-appropriate	InferSelectModel type beside its table, the Drizzle idiom	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	175	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	309	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	330	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	346	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	356	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	366	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	379	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	445	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	451	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	506	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	508	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	512	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	516	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	530	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	534	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	538	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	542	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	549	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	553	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	34	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	38	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	49	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	69	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	81	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	142	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	147	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	198	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	200	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	231	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	233	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	256	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	258	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	279	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	281	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	302	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	304	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	323	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	343	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/message.tsx	345	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	104	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	113	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	119	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	136	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	150	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	163	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	171	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	297	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	314	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	321	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	324	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	334	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	340	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	361	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	366	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	821	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	823	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	830	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	949	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	954	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	965	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	981	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	993	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1001	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1005	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1047	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1048	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1052	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1054	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1066	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1069	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1076	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1079	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1089	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1143	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1145	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1149	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1153	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1167	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1171	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1178	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1180	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1187	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1189	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1196	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1198	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1206	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1210	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1214	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1218	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1225	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1227	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1232	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1234	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1239	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1241	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1256	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1258	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1265	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1267	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1280	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1282	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1287	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1289	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1296	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1298	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1305	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1307	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1314	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1316	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1323	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1325	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1332	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/prompt-input.tsx	1336	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/reasoning.tsx	40	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/reasoning.tsx	48	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/reasoning.tsx	152	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/reasoning.tsx	202	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/shimmer.tsx	27	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/suggestion.tsx	13	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/suggestion.tsx	15	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/suggestion.tsx	28	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	25	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	34	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	36	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	68	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	104	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	116	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/tool.tsx	131	not-appropriate	AI Elements kit vendored through the shadcn registry; its ui alias does not cover the directory	
+37cb5e38da15f9b09039c0ad1e42372d181e6331	components/layout/footer-menu.tsx	9	appropriate	export used only inside its own file	
+9a4c995bb68535b83fba07406fd31d59ff28fefd	lib/shopify/types.ts	15	not-appropriate	part of the exported CartItem in a types-only module; judgment call	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/alert-dialog.tsx	146	not-appropriate	shadcn kit file; the kit exports its whole API	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/button.tsx	36	not-appropriate	shadcn kit file; the kit exports its whole API	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/button.tsx	53	not-appropriate	shadcn kit file; the kit exports its whole API	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/dropdown-menu.tsx	187	not-appropriate	shadcn kit file; the kit exports its whole API	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/input.tsx	5	not-appropriate	shadcn kit file; the kit exports its whole API	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	components/ui/toast.tsx	118	not-appropriate	shadcn kit file; the kit exports its whole API	
+03ef292d26f1f96dfbd9d2773284c370e3fec7e4	hooks/use-toast.ts	72	not-appropriate	shadcn kit file; the kit exports its whole API	

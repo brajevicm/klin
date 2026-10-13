@@ -296,6 +296,9 @@ impl Fixture {
         if std::env::var_os("KLIN_PERF_PATHS").is_some() {
             alias_sources(&tree);
         }
+        if std::env::var_os("KLIN_PERF_APP").is_some() {
+            app_package(&tree);
+        }
         tree.base();
         if origin {
             tree.git(&["update-ref", "refs/remotes/origin/main", "main"]);
@@ -413,9 +416,7 @@ impl Fixture {
         if self.layering {
             assert!(median_counter("layering_graph_modules") > 0);
         }
-        assert_eq!(median_counter("public-api_surface_surfaces"), 4);
-        assert!(median_counter("public-api_surface_items") > 0);
-        assert_eq!(median_counter("public-api_surface_holes"), 0);
+        surface_shape_is_present(samples);
     }
 
     fn measure(&self, case: PerfCase) -> Measurements {
@@ -617,6 +618,19 @@ struct Switches {
     origin: bool,
 }
 
+/// The surfaces `public-api` derives: one per Rust library and package entry, and none for the
+/// web package of the app variant, which states no entry point.
+fn surface_shape_is_present(samples: &Samples) {
+    let median_counter = |name: &str| median(&samples.gates[name]);
+    let surfaces = match std::env::var_os("KLIN_PERF_APP") {
+        Some(_) => 2,
+        None => 4,
+    };
+    assert_eq!(median_counter("public-api_surface_surfaces"), surfaces);
+    assert!(median_counter("public-api_surface_items") > 0);
+    assert_eq!(median_counter("public-api_surface_holes"), 0);
+}
+
 fn switches(profile: Profile, config: &str) -> Switches {
     let dense = profile.units.is_some();
     let configured = dense && config != "legacy";
@@ -730,6 +744,21 @@ fn alias_sources(tree: &Tree) {
     println!(
         "paths variant: {sites} relative sites rewritten after verifying the generator digest"
     );
+}
+
+/// An app variant: the web package states no entry point and depends on `next`, so
+/// `reachability` judges it in app mode, with the file its script runs as the entry. The
+/// generated sources stay identical. #580.
+fn app_package(tree: &Tree) {
+    tree.write(
+        "web/package.json",
+        r#"{"name":"fixture-web","private":true,"version":"0.1.0","scripts":{"start":"tsx src/index.ts"},"dependencies":{"next":"15.0.0"}}"#,
+    );
+    tree.write(
+        "web/package-lock.json",
+        r#"{"name":"fixture-web","version":"0.1.0","lockfileVersion":3,"packages":{"":{"dependencies":{"next":"15.0.0"}},"node_modules/next":{"version":"15.0.0"}}}"#,
+    );
+    println!("app variant: web/package.json states no entry point and depends on next");
 }
 
 fn write_sources(

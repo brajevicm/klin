@@ -1306,7 +1306,7 @@ measurement rules are section B.8, amended below and by section 7.
 | `inventory` | check | Automatic | `{stop, check}` | A deleted test is a review item (section 9.2). |
 | `complexity` | check | Automatic | `{stop, check}` | None. Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). |
 | `dead-symbols` | check | Automatic | `{stop, check}` | None. |
-| `reachability` | check | Automatic | `{stop, check}` | None. Named re-export is a reference (ADR 0061). |
+| `reachability` | check | Automatic | `{stop, check}` | None. Named re-export is a reference (ADR 0061). App mode over the module graph (#580). |
 | `layering` | check | Automatic | `{stop, check}` | None. |
 | `public-api` | check | Automatic | `{stop, check}` | None. |
 | `conventions` | check | Policy | `{stop, check}` | None. In-process ast-grep rules. |
@@ -3618,7 +3618,10 @@ Each check documents its rule. The rules for the shipped checks:
   per such entry in its text report, beside the `derived:` line and above the
   gates, so the report names what ran. A `resolved:` line is a fact of the
   checkout and no derivation, so neither the journal nor the `--json` object
-  carries it. klin never invokes `npx`, `npm exec` or any other command that
+  carries it, and the journal keeps a delivered notice without its
+  `resolved:` lines. Pinned by
+  `an_installed_compiler_does_not_change_the_derived_value_or_the_order` in
+  `tests/build.rs`. klin never invokes `npx`, `npm exec` or any other command that
   could fetch a tool. A `build` a person wrote runs exactly as written.
 
 A derived ceiling is not monotone. A percentile falls when simple functions
@@ -4199,6 +4202,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `complexity` | tangled function written in a hurry | file + declaration | `cc`, `lines` rise | yes | shipped |
 | `dead-symbols` | private declaration left unreferenced | file + declaration | `dead` rises from 0 to 1 | yes | shipped |
 | `reachability` | implementation file nothing in the repository uses | file | `unreached` rises from 0 to 1 | yes | shipped |
+| `reachability` in an app | exported value no other file of the tree imports | file + export name | `unused-export` rises from 0 to 1 | yes | shipped |
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
@@ -4837,8 +4841,8 @@ public-api identity names no file, and an unreached member may still be live
 through a caller this check does not resolve, so neither decision implies the
 other. Pinned by
 `an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete`.
-The check does not resolve imports, `mod foo;`, side-effect imports,
-star re-exports, string registries,
+For a family the check does not resolve imports, `mod foo;`, side-effect
+imports, star re-exports, string registries,
 dependency injection, framework discovery by name or attribute, macro or
 build-generated callers, or callers outside the tree, which belong to the
 module graph of `layering` or to no V1 check; a family wired that way is narrowed by path or accepted by a
@@ -4871,6 +4875,187 @@ known limit: a declaration that a later statement exports as the default,
 such as `function Reset() {}` with `export default Reset;` or
 `export { Reset as default };`, keeps its own name, so a `default` re-export
 does not reach it and `export { Reset } from "./m"` does.
+
+**`reachability` judges an app over the module graph.** A TypeScript package
+whose `package.json` states no entry point field (`exports`, `types`,
+`typings`, `main` or `module`, ADR 0044) and names `next` under
+`dependencies`, `devDependencies` or `peerDependencies` is an app. A package
+owns each TypeScript file under its directory that no deeper package holds,
+outside hidden and skipped directories. In an app the check walks the module
+graph of `layering` (ADR 0043) of each tree from the app's entries, over
+imports, re-exports and `import()` calls whose first argument is a string
+literal, type-only ones included. The entries are:
+
+- under `app/` or `src/app/`, a file whose basename less its extension is a
+  Next.js convention name: `page`, `layout`, `template`, `loading`, `error`,
+  `global-error`, `not-found`, `global-not-found`, `forbidden`,
+  `unauthorized`, `default`, `route`, `opengraph-image`, `twitter-image`,
+  `icon`, `apple-icon`, `sitemap`, `robots` or `manifest`. Any other file
+  under `app/`, such as `page-client.tsx`, is an ordinary module;
+- every file under `pages/` or `src/pages/`;
+- `middleware`, `proxy`, `instrumentation` and `instrumentation-client` at
+  the package root or under `src/`, and each `*.config` file at the package
+  root, such as `next.config.ts` or `tailwind.config.ts`, which its tool reads
+  by name;
+- each TypeScript file a word of a script of the base's copy of the manifest
+  names, joined to the package directory, such as `scripts/seed.ts` in
+  `tsx scripts/seed.ts`. A script a change writes makes no entry until a
+  person makes it part of the base.
+
+A test file of 8.2 and a declaration file (`.d.ts`, `.d.mts`, `.d.cts`) is no
+entry and is never judged, so a module only its tests import is unreached.
+Each other file of the app is judged: its `unreached` value rises from 0 to 1
+where no entry reaches it, under the identity of a family member, its path
+and the text `file`. An unreached file's exports get no finding of their own,
+and its finding holds them: an export a file had at the base while the base
+held the file unreached is held once the file is reached, so only an export
+the change adds is new there. Each exported value of a reached file of the
+app, an entry's included, is judged: its `unused-export` value rises from 0 to
+1 where no other file of the tree imports it. An import from an unreached file
+counts, so an export only dead code uses is no finding beside that file's own,
+and an import from a test does not, as tests are no entries. Its identity is
+the path and the text `export` and its name, at the line that first exports
+it. A file exports each declaration its top-level `export` exposes, by the
+name a consumer addresses it by (`default` for `export default function
+Page`), and each name an export clause, a default export or a re-export
+names. A bare star names none, and a type alias, an interface and an
+`export type` clause export no value, so an exported type is never a finding. A named import or named
+re-export takes the name it names in its source module, so
+`import { a as b }` takes `a`; a default import takes `default`; a namespace
+import, a star re-export and an `import()` take every name; a side-effect
+import takes none. A use from the exporting file itself does not count, except
+that a name the declared contract of another exported declaration of the file
+reads through `typeof` is used, so `export type Size = (typeof sizes)[number]`
+uses `sizes`, and so does a `type Size` that `export type { Size }` exposes;
+any other word of a contract, such as a property name, uses nothing. The remedy imports the export where it is needed or drops the
+`export`, and deletes no code: `dead-symbols` judges the private declaration
+left behind. So the row sits in the safe-remedy tier of ADR 0073, and an
+unused export blocks no Stop: `klin check` and CI judge it, so vendored code no
+rule recognizes holds no agent's turn. The
+check resolves each use through the graph and never by name, so a reached
+file that declares `generateId` is not used by an import of another file's
+`generateId`. Next.js reads these exports from the file kind named, so they
+are never unused there, and a renamed export counts by its exported name:
+`default` in every entry; `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and
+`OPTIONS` in a `route`; `metadata`, `generateMetadata`, `viewport` and
+`generateViewport` in a `page` or `layout`; `generateStaticParams`,
+`dynamic`, `dynamicParams`, `revalidate`, `runtime`, `fetchCache`,
+`preferredRegion` and `maxDuration` in a `page`, `layout` or `route`; `alt`,
+`size`, `contentType` and `generateImageMetadata` in an `opengraph-image`,
+`twitter-image`, `icon` or `apple-icon`; `generateSitemaps` in a `sitemap`;
+`config` and a function named `middleware` or `proxy` in a `middleware` or
+`proxy`; `register` and `onRequestError` in an `instrumentation`;
+`onRouterTransitionStart` in an `instrumentation-client`; and
+`getServerSideProps`, `getStaticProps`, `getStaticPaths` and `config` under
+`pages/`. Where the base holds a `components.json` beside the manifest, the
+directory its `aliases.ui` names in the base, resolved through the base's
+tsconfig `paths`, holds a vendored kit. With no `components.json`, `components/ui` at the package root
+or under `src/` holds it, where a kit is vendored by hand. A kit file is
+judged neither for reach nor for its exports, and coverage counts it as
+excluded, because a kit is vendored whole and keeps primitives nothing uses
+yet. A file the base's in-tree `.gitattributes` mark `linguist-vendored` or
+`linguist-generated`, the marks GitHub reads, is judged by neither rule in
+either tree; that mark is no form of 7.2 and makes no hole. Only the base's
+marks count, so a mark a change writes leaves nothing out until a person makes
+it part of the base, as no change widens its own exemptions. Any other
+vendored directory, such as the `components/ai-elements` a registry installs,
+is narrowed with `except` or marked so. A convention file under `app/` or
+`src/app/` that a leading `_` turns off, such as `_route.ts`, which Next.js no
+longer routes, is judged by neither rule where the base held it, under that
+name or under the name a rename moved it from; a new file named so, a folder
+or any other file is judged as usual. Every exemption is read from the base,
+so a change never widens its own: the marks, the kit and the scripts it
+writes count once a person makes them part of the base. The kit and each
+`.gitattributes` apply where the base holds them, and leave a file out by the
+path it has or the path the base held it at. A renamed `.gitattributes` or a
+changed `paths` rule moves no exemption onto other files, and a renamed kit or
+vendored directory stays left out
+(`a_paths_rule_the_change_writes_moves_no_kit`,
+`a_renamed_gitattributes_marks_only_where_the_base_held_it`,
+`a_renamed_vendored_directory_stays_left_out`). The section's `in` and `except` narrow an app's judged files
+and exports as they narrow the families, and coverage counts a file they take
+out as excluded.
+
+An import that names no file the tree holds, such as generated types, reaches
+nothing and turns nothing off. An import that may name several held files
+reaches each of them and takes its names from each. An alias configuration
+klin cannot prove, as 8.2.1 words a `paths` rule or a `baseUrl` it cannot
+prove, or a file the grammar refused, in a file of the app that is no test and
+no declaration file turns the whole app off: the run reports it as a hole and judges no file of the app. A package
+with no entry point that owns a TypeScript file and names a UI framework but
+not `next`, and states neither `bin` nor `workspaces`, (`react`, `vue`, `svelte`, `solid-js`,
+`preact`, `react-router`, `@remix-run/react`, `astro`, `nuxt`,
+`@sveltejs/kit`, `expo` or `react-native`), such as a React Router app, is a
+hole too, and nothing of it is judged. Any other package with no entry point,
+such as a package of tools, a command or a workspace root, is no app and gets
+no note. `bin` and `workspaces` decide only that note: a package with no entry
+point that depends on `next` is an app whatever else it states. These holes
+are notes where the base holds them, review items at `klin check` where the
+change opened them, and notes at the Stop (7.2), and never a FAIL. A member of
+a derived family that an app owns is judged by app mode alone, so one file
+has one finding. A changed run walks both trees whole and compares findings by
+identity, as the family rule does; the walk reads the facts the run already
+measured and builds the graph once per tree. An accepted entry gives
+`unreached` for a file and `unused-export` for an export; each value is
+optional, and an entry that gives neither holds nothing. The OK line counts
+every file app mode judged, its entries included, and adds the exports it
+judged and how many are unused. This amends ADR 0061 for
+apps: in an app a re-export reaches its target only where the file that
+writes it is reached, and the name-only re-export rule stays for the families.
+Pinned by `a_new_component_nothing_imports_fails`,
+`a_new_ts_file_nothing_imports_fails_and_one_a_reached_file_imports_passes`,
+`a_new_export_no_reached_file_imports_fails`,
+`a_use_inside_the_exporting_file_does_not_count`,
+`an_entry_export_of_its_file_kind_passes_and_one_of_another_kind_fails`,
+`a_file_next_dynamic_imports_is_reached`,
+`a_package_with_no_entry_point_and_no_framework_klin_knows_is_a_hole_and_no_fail`,
+`an_import_of_a_file_the_tree_does_not_hold_turns_no_judgement_off`,
+`an_alias_klin_cannot_prove_turns_the_whole_package_off`,
+`an_import_that_names_several_files_reaches_each_of_them`,
+`a_re_export_reaches_its_target_only_from_a_reached_file`,
+`an_export_is_judged_through_the_graph_and_not_by_its_name`,
+`a_namespace_import_uses_every_export_of_its_module`,
+`a_module_only_its_test_imports_fails_and_the_test_is_no_finding`,
+`a_kit_file_the_components_json_ui_alias_names_gets_neither_rule`,
+`with_no_components_json_a_kit_under_components_ui_gets_neither_rule`,
+`a_config_file_a_tool_reads_at_the_package_root_is_an_entry`,
+`an_exported_type_is_no_finding_and_a_value_an_exported_type_names_is_used`,
+`a_file_the_base_held_unreached_keeps_its_exports_held_once_it_is_reached`,
+`an_export_only_an_unreached_file_imports_is_no_finding_of_its_own`,
+`a_file_a_package_script_runs_is_an_entry`,
+`a_value_an_exported_interface_names_only_as_a_property_is_still_unused`,
+`a_value_a_type_a_local_export_clause_exposes_reads_through_typeof_is_used`,
+`an_alias_klin_cannot_prove_in_a_test_leaves_the_app_judged`,
+`a_file_any_package_script_names_is_an_entry_even_one_a_linter_only_reads`,
+`an_unused_export_blocks_no_stop_and_fails_at_check`,
+`a_route_the_change_renames_private_is_not_judged_and_a_private_folder_is`,
+`a_new_file_named_like_a_disabled_route_is_judged`,
+`a_kit_alias_the_change_writes_leaves_nothing_out`,
+`a_script_the_change_writes_makes_no_entry`,
+`a_vendored_mark_the_change_writes_leaves_nothing_out`,
+`a_bin_or_workspaces_field_leaves_a_next_app_judged`,
+`a_file_gitattributes_marks_vendored_gets_neither_rule`,
+`a_package_that_is_no_app_gets_no_note`,
+`the_judged_count_includes_the_entries`,
+`a_file_the_section_excepts_is_excluded_and_not_judged`,
+`an_orphan_the_base_held_stays_a_note`,
+`a_file_that_loses_its_last_import_is_worsened` and
+`the_stop_blocks_a_turn_that_adds_an_orphan_component` in
+`tests/app_reachability.rs`, and by the recall suite of #572 in
+`tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no
+`components.json` exists, and a new `*.config` file at the package root is an
+entry, as these are names a person and a tool choose; a file any word of a package script names is an entry, even
+where the script only lints or formats it, so `eslint src/legacy.ts` hides
+that file's `unreached` finding; an import from a file of another language,
+such as MDX, reaches nothing; a `.d.ts` target is not resolved; a `require()`
+and an `import()` whose specifier is no string literal are no edge; a
+convention file under a private `_folder` still counts as an entry, though
+Next.js routes none; an app whose change removes `next` from its manifest, or
+adds an entry point, leaves app mode with no note, as ADR 0044 reads the
+manifest of each tree; and an import of a
+directory whose `package.json` may name another entry point reaches its index
+file alone. The performance case is the fixture's `KLIN_PERF_APP=1` variant,
+whose web package states no entry point and depends on `next`.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens
@@ -5529,6 +5714,7 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_rust_path_to_its_own_module_is_no_cycle`,
 `a_retarget_to_an_inline_module_of_the_same_file_is_new`,
 `a_typescript_re_export_is_a_dependency`,
+`a_typescript_import_call_with_a_literal_specifier_is_a_dependency`,
 `a_package_renamed_with_its_manifest_keeps_its_base_debt`,
 `a_missing_target_root_a_manifest_names_is_unresolved_whatever_the_scope`,
 `a_module_declaration_is_containment_and_not_a_dependency`,
@@ -5562,9 +5748,17 @@ unit tests
 `a_semantic_edge_is_paired_before_its_findings_are_made` in
 `src/checks/structural/layering.rs`, and
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
-`src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
+`src/modules/mod.rs`, pin it over a graph built in memory. Each tree's module
+graph is built once and shared by `layering`, `public-api` and the app mode of
+`reachability`, each passing the topology of every structural file of that
+tree; a caller whose topology lists other files or facts gets a graph of its
+own, so the gates' order never changes a graph. No shipped gate passes a
+narrower view, so the unit test
+`a_shared_graph_serves_only_a_topology_like_the_one_that_built_it` in
+`src/modules/mod.rs` pins it. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
-declares, a TypeScript `import()` or `require()`, a bare import under a
+declares, a TypeScript `import()` whose first argument is no string literal
+or a `require()`, a bare import under a
 `baseUrl` a config inherits through `extends`, and package exports are not
 dependencies in V1. A bare `baseUrl` import klin cannot prove, under an
 unproved config such as one of two sibling or nested configs, from a file

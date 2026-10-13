@@ -15,7 +15,9 @@ use crate::config::file::Config;
 use crate::config::key::{self, Key};
 use crate::config::scope::{self, Scope, under_or_at};
 use crate::contract;
-use crate::contract::check::{Context, HeldAtBase, Line, Listed, Measured, Sink};
+use crate::contract::check::{
+    Context, HeldAtBase, Line, Listed, Located, Measured, Sink, Unresolvable,
+};
 use crate::contract::coverage;
 use crate::contract::holes;
 use crate::contract::measurement::{self, Measurement};
@@ -33,9 +35,12 @@ use crate::sys::error::Error;
 use crate::sys::record::Values;
 use crate::window::base;
 
+use super::app;
+
 pub const SECTION: &str = "reachability";
 
 const UNREACHED: &str = "unreached";
+const UNUSED: &str = "unused-export";
 const SIBLING: &str = "sibling";
 const LABEL: &str = "file";
 /// The fewest members a family may be derived from. Spec 5.4.
@@ -46,6 +51,8 @@ const REMEDY: &str = "Wire this file into the application through a real source 
                       contract where the task keeps it, or leave the break for a person to accept \
                       where the task removes it, and keep and wire the implementation if it is \
                       still needed, and delete it only if it is unused.";
+const UNUSED_REMEDY: &str = "Import the export where the application needs it, or drop the \
+                             `export` where nothing else imports it.";
 
 pub const NAME: Key = Key {
     name: "name",
@@ -129,86 +136,186 @@ struct State {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let config = &project.config;
-    let families = families(project)?;
+    let (scope, families) = families(project)?;
     if let Some(said) = said_families(&families) {
         out.tell(said);
     }
     let commit = contract::check::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let (before, before_families, after) =
-        sweeps(at, &families, &commit, &mut names, &mut layout, out)?;
-    let (before_states, _) = judgement(&before, &mut names.before, &before_families);
-    let (after_states, unjudged) = judgement(&after, &mut names.after, &families);
+    let (before, after) = sweeps(
+        at,
+        (&scope, families),
+        &commit,
+        (&mut names, &mut layout),
+        out,
+    )?;
+    let (before_states, _) = judgement(&before, &mut names.before);
+    let (after_states, unjudged) = judgement(&after, &mut names.after);
     out.record(|records| {
         records.names = Some(names);
         records.layout = layout;
+        records.graph = match (before.apps.graph, after.apps.graph) {
+            (None, None) => None,
+            (was, now) => Some(was.unwrap_or_default() + now.unwrap_or_default()),
+        };
     });
     let mut held_before: Vec<&State> = before_states.iter().collect();
     contract::check::keep_held(at, &mut held_before);
-    let prior = held_before
+    let mut prior: Vec<Finding> = held_before
         .iter()
         .map(|state| finding(state, None))
         .collect();
-    let now: Vec<Finding> = after_states
-        .iter()
-        .filter(|state| state.unreached)
-        .map(|state| finding(state, sibling(&after_states, state)))
-        .collect();
-    let judged = after_states.len();
-    let unreached = now.len();
-    let said = out.covered(&covered(&after, &families).coverage(None));
+    prior.extend(app_findings(&before.apps, true).filter(|found| project.was_held(&found.file)));
+    let found = failing(&after_states, &after.apps, at);
+    let measured = measured(&found, (after_states.len(), unjudged), &after.apps);
+    let said = out.covered(&covered(&after).coverage(None));
     let evaluator = evaluator();
     let code = evaluator.evaluate(
-        now,
+        found,
         prior,
-        ratchet::accepted(config, at.gate, evaluator.metrics)?,
+        ratchet::accepted_leaving_out(config, at.gate, evaluator.metrics, &[UNREACHED, UNUSED])?,
         at,
-        Line::new(
-            Measured::Reachability {
-                judged,
-                unreached,
-                unjudged,
-            },
-            said,
-        ),
+        Line::new(measured, said),
         out,
     );
-    coverage_result(at, (&before, &before_families), (&after, &families), out);
-    base_note(&held_before, out);
+    coverage_result(at, (&before, &after), out);
+    app_holes(at, (&before.apps, &after.apps), out);
+    base_note(&held_before, &before.apps, project, out);
     Ok(code)
 }
 
-/// The two trees measured, and the families under the base's scope. Spec 8.4.
+/// What the OK line says the check judged: the families' members and the app files, with how
+/// many are unreached, and the exports app mode judged.
+fn measured(found: &[Finding], (members, unjudged): (usize, usize), now: &app::Judged) -> Measured {
+    Measured::Reachability {
+        judged: members + now.judged.len(),
+        unreached: found
+            .iter()
+            .filter(|found| found.values.contains_key(UNREACHED))
+            .count(),
+        unjudged,
+        exports: now.exports,
+        unused: now.unused.len(),
+    }
+}
+
+/// The working tree's findings: each unreached member of a family, with its first proven sibling,
+/// and each unreached file and unused export of an app that may block this caller.
+fn failing(states: &[State], now: &app::Judged, at: &Context) -> Vec<Finding> {
+    let mut found: Vec<Finding> = states
+        .iter()
+        .filter(|state| state.unreached)
+        .map(|state| finding(state, sibling(states, state)))
+        .collect();
+    found.extend(app_findings(now, false).filter(|found| blocks(at, found)));
+    found
+}
+
+/// Whether a finding may block this caller: an unused export blocks no Stop, as `klin check` and
+/// CI judge it, so a vendored file no rule recognizes holds no agent's turn. ADR 0073.
+fn blocks(at: &Context, found: &Finding) -> bool {
+    !(at.hook() && found.values.contains_key(UNUSED))
+}
+
+/// App mode's findings in one tree: one per unreached file and one per unused export. As the
+/// base's sites, `at_base` adds each reached file, and each export of an unreached file, which
+/// that file's finding held. Spec 8.4.
+fn app_findings(judged: &app::Judged, at_base: bool) -> impl Iterator<Item = Finding> + '_ {
+    let files = judged
+        .files
+        .iter()
+        .filter(move |judged| at_base || judged.unreached)
+        .map(|judged| Finding {
+            file: judged.file.clone(),
+            line: 0,
+            text: LABEL.to_string(),
+            values: Values::from_iter([(
+                UNREACHED.to_string(),
+                Value::from(u64::from(judged.unreached)),
+            )]),
+            body: None,
+        });
+    let dormant = judged.dormant.iter().filter(move |_| at_base);
+    let exports = judged.unused.iter().chain(dormant).map(|unused| Finding {
+        file: unused.file.clone(),
+        line: unused.line,
+        text: format!("export {}", unused.name),
+        values: Values::from_iter([(UNUSED.to_string(), Value::from(1))]),
+        body: None,
+    });
+    files.chain(exports)
+}
+
+/// The app packages klin could not judge in the working tree, beside the ones the base held.
+fn app_holes(at: &Context, (was, now): (&app::Judged, &app::Judged), out: &mut Sink) {
+    let base = || was.holes.clone();
+    holes::unresolved_said((&now.holes, base), Unresolvable::App, at, out);
+}
+
+/// One tree as the gate judges it: its measurement, the families under its scope, and app
+/// mode's judgement of it. Spec 8.4.
+struct Swept {
+    measured: Measurement,
+    families: Vec<Family>,
+    apps: app::Judged,
+}
+
+/// The base and the working tree, each measured and judged by app mode, the base under the
+/// families of the scope it recorded. Spec 8.4.
 fn sweeps(
     at: &Context,
-    families: &[Family],
+    (scope, families): (&Scope, Vec<Family>),
     commit: &str,
-    names: &mut structural::NameCost,
-    layout: &mut Option<base::Layout>,
+    (names, layout): (&mut structural::NameCost, &mut Option<base::Layout>),
     out: &mut Sink,
-) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
+) -> Result<(Swept, Swept), Error> {
     let sides = measurement::sides_counted(
         at,
         commit,
         measurement::Counted { names, layout },
-        |unchanged| measure(at.project.tree(), families, unchanged),
-        |prior| before(at, families, prior),
+        |unchanged| measure(at.project.tree(), &families, unchanged),
+        |prior| before(at, (scope, &families), prior),
         out,
     )?;
-    Ok((sides.before, sides.kept, sides.after))
+    let tree = at.project.tree();
+    let base = app::Base::of(
+        sides.prior.root(),
+        sides.prior.tree().files()?,
+        sides.prior.renamed(),
+    );
+    let side = app::Side {
+        root: tree.root(),
+        files: tree.files()?,
+        facts: sides.after.facts(),
+        renamed: &HashMap::new(),
+        graph: at.project.graph(),
+        base: &base,
+    };
+    let apps = app::judged(side, scope);
+    let after = Swept {
+        measured: sides.after,
+        families,
+        apps,
+    };
+    let (families, apps) = sides.kept;
+    let before = Swept {
+        measured: sides.before,
+        families,
+        apps,
+    };
+    Ok((before, after))
 }
 
-fn judgement(
-    measured: &Measurement,
-    cost: &mut structural::TreeNameCost,
-    families: &[Family],
-) -> (Vec<State>, usize) {
-    let index = measured.indexed(cost, None);
-    structural::timed(&mut cost.query, || states(&index, families))
+/// The families' members judged, less the files of an app package, which app mode judges.
+fn judgement(swept: &Swept, cost: &mut structural::TreeNameCost) -> (Vec<State>, usize) {
+    let index = swept.measured.indexed(cost, None);
+    structural::timed(&mut cost.query, || {
+        states(&index, &swept.families, &swept.apps.owned)
+    })
 }
 
-fn families(project: &Project) -> Result<Vec<Family>, Error> {
+fn families(project: &Project) -> Result<(Scope, Vec<Family>), Error> {
     let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
     let scope = Scope::read(config, project.moves(), SECTION, &values)?;
@@ -228,10 +335,11 @@ fn families(project: &Project) -> Result<Vec<Family>, Error> {
             config.file.display()
         ))
     })?;
-    listed
+    let families = listed
         .iter()
         .map(|entry| family(config, entry, &scope))
-        .collect()
+        .collect::<Result<_, _>>()?;
+    Ok((scope, families))
 }
 
 fn family(config: &Config, entry: &Value, scope: &Scope) -> Result<Family, Error> {
@@ -300,12 +408,17 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 }
 
 /// The whole tree under the root, in the families' languages, because a caller may sit
-/// anywhere in the repository and a member is reached by any of them. Spec 8.4.
+/// anywhere in the repository and a member is reached by any of them. Where the tree holds an
+/// app package, every structural file, as the module graph every gate shares reads them all.
+/// Spec 8.4.
 fn measure(
     tree: &Tree,
     families: &[Family],
     unchanged: Option<&measurement::Unchanged>,
 ) -> Result<Measurement, Error> {
+    if app::present(tree.root(), tree.files()?) {
+        return measurement::measure_all(tree, unchanged);
+    }
     let found = tree.scoped(&extensions(families), true, |_| true)?;
     measurement::measure(found, tree, unchanged)
 }
@@ -322,7 +435,7 @@ fn extensions(families: &[Family]) -> Vec<&'static str> {
 
 /// How many files this gate judges in the working tree: each one a family holds. Spec 11.6.
 pub fn judges(project: &Project) -> Result<usize, Error> {
-    let families = families(project)?;
+    let (_, families) = families(project)?;
     let found = project
         .tree()
         .scoped(&extensions(&families), true, |path| {
@@ -332,7 +445,7 @@ pub fn judges(project: &Project) -> Result<usize, Error> {
 }
 
 pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Error> {
-    let families = families(project)?;
+    let (_, families) = families(project)?;
     Ok(said_families(&families)
         .into_iter()
         .map(Into::into)
@@ -360,20 +473,24 @@ fn said_families(families: &[Family]) -> Option<contract::check::Derived> {
 /// file this run's scope takes out shows as lost rather than vanishing. Spec 8.6.
 fn before(
     at: &Context,
-    families: &[Family],
+    (today, families): (&Scope, &[Family]),
     prior: &base::Prior,
-) -> Result<(Measurement, Vec<Family>), Error> {
-    let today = families
-        .first()
-        .map(|family| family.scope.clone())
-        .unwrap_or_default();
+) -> Result<(Measurement, (Vec<Family>, app::Judged)), Error> {
     let lay = contract::check::Lay::Whole(prior);
-    contract::check::at_base(at, lay, (SECTION, &today), |prior, scope| {
+    contract::check::at_base(at, lay, (SECTION, today), |prior, scope| {
         let before_families = base_families(families, &scope);
-        Ok((
-            measure(prior.tree(), &before_families, None)?,
-            before_families,
-        ))
+        let measured = measure(prior.tree(), &before_families, None)?;
+        let base = app::Base::of(prior.root(), prior.tree().files()?, prior.renamed());
+        let side = app::Side {
+            root: prior.root(),
+            files: prior.tree().files()?,
+            facts: measured.facts(),
+            renamed: prior.renamed(),
+            graph: prior.graph(),
+            base: &base,
+        };
+        let was = app::judged(side, &scope);
+        Ok((measured, (before_families, was)))
     })
 }
 
@@ -548,12 +665,13 @@ fn aliased(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<Declared<'_>>
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
 /// none, which are not judged and not unreached.
-fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
+fn states(index: &SourceIndex, families: &[Family], apps: &HashSet<String>) -> (Vec<State>, usize) {
     let naming = Naming::of(index);
     let mut out = Vec::new();
     let mut unjudged = 0;
     for file in index.files() {
-        let Some(family) = family_of(families, &file.file) else {
+        let Some(family) = family_of(families, &file.file).filter(|_| !apps.contains(&file.file))
+        else {
             continue;
         };
         if !file.declarations.iter().any(eligible) {
@@ -594,13 +712,19 @@ fn finding(state: &State, sibling: Option<&str>) -> Finding {
     }
 }
 
-/// The measured tree's files kept to the families' members: judged, no adapter, dropped by an
-/// exclusion, and refused by the grammar. Spec 8.6.
-fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
+/// The measured tree's files kept to the families' members and the files app mode judges:
+/// judged, no adapter, dropped by an exclusion, and refused by the grammar. Spec 8.6.
+fn covered(swept: &Swept) -> coverage::Files {
+    let (measured, families, apps) = (&swept.measured, &swept.families, &swept.apps);
+    let family = |file: &String| family_of(families, file).is_some();
+    let judged = |file: &String| apps.judged.contains(file) || family(file);
     let member = |files: &[String]| -> Vec<String> {
+        files.iter().filter(|file| judged(file)).cloned().collect()
+    };
+    let unreadable = |files: &[String]| -> Vec<String> {
         files
             .iter()
-            .filter(|file| family_of(families, file).is_some())
+            .filter(|file| apps.owned.contains(*file) || family(file))
             .cloned()
             .collect()
     };
@@ -613,11 +737,11 @@ fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
     coverage::Files {
         measured: member(&measured.files.measured),
         not_measured: member(&measured.files.not_measured),
-        unreadable: member(&measured.files.unreadable),
+        unreadable: unreadable(&measured.files.unreadable),
         excluded: all
             .filter(|file| {
-                family_of(families, file).is_none()
-                    && families.iter().any(|family| family.selects(file))
+                apps.excluded.contains(*file)
+                    || !judged(file) && families.iter().any(|family| family.selects(file))
             })
             .cloned()
             .collect(),
@@ -630,18 +754,17 @@ impl contract::check::Based for Vec<&State> {
     }
 }
 
-fn coverage_result(
-    at: &Context,
-    (before, before_families): (&Measurement, &[Family]),
-    (after, families): (&Measurement, &[Family]),
-    out: &mut Sink,
-) {
-    let now = covered(after, families);
-    let was = covered(before, before_families);
+fn coverage_result(at: &Context, (before, after): (&Swept, &Swept), out: &mut Sink) {
+    let now = covered(after);
+    let was = covered(before);
     let unparsed: Vec<syntax::Unparsed> = after
+        .measured
         .unparsed
         .iter()
-        .filter(|file| family_of(families, &file.file).is_some())
+        .filter(|file| {
+            after.apps.owned.contains(&file.file)
+                || family_of(&after.families, &file.file).is_some()
+        })
         .map(|file| syntax::Unparsed {
             file: file.file.clone(),
             language: file.language,
@@ -652,17 +775,38 @@ fn coverage_result(
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        metrics: &[UNREACHED],
-        unit: "unreached file(s)",
-        condition: "where no other file references a declaration of the file",
-        fix_advice: Remedy::Fixed(REMEDY),
+        metrics: &[UNREACHED, UNUSED],
+        unit: "unreached file(s) or unused export(s)",
+        condition: "where no other file references a declaration of the file, or no reached \
+                    file of an app imports the file or the export",
+        fix_advice: Remedy::ByValues(remedy),
         ceiling: None,
         format_metrics: show,
         nested: None,
     }
 }
 
+/// The remedy for the files and the exports that failed, each named where one of them failed.
+fn remedy(failed: &[&Values]) -> String {
+    let has = |key: &str| failed.iter().any(|values| values.contains_key(key));
+    let mut said = Vec::new();
+    if has(UNREACHED) {
+        said.push(REMEDY);
+    }
+    if has(UNUSED) {
+        said.push(UNUSED_REMEDY);
+    }
+    said.join(" ")
+}
+
 fn show(values: &Values) -> String {
+    if let Some(unused) = values.get(UNUSED).and_then(Value::as_u64) {
+        return match unused {
+            0 => "used",
+            _ => "unused",
+        }
+        .to_string();
+    }
     let state = match values.get(UNREACHED).and_then(Value::as_u64) {
         Some(0) => "reached",
         Some(1) => "unreached",
@@ -674,18 +818,35 @@ fn show(values: &Values) -> String {
     }
 }
 
-fn base_note(states: &[&State], out: &mut Sink) {
-    let unreached: Vec<&State> = states
+fn base_note(states: &[&State], was: &app::Judged, project: &Project, out: &mut Sink) {
+    let held = |file: &String| project.was_held(file);
+    let unreached: Vec<String> = states
         .iter()
         .filter(|state| state.unreached)
-        .copied()
+        .map(|state| state.file.clone())
+        .chain(
+            was.files
+                .iter()
+                .filter(|judged| judged.unreached && held(&judged.file))
+                .map(|judged| judged.file.clone()),
+        )
         .collect();
-    if unreached.is_empty() {
-        return;
+    if !unreached.is_empty() {
+        out.tell(Listed::Held(HeldAtBase::Unreached(unreached)));
     }
-    out.tell(Listed::Held(HeldAtBase::Unreached(
-        unreached.iter().map(|state| state.file.clone()).collect(),
-    )));
+    let unused: Vec<Located> = was
+        .unused
+        .iter()
+        .filter(|unused| held(&unused.file))
+        .map(|unused| Located {
+            file: unused.file.clone(),
+            line: unused.line,
+            text: format!("export {}", unused.name),
+        })
+        .collect();
+    if !unused.is_empty() {
+        out.tell(Listed::Held(HeldAtBase::UnusedExports(unused)));
+    }
 }
 
 fn basename(path: &str) -> &str {

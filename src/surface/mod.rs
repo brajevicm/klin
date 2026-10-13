@@ -79,6 +79,14 @@ impl std::ops::Add for SurfaceCost {
     }
 }
 
+/// Whether a package manifest states an entry point field, which gives the package a surface;
+/// a package that states none is an app. ADR 0044.
+pub fn declares_entry(manifest: &serde_json::Map<String, serde_json::Value>) -> bool {
+    typescript::ENTRY_FIELDS
+        .iter()
+        .any(|field| manifest.contains_key(*field))
+}
+
 /// The surfaces of one tree, each derivation whose language the tree holds run over it once.
 pub fn derive(topology: &Topology, graph: &ModuleGraph) -> Derived {
     let started = Instant::now();

@@ -361,6 +361,8 @@ pub enum Measured {
         judged: usize,
         unreached: usize,
         unjudged: usize,
+        exports: usize,
+        unused: usize,
     },
     Complexity(Complexity),
     Layering(Layering),
@@ -423,6 +425,7 @@ impl From<Measured> for Judged {
 pub enum Unresolvable {
     Dependency,
     PublicSurface,
+    App,
 }
 
 /// One file a list in the report names, with the text the list says of it.
@@ -669,6 +672,7 @@ pub enum HeldAtBase {
     DeadSymbols(Vec<Located>),
     Edges(Vec<Site>),
     Unreached(Vec<String>),
+    UnusedExports(Vec<Located>),
 }
 
 /// What the ratchet's comparison came to beyond the `OK:` line. Spec 4.4, 8.6.

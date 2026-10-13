@@ -152,7 +152,7 @@ pub fn in_scope(file: &str, only: Option<&[String]>) -> bool {
 }
 
 /// One form a gate supports and could not resolve, and why.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Unresolved {
     pub file: String,
     pub line: u64,

@@ -443,7 +443,31 @@ pub fn attribute_text(bytes: &[u8]) -> String {
 /// holds it, shallowest first. klin reads only in-tree files, never `.git/info/attributes` or
 /// `core.attributesFile`, so two machines agree. Spec 7.2.
 pub fn form(path: &str, texts: &[(String, String)]) -> Form {
-    let mut states: [Option<State>; 3] = [None, None, None];
+    let [diff, filter, encoding, _, _] = states(path, texts);
+    Form {
+        binary: diff == Some(State::Unset),
+        filter: matches!(filter, Some(State::Set | State::Value(_))),
+        encoding: matches!(encoding, Some(State::Value(name)) if !name.eq_ignore_ascii_case("utf-8") && !name.eq_ignore_ascii_case("utf8")),
+    }
+}
+
+/// Whether these `.gitattributes` texts mark one path `linguist-vendored` or
+/// `linguist-generated`, the marks GitHub reads for code a repository holds and did not write.
+/// That is no form: the bytes still read as text.
+pub fn vendored(path: &str, texts: &[(String, String)]) -> bool {
+    let [_, _, _, vendored, generated] = states(path, texts);
+    let marked = |state: Option<State>| match state {
+        Some(State::Set) => true,
+        Some(State::Value(value)) => value.eq_ignore_ascii_case("true"),
+        _ => false,
+    };
+    marked(vendored) || marked(generated)
+}
+
+/// The state each attribute klin reads has for one path, after every line of these texts that
+/// names it, shallowest file first. Each text is keyed by the file that holds it.
+fn states(path: &str, texts: &[(String, String)]) -> [Option<State>; ATTRIBUTES] {
+    let mut states: [Option<State>; ATTRIBUTES] = Default::default();
     let macros = macros(texts);
     for (file, text) in texts {
         let directory = file.trim_end_matches(".gitattributes");
@@ -454,16 +478,11 @@ pub fn form(path: &str, texts: &[(String, String)]) -> Form {
             apply(line, below, (&macros, &mut states));
         }
     }
-    let [diff, filter, encoding] = states;
-    Form {
-        binary: diff == Some(State::Unset),
-        filter: matches!(filter, Some(State::Set | State::Value(_))),
-        encoding: matches!(encoding, Some(State::Value(name)) if !name.eq_ignore_ascii_case("utf-8") && !name.eq_ignore_ascii_case("utf8")),
-    }
+    states
 }
 
 /// One `.gitattributes` line applied to a path below its directory.
-fn apply(line: &str, below: &str, (macros, states): (&Macros, &mut [Option<State>; 3])) {
+fn apply(line: &str, below: &str, (macros, states): (&Macros, &mut [Option<State>; ATTRIBUTES])) {
     let Some((pattern, attributes)) = pattern_of(line.trim_start()) else {
         return;
     };
@@ -565,12 +584,17 @@ fn unescaped(unit: char) -> char {
     }
 }
 
-/// Which of the three attributes klin reads one word sets, and to what.
+/// How many attributes klin reads.
+const ATTRIBUTES: usize = 5;
+
+/// Which of the attributes klin reads one word sets, and to what.
 fn attribute(word: &str) -> Option<(usize, State)> {
     match named(word) {
         ("diff", state) => Some((0, state)),
         ("filter", state) => Some((1, state)),
         ("working-tree-encoding", state) => Some((2, state)),
+        ("linguist-vendored", state) => Some((3, state)),
+        ("linguist-generated", state) => Some((4, state)),
         _ => None,
     }
 }

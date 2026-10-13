@@ -16,6 +16,7 @@ use crate::config::file::Config;
 use crate::config::key::Section;
 use crate::config::scope::{self, Moved, Moves};
 use crate::facts::tree::{self, Tree};
+use crate::modules;
 use crate::sys::cache::Cache;
 use crate::sys::changed::{self, Change};
 use crate::sys::error::Error;
@@ -39,6 +40,7 @@ pub struct Project {
     /// What the change did to the paths the policy names, read on the first call after the
     /// build, so a file the build writes is in it. Spec 6.4, 7.3.
     moves: OnceCell<Moves>,
+    graph: modules::Shared,
 }
 
 impl Project {
@@ -70,7 +72,13 @@ impl Project {
             keeps: true,
             bound: None,
             moves: OnceCell::new(),
+            graph: modules::Shared::default(),
         }
+    }
+
+    /// The working tree's module graph, built once for every gate that reads it.
+    pub fn graph(&self) -> &modules::Shared {
+        &self.graph
     }
 
     /// A run that reads klin's state directory and writes nothing to it. Spec 11.6.

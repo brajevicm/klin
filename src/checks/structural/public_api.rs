@@ -9,6 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+use std::rc::Rc;
 
 use serde_json::{Value, json};
 
@@ -22,7 +23,7 @@ use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::facts::tree::Tree;
 use crate::modules::resolver::Hole;
-use crate::modules::{self, ModuleGraph};
+use crate::modules::{self, GraphCost, ModuleGraph};
 use crate::surface::item::{Contract, Item, MODULE, Surface};
 use crate::surface::{self, Derived};
 use crate::syntax::{self, structural};
@@ -68,7 +69,8 @@ const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract t
 /// under today's paths, and today's path of every file the base names by its path at the base.
 struct Side {
     derived: Derived,
-    graph: ModuleGraph,
+    graph: Rc<ModuleGraph>,
+    cost: GraphCost,
     unparsed: Vec<syntax::Unparsed>,
     current: HashMap<String, String>,
 }
@@ -78,7 +80,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::check::base_commit(at.project.root(), at)?;
     let (was, now) = sides(at, &commit, out)?;
     out.record(|records| {
-        records.graph = Some(was.graph.cost() + now.graph.cost());
+        records.graph = Some(was.cost + now.cost);
         records.surface = Some(was.derived.cost() + now.derived.cost());
     });
     let findings = breaks(&was.derived, &now.derived, |file| {
@@ -116,22 +118,31 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
     let measured = measurement::sides_all(at, commit, out)?;
     let prior = measured.prior;
     Ok((
-        side(prior.tree(), &measured.before, prior.renamed())?,
-        side(at.project.tree(), &measured.after, &HashMap::new())?,
+        side(
+            (prior.tree(), prior.graph()),
+            &measured.before,
+            prior.renamed(),
+        )?,
+        side(
+            (at.project.tree(), at.project.graph()),
+            &measured.after,
+            &HashMap::new(),
+        )?,
     ))
 }
 
 fn side(
-    tree: &Tree,
+    (tree, shared): (&Tree, &modules::Shared),
     measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
 ) -> Result<Side, Error> {
     let layout = modules::topology(tree.root(), tree.files()?, measured.facts(), renamed);
-    let graph = modules::build(&layout);
+    let (graph, cost) = shared.get(&layout);
     let derived = surface::derive(&layout, &graph);
     Ok(Side {
         derived,
         graph,
+        cost,
         unparsed: measured.unparsed.clone(),
         current: renamed
             .iter()

@@ -54,7 +54,7 @@ struct Package {
     declared: Vec<&'static str>,
 }
 
-const ENTRY_FIELDS: &[&str] = &["exports", "types", "typings", "main", "module"];
+pub(super) const ENTRY_FIELDS: &[&str] = &["exports", "types", "typings", "main", "module"];
 
 /// One subpath of a package: where it leads, or why it leads nowhere klin supports.
 struct Entry {

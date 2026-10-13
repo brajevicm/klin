@@ -490,6 +490,22 @@ fn a_typescript_re_export_is_a_dependency() {
 }
 
 #[test]
+fn a_typescript_import_call_with_a_literal_specifier_is_a_dependency() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write("web/view/render.ts", "export const render = 1;\n");
+    tree.write(
+        "web/model/index.ts",
+        "export async function load() {\n  return import(\"../view/render\");\n}\n",
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("model → view: web/view/render.ts"), "{}", run.out);
+}
+
+#[test]
 fn a_package_renamed_with_its_manifest_keeps_its_base_debt() {
     let tree = Tree::new();
     tree.write(
