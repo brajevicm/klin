@@ -41,7 +41,7 @@ pub(super) fn resolve(builder: &mut Builder) {
                     start_byte: import.start_byte,
                     text: &import.text,
                 };
-                resolved(builder, &modules, scope, &site, specifier);
+                resolved(builder, &modules, scope.as_ref(), &site, specifier);
             }
         }
     }
@@ -58,7 +58,7 @@ struct Site<'a> {
 fn resolved(
     builder: &mut Builder,
     modules: &BTreeMap<&str, usize>,
-    paths: Option<super::typescript_paths::FilePaths<'_>>,
+    paths: Option<&super::typescript_paths::FilePaths<'_>>,
     site: &Site,
     specifier: &str,
 ) {
@@ -85,7 +85,7 @@ fn resolved(
 /// a paths rule, then a written `baseUrl`, where the first `baseUrl` that `reaches` a held file
 /// wins. None is external; Err is a local name klin cannot prove.
 fn located(
-    paths: Option<super::typescript_paths::FilePaths<'_>>,
+    paths: Option<&super::typescript_paths::FilePaths<'_>>,
     file: &str,
     specifier: &str,
     reaches: impl Fn(&str) -> bool,
