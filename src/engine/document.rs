@@ -14,8 +14,8 @@ use crate::config::file::MEASUREMENT_LOST;
 use crate::config::scope::{Moved, Moves};
 use crate::contract;
 use crate::contract::check::{
-    Activation, Caller, Cause, Class, Context, Debt, Hole, Incomplete, NO_SOURCE_ROOT, Plain,
-    RIDE_ALONG, Ratchet, Reason, Records, Sink, Told, UNBUILT,
+    Activation, Caller, Cause, Class, Context, Debt, Failed, Hole, Incomplete, NO_SOURCE_ROOT,
+    Plain, RIDE_ALONG, Ratchet, Reason, Records, Sink, Told, UNBUILT,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Seen, Unmeasured};
@@ -212,12 +212,34 @@ fn axes_of(code: u8, shown: &GateRecords) -> Axes {
     }
 }
 
-/// One gate's run: its exit code, what it told, what it cost and what it records.
+/// One gate's run: its exit code, what it told and what it cost.
 struct Ran {
     code: u8,
     told: Vec<Told>,
     records: Records,
-    shown: GateRecords,
+}
+
+/// The names of the gates whose run failed.
+fn failed_gates<'a>(wanted: &[&'a Gate], ran: &[Result<(Ran, u64), &str>]) -> Vec<&'a str> {
+    wanted
+        .iter()
+        .zip(ran)
+        .filter(|(_, ran)| matches!(ran, Ok((ran, _)) if ran.code == 1))
+        .map(|(gate, _)| gate.name.as_str())
+        .collect()
+}
+
+/// One gate's run and how long it took, or why the base could not be laid out for it.
+fn measured<'a>(
+    args: &Args,
+    gate: &Gate,
+    project: &Project,
+    against: &'a Against,
+) -> Result<(Ran, u64), &'a str> {
+    match (&against.unlaid, gate.check.needs.the_tree()) {
+        (Some(why), true) => Err(why),
+        _ => Ok(clock::timed(|| one(args, gate, project, against))),
+    }
 }
 
 fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
@@ -251,16 +273,83 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
             2
         }
     };
+    Ran {
+        code,
+        told,
+        records,
+    }
+}
+
+/// What a gate told once every gate ran, and the records of it. Spec 10.6, 11.7.
+fn shown(
+    args: &Args,
+    (gate, project): (&Gate, &Project),
+    told: Vec<Told>,
+    failed: &[&str],
+) -> (Vec<Told>, GateRecords) {
+    let mut told = beside(told, failed);
     if !args.at_stop() {
         told = reviewed(told);
     }
     let mut shown = render::records(&gate.name, &told);
     moved_out(project.moves(), gate.check.section, &mut shown.findings);
-    Ran {
-        code,
-        told,
-        records,
-        shown,
+    (told, shown)
+}
+
+/// A remedy told beside another gate becomes a remedy, and joins the remedy of each failure it
+/// names, where that gate failed in the same run and one of those failures failed. Elsewhere it
+/// is dropped. Spec 10.6.
+fn beside(told: Vec<Told>, failed: &[&str]) -> Vec<Told> {
+    let kept = kept_beside(&told, failed);
+    told.into_iter()
+        .filter_map(|mut item| {
+            match &mut item {
+                Told::Plain(Plain::Beside { key, remedy, .. }) => {
+                    return kept
+                        .contains(&(*key, *remedy))
+                        .then(|| Plain::Remedy(remedy.to_string()).into());
+                }
+                Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) => {
+                    joined(failed, &kept);
+                }
+                _ => (),
+            }
+            Some(item)
+        })
+        .collect()
+}
+
+/// The key and remedy of each remedy told beside a gate that failed, where a failure holds its
+/// key.
+fn kept_beside(told: &[Told], failed: &[&str]) -> Vec<(&'static str, &'static str)> {
+    let fails = |key: &str| {
+        told.iter().any(|item| match item {
+            Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) => failed
+                .iter()
+                .any(|finding| finding.values.contains_key(key)),
+            _ => false,
+        })
+    };
+    told.iter()
+        .filter_map(|item| match item {
+            Told::Plain(Plain::Beside { gate, key, remedy })
+                if failed.contains(gate) && fails(key) =>
+            {
+                Some((*key, *remedy))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Each kept remedy joins the remedy of every failure that holds its key.
+fn joined(found: &mut [Failed], kept: &[(&str, &str)]) {
+    for finding in found {
+        for (key, remedy) in kept {
+            if finding.values.contains_key(*key) {
+                finding.fix_advice = format!("{} {remedy}", finding.fix_advice);
+            }
+        }
     }
 }
 
@@ -801,9 +890,7 @@ impl CheckDocument {
         out: &mut String,
     ) {
         self.windowed(args, (project, wanted), against.base.as_ref(), out);
-        for gate in wanted {
-            self.gate(args, gate, project, against, out);
-        }
+        self.gates(args, (project, wanted), against, out);
         let base = against.base.as_ref().map(|base| base.before.as_str());
         let seen = std::mem::take(&mut self.seen);
         let sorted = holes::sorted(project, base, seen);
@@ -821,6 +908,28 @@ impl CheckDocument {
         }
         if self.failed() > 0 {
             out.extend(self.riding.iter().map(String::as_str));
+        }
+    }
+
+    /// Every selected gate runs first, and then each one's result goes into the document, so a
+    /// remedy told beside another gate knows whether that gate failed. Spec 10.6.
+    fn gates(
+        &mut self,
+        args: &Args,
+        (project, wanted): (&Project, &[&Gate]),
+        against: &Against,
+        out: &mut String,
+    ) {
+        let ran: Vec<_> = wanted
+            .iter()
+            .map(|gate| measured(args, gate, project, against))
+            .collect();
+        let failed = failed_gates(wanted, &ran);
+        for (gate, ran) in wanted.iter().zip(ran) {
+            match ran {
+                Ok((ran, ms)) => self.took(args, (gate, project, against), (ran, ms), &failed, out),
+                Err(why) => self.unlaid(args, gate, why, out),
+            }
         }
     }
 
@@ -891,46 +1000,31 @@ impl CheckDocument {
         }
     }
 
-    fn gate(
-        &mut self,
-        args: &Args,
-        gate: &Gate,
-        project: &Project,
-        against: &Against,
-        out: &mut String,
-    ) {
-        if let (Some(why), true) = (&against.unlaid, gate.check.needs.the_tree()) {
-            return self.unlaid(args, gate, why, out);
-        }
-        let (ran, ms) = clock::timed(|| one(args, gate, project, against));
-        self.took(args, (gate, project, against), ran, ms, out);
-    }
-
     /// One gate's result in the document: its row, its measurement record, its errors and what
-    /// it found. Spec 11.7.
+    /// it found, where `failed` names every gate of the run that failed. Spec 10.6, 11.7.
     fn took(
         &mut self,
         args: &Args,
         (gate, project, against): (&Gate, &Project, &Against),
-        ran: Ran,
-        ms: u64,
+        (ran, ms): (Ran, u64),
+        failed: &[&str],
         out: &mut String,
     ) {
         let Ran {
             code,
             told,
             records,
-            shown,
         } = ran;
+        let (told, shown) = shown(args, (gate, project), told, failed);
         let axes = axes_of(code, &shown);
         self.axes = self.axes.and(axes);
         let told = self.held_back(args, &gate.name, axes, told);
         if shows(args, code, &shown) {
-            let text = match args.view {
-                View::Stop => render::stop(&told, code == 0),
-                View::Text | View::Json => render::text(&told),
+            let (provenance, text) = match args.view {
+                View::Stop => (render::pinned(&told), render::stop(&told, code == 0)),
+                View::Text | View::Json => (render::provenance(&told), render::text(&told)),
             };
-            printed(&gate.name, axes.state(args.view), (&told, &text), out);
+            printed(&gate.name, axes.state(args.view), (&provenance, &text), out);
         }
         self.told += shown.notes.iter().filter(|note| note.told()).count();
         let erred = usize::from(code == 2 && !records.errors.is_empty());
@@ -974,7 +1068,7 @@ impl CheckDocument {
         let (told, riders) = riding(told);
         let text = render::stop(&riders, false);
         let mut block = String::new();
-        printed(gate, "FAIL", (&riders, &text), &mut block);
+        printed(gate, "FAIL", (&[], &text), &mut block);
         self.riding.push(block);
         told
     }
@@ -1106,7 +1200,7 @@ impl CheckDocument {
             printed(
                 &gate.name,
                 axes.state(args.view),
-                (&told, &render::text(&told)),
+                (&[], &render::text(&told)),
                 out,
             );
         }
@@ -1139,7 +1233,7 @@ impl CheckDocument {
             printed(
                 check.name,
                 axes.state(args.view),
-                (&told, &render::text(&told)),
+                (&[], &render::text(&told)),
                 out,
             );
         }
@@ -1283,8 +1377,8 @@ fn shows(args: &Args, code: u8, shown: &GateRecords) -> bool {
 }
 
 /// One gate's block of the text report: its provenance, its status row, and its rendered result.
-fn printed(gate: &str, state: &str, (told, text): (&[Told], &str), out: &mut String) {
-    for line in render::provenance(told) {
+fn printed(gate: &str, state: &str, (provenance, text): (&[String], &str), out: &mut String) {
+    for line in provenance {
         let _ = writeln!(out, "  {line}");
     }
     let _ = writeln!(out, "  {state}  {gate}");

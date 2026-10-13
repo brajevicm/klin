@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 
 use crate::contract::project::Project;
-use crate::engine::document::{Against, Args};
+use crate::engine::document::{Against, Args, View};
 use crate::engine::plan::Gate;
 use crate::sys::changed::Change;
 use crate::sys::error::{Error, ErrorKind, Fault, fault};
@@ -44,7 +44,7 @@ fn base(
         return Ok(None);
     }
     let base = chosen(window, project)?;
-    if !args.json() {
+    if args.view == View::Text {
         let _ = writeln!(out, "  {}", base.line());
     }
     Ok(Some(base))
@@ -83,7 +83,7 @@ fn changes<'a>(
         return Ok(None);
     };
     let changed = project.changes(&base.before)?;
-    if !args.json() {
+    if args.view == View::Text {
         let _ = writeln!(
             out,
             "  changed: {} file(s) against the base — the scoped gates judge those; \
