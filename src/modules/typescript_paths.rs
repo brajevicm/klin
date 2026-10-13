@@ -501,13 +501,14 @@ impl Roots {
         let written_exclude = value
             .get("exclude")
             .and_then(|value| root_patterns(directory, value));
-        let mut exclude = value.get("exclude").map_or(
+        let mut exclude = if value.get("exclude").is_some() {
+            written_exclude.clone()
+        } else {
             (!inherits).then_some(RootPatterns {
                 matching: Vec::new(),
                 unknown: false,
-            }),
-            |value| root_patterns(directory, value),
-        );
+            })
+        };
         for option in ["outDir", "declarationDir"] {
             if let Some(value) = value.pointer(&format!("/compilerOptions/{option}")) {
                 exclude = exclude.and_then(|mut patterns| {
@@ -532,7 +533,7 @@ impl Roots {
         !self.files.iter().any(|file| contains(directory, file))
             && self.written_exclude.as_ref().is_some_and(|exclude| {
                 exclude.matching.iter().any(|pattern| {
-                    matches!(pattern, RootPattern::Subtree(_)) && pattern.matches(directory)
+                    matches!(pattern, RootPattern::Subtree(path) if path == directory || contains(path, directory))
                 })
             })
     }
