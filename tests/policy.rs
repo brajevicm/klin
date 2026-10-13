@@ -777,3 +777,31 @@ fn policy_of_one_convention_counts_only_its_files() {
         .json();
     assert_eq!(capability(&json, "conventions")["judges"]["count"], 1);
 }
+
+/// One convention a person must settle keeps the whole section from running, so `policy` of a
+/// valid convention beside it says so too. Review 5501151491.
+#[test]
+fn policy_of_a_valid_convention_beside_an_unsettled_one_judges_no_file() {
+    let tree = tree(
+        r#"{"conventions": {
+          "no-bad": { "code": "fn (", "remedy": "Write a pattern klin can read." },
+          "no-todo": { "text": "TODO", "remedy": "Do it." }
+        }}"#,
+    );
+
+    let run = tree.run(&["policy", "conventions", "no-todo"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let conventions = block(&run.out, "conventions — runs");
+    assert!(
+        conventions.contains("judges: no file until a person settles this:"),
+        "{}",
+        run.out
+    );
+    let json = tree
+        .run(&["policy", "--json", "conventions", "no-todo"])
+        .json();
+    assert_eq!(
+        capability(&json, "conventions")["judges"]["count"],
+        Value::Null
+    );
+}

@@ -1712,3 +1712,22 @@ fn setup_runs_no_sarif_command_and_keeps_the_report() {
     assert!(!tree.path("ran").exists(), "{}", run.out);
     assert!(run.says("linter (not run by setup)"), "{}", run.out);
 }
+
+/// A run klin could not measure completely holds no known floor: a tree whose source root the
+/// base held and the working tree lost measures nothing. Review 5501151491.
+#[test]
+fn setup_claims_no_floor_when_the_run_is_incomplete() {
+    let tree = Tree::new();
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+    tree.remove("src/lib.rs");
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("klin holds no floor yet: "), "{}", run.out);
+    assert!(!run.says("klin now holds"), "{}", run.out);
+}

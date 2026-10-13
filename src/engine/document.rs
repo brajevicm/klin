@@ -582,13 +582,20 @@ impl CheckDocument {
 
     /// What `setup` says the run holds as its floor: each capability in the run's order, then
     /// each check a person set to `false`, then each integration the run left alone. The first
-    /// error of the run, a check's included, where one kept any capability from measuring,
-    /// because then no floor is known. Spec 11.2.
+    /// error of the run, a check's included, where one kept any capability from measuring, and
+    /// why the measurement is incomplete where it is, because then no floor is known. Spec 11.2.
     pub fn floor(&self) -> Result<Vec<Floor>, String> {
         if let Some(problem) = self.problems.first() {
             return Err(match &problem.check {
                 Some(check) => format!("{check}: {}", problem.message),
                 None => problem.message.clone(),
+            });
+        }
+        if self.totals().incomplete {
+            return Err(match self.holes.first() {
+                Some(hole) => hole.text.clone(),
+                None => "a check could not measure everything it found, which klin check names"
+                    .to_string(),
             });
         }
         let ran = self.capabilities.iter().map(|row| Floor {

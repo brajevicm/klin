@@ -45,16 +45,18 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 
 /// How many files this gate judges in the working tree, or those of the one convention `entry`
 /// names: each one a convention applies to and reads. A convention whose language or pattern a
-/// person must settle keeps the run from judging any, so the count says why. Spec 11.6.
+/// person must settle keeps the run from judging any, whichever convention is named, so the
+/// count says why. Spec 11.6.
 pub fn judges(project: &Project, entry: Option<&str>) -> Result<Count, Error> {
     let config = &project.config;
-    let mut conventions = conventions(config, project.moves())?;
-    conventions.retain(|convention| entry.is_none_or(|named| convention.name == named));
+    let conventions = conventions(config, project.moves())?;
     let places = walked(config, project.tree())?;
-    Ok(match every_rule(config, &conventions, &places) {
-        Ok(rules) => Count::Selected(rules::judged(&rules, &places)),
-        Err(why) => Count::Unsettled(why.to_string()),
-    })
+    let mut rules = match every_rule(config, &conventions, &places) {
+        Ok(rules) => rules,
+        Err(why) => return Ok(Count::Unsettled(why.to_string())),
+    };
+    rules.retain(|rule| entry.is_none_or(|named| rule.convention.name == named));
+    Ok(Count::Selected(rules::judged(&rules, &places)))
 }
 
 /// Every convention that measures anything resolved, or the first one whose language or

@@ -1748,8 +1748,11 @@ exits 2, also under `--json`.
   A count is of findings, the ratchet's unit, so one file's escapes of one
   kind count once. A run with any error, a run-scope error or one gate's,
   prints `klin holds no floor yet:` with the first error in place of the
-  three lines, because no floor is known, and the exit code stays 0. Pinned
-  by `setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing`,
+  three lines, because no floor is known, and the exit code stays 0. A run
+  whose measurement is incomplete, such as one whose working tree lost the
+  source root the base held, prints the same line with the hole's reason.
+  Pinned by `setup_claims_no_floor_when_the_run_is_incomplete`,
+  `setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing`,
   `setup_says_when_the_floor_holds_nothing`,
   `setup_names_a_finding_the_base_does_not_hold_apart_from_the_floor`,
   `setup_claims_no_floor_when_one_check_could_not_run`,
@@ -1878,11 +1881,15 @@ Section 13.2.
   settles it, such as a convention whose language or pattern klin cannot
   read, prints `judges: no file until a person settles this:` with the
   refusal, and its JSON `count` is null. `klin policy conventions NAME`
-  counts only the files that convention judges. Pinned by
+  counts only the files that convention judges, and says the same refusal
+  when any convention of the section is unsettled, because the run judges
+  none of them then. Pinned by
   `policy_names_what_each_check_judges_and_why_one_does_not_apply`,
   `policy_counts_what_a_check_measures`,
   `policy_judges_no_convention_file_while_one_convention_is_unsettled` and
-  `policy_of_one_convention_counts_only_its_files` in `tests/policy.rs`.
+  `policy_of_one_convention_counts_only_its_files` and
+  `policy_of_a_valid_convention_beside_an_unsettled_one_judges_no_file` in
+  `tests/policy.rs`.
 - A tree where no capability runs still has a policy: `klin policy` lists
   each capability with the state that keeps it from running, and exits 0.
 - A whole `policy` also prints the build policy, pinned or derived from the
