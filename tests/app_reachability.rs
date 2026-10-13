@@ -391,19 +391,69 @@ fn a_config_file_a_tool_reads_at_the_package_root_is_an_entry() {
 }
 
 #[test]
-fn a_type_an_exported_signature_names_counts_as_used() {
+fn an_exported_type_is_no_finding_and_a_value_an_exported_type_names_is_used() {
     let tree = app();
     tree.base();
     tree.write(
         "components/header.tsx",
-        "export type Title = { text: string };\nexport type Unused = number;\n\nexport function Header(): Title {\n  return { text: \"Chat\" };\n}\n",
+        "export const sizes = [\"sm\", \"lg\"] as const;\nexport type Size = (typeof sizes)[number];\nexport interface Props {\n  size: Size;\n}\nexport const unused = 1;\n\nexport function Header() {\n  return null;\n}\n",
     );
 
     let run = reachability(&tree);
 
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(!run.says("export Title"), "{}", run.out);
-    assert!(run.says("export Unused"), "{}", run.out);
+    assert!(run.says("export unused"), "{}", run.out);
+    for held in ["export sizes", "export Size", "export Props"] {
+        assert!(!run.says(held), "{held}\n{}", run.out);
+    }
+}
+
+#[test]
+fn a_file_the_base_held_unreached_keeps_its_exports_held_once_it_is_reached() {
+    let tree = app();
+    tree.write(
+        "components/footer.tsx",
+        "export const legacy = 1;\n\nexport function Footer() {\n  return null;\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "components/footer.tsx",
+        "export const legacy = 1;\nexport const extra = 2;\n\nexport function Footer() {\n  return null;\n}\n",
+    );
+    tree.write(
+        "components/header.tsx",
+        "import { Footer } from \"./footer\";\n\nexport function Header() {\n  return Footer();\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("export extra"), "{}", run.out);
+    assert!(!run.says("export legacy"), "{}", run.out);
+}
+
+#[test]
+fn an_export_only_an_unreached_file_imports_is_no_finding_of_its_own() {
+    let tree = app();
+    tree.base();
+    tree.write(
+        "lib/icons.ts",
+        "export const PlusIcon = \"+\";\nexport const MinusIcon = \"-\";\n",
+    );
+    tree.write(
+        "components/header.tsx",
+        "import { PlusIcon } from \"../lib/icons\";\n\nexport function Header() {\n  return PlusIcon;\n}\n",
+    );
+    tree.write(
+        "components/old.tsx",
+        "import { MinusIcon } from \"../lib/icons\";\n\nexport function Old() {\n  return MinusIcon;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("components/old.tsx"), "{}", run.out);
+    assert!(!run.says("export MinusIcon"), "{}", run.out);
 }
 
 #[test]

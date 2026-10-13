@@ -214,6 +214,7 @@ pub(super) struct Unused {
 pub(super) struct Judged {
     pub files: Vec<JudgedFile>,
     pub unused: Vec<Unused>,
+    pub dormant: Vec<Unused>,
     pub exports: usize,
     pub owned: HashSet<String>,
     pub judged: HashSet<String>,
@@ -250,12 +251,14 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     }
     let graph = modules::build(&topology);
     let walk = Walk::of(&topology, &graph);
+    let used = walk.used();
     for (at, files) in &owned {
         let package = &packages[*at];
         if package.judged() {
             out.owned.extend(files.iter().map(|file| current(file)));
             let app = App {
                 walk: &walk,
+                used: &used,
                 package,
                 files,
                 scope,
@@ -368,12 +371,15 @@ impl<'g> Walk<'g> {
         reached
     }
 
-    /// What the reached files import from other modules: every name of a module a namespace
-    /// import, a star or an `import()` takes, and each name a named import or re-export takes.
-    fn used(&self, reached: &[bool]) -> Used<'g> {
+    /// What the files of the tree import from other modules: every name of a module a
+    /// namespace import, a star or an `import()` takes, and each name a named import or
+    /// re-export takes. An unreached file's imports count, so an export only dead code uses is
+    /// no finding of its own beside that file's; a test's imports do not, as tests are no
+    /// entries.
+    fn used(&self) -> Used<'g> {
         let mut used = Used::default();
         for (file, from) in &self.module_of {
-            let Some(facts) = self.topology.facts(file).filter(|_| reached[*from]) else {
+            let Some(facts) = self.topology.facts(file).filter(|_| judgeable(file)) else {
                 continue;
             };
             for import in &facts.imports {
@@ -410,6 +416,7 @@ impl<'g> Used<'g> {
 /// One app package judged: its entries, the files they reach, and the exports reached files take.
 struct App<'a, 'g> {
     walk: &'a Walk<'g>,
+    used: &'a Used<'g>,
     package: &'a Package,
     files: &'a [&'g str],
     scope: &'a Scope,
@@ -428,7 +435,6 @@ impl App<'_, '_> {
             .keys()
             .filter_map(|file| self.walk.module_of.get(file).copied());
         let reached = self.walk.reached(entries);
-        let used = self.walk.used(&reached);
         let kit = self.kit();
         for file in self.files.iter().copied().filter(|file| judgeable(file)) {
             let now = (self.current)(file);
@@ -441,8 +447,9 @@ impl App<'_, '_> {
                 continue;
             }
             let kind = kinds.get(file).copied();
-            if reached[module] {
-                self.exports(file, (module, kind), &used, &now, out);
+            match reached[module] {
+                true => self.exports(file, (module, kind), &now, out),
+                false => self.dormant(file, &now, out),
             }
             if kind.is_none() {
                 out.files.push(JudgedFile {
@@ -538,7 +545,6 @@ impl App<'_, '_> {
         &self,
         file: &str,
         (module, kind): (usize, Option<Kind>),
-        used: &Used,
         now: &str,
         out: &mut Judged,
     ) {
@@ -549,7 +555,7 @@ impl App<'_, '_> {
         for (name, line) in exports(facts) {
             out.exports += 1;
             let read = kind.is_some_and(|kind| kind.reads(&name));
-            if !used.holds(module, &name) && !read && !signed.contains(name.as_str()) {
+            if !self.used.holds(module, &name) && !read && !signed.contains(name.as_str()) {
                 out.unused.push(Unused {
                     file: now.to_string(),
                     line,
@@ -560,21 +566,43 @@ impl App<'_, '_> {
     }
 }
 
+impl App<'_, '_> {
+    /// The exports of an unreached file, which its `unreached` finding holds: at the base they
+    /// are held debt, so the file becoming reached opens no new finding for an export it
+    /// already had.
+    fn dormant(&self, file: &str, now: &str, out: &mut Judged) {
+        let Some(facts) = self.walk.topology.facts(file) else {
+            return;
+        };
+        out.dormant
+            .extend(exports(facts).into_iter().map(|(name, line)| Unused {
+                file: now.to_string(),
+                line,
+                name,
+            }));
+    }
+}
+
 /// The alias a `components.json` names for its kit: `aliases.ui`.
 fn ui_alias(bytes: &[u8]) -> Option<String> {
     let parsed: Value = serde_json::from_slice(bytes).ok()?;
     Some(parsed.pointer("/aliases/ui")?.as_str()?.to_string())
 }
 
-/// Every name a file exports at its top, with the line that first exports it: its exported
+/// Every value a file exports at its top, with the line that first exports it: its exported
 /// declarations, by the name a consumer addresses each by, and every name an export clause, a
-/// default export or a re-export names. A bare star names none.
+/// default export or a re-export names. A bare star names none, and a type alias, an interface
+/// or an `export type` clause exports no value.
 fn exports(facts: &FileFacts) -> BTreeMap<String, u64> {
     let mut out = BTreeMap::new();
     for (name, line) in declared(facts) {
         out.entry(name.to_string()).or_insert(line);
     }
-    for export in facts.exports.iter().filter(|export| export.supported) {
+    let values = facts
+        .exports
+        .iter()
+        .filter(|export| export.supported && !export.type_only);
+    for export in values {
         for name in export.leaves.iter().filter_map(|leaf| leaf.name.as_deref()) {
             out.entry(name.to_string()).or_insert(export.line);
         }
@@ -605,12 +633,20 @@ fn exported(declaration: &Declaration) -> bool {
         && !declaration.associated
 }
 
+/// Whether a declaration is a type alias or an interface, which exists only for the compiler.
+fn type_only(declaration: &Declaration) -> bool {
+    let contract = declaration.signature.as_deref().unwrap_or_default();
+    let contract = contract.strip_prefix("declare ").unwrap_or(contract);
+    declaration.kind == DeclarationKind::Type
+        && (contract.starts_with("type ") || contract.starts_with("interface "))
+}
+
 /// Each exported declaration of a file by the name a consumer addresses it by, with its line.
 fn declared(facts: &FileFacts) -> impl Iterator<Item = (&str, u64)> {
     facts
         .declarations
         .iter()
-        .filter(|declaration| exported(declaration))
+        .filter(|declaration| exported(declaration) && !type_only(declaration))
         .flat_map(|declaration| {
             let names: Vec<&str> = match declaration.exported_as.as_deref() {
                 Some(name) => vec![name],

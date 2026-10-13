@@ -52,8 +52,7 @@ const REMEDY: &str = "Wire this file into the application through a real source 
                       where the task removes it, and keep and wire the implementation if it is \
                       still needed, and delete it only if it is unused.";
 const UNUSED_REMEDY: &str = "Import the export where the application needs it, or drop the \
-                             `export` if only its own file uses it, or delete the declaration \
-                             if nothing uses it.";
+                             `export` where nothing else imports it.";
 
 pub const NAME: Key = Key {
     name: "name",
@@ -209,13 +208,14 @@ fn failing(states: &[State], now: &app::Judged) -> Vec<Finding> {
     found
 }
 
-/// App mode's findings in one tree: one per unreached file, and per reached file too where
-/// `reached_too` asks, as the base's sites do, and one per unused export. Spec 8.4.
-fn app_findings(judged: &app::Judged, reached_too: bool) -> impl Iterator<Item = Finding> + '_ {
+/// App mode's findings in one tree: one per unreached file and one per unused export. As the
+/// base's sites, `at_base` adds each reached file, and each export of an unreached file, which
+/// that file's finding held. Spec 8.4.
+fn app_findings(judged: &app::Judged, at_base: bool) -> impl Iterator<Item = Finding> + '_ {
     let files = judged
         .files
         .iter()
-        .filter(move |judged| reached_too || judged.unreached)
+        .filter(move |judged| at_base || judged.unreached)
         .map(|judged| Finding {
             file: judged.file.clone(),
             line: 0,
@@ -226,7 +226,8 @@ fn app_findings(judged: &app::Judged, reached_too: bool) -> impl Iterator<Item =
             )]),
             body: None,
         });
-    let exports = judged.unused.iter().map(|unused| Finding {
+    let dormant = judged.dormant.iter().filter(move |_| at_base);
+    let exports = judged.unused.iter().chain(dormant).map(|unused| Finding {
         file: unused.file.clone(),
         line: unused.line,
         text: format!("export {}", unused.name),

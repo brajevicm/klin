@@ -4202,7 +4202,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `complexity` | tangled function written in a hurry | file + declaration | `cc`, `lines` rise | yes | shipped |
 | `dead-symbols` | private declaration left unreferenced | file + declaration | `dead` rises from 0 to 1 | yes | shipped |
 | `reachability` | implementation file nothing in the repository uses | file | `unreached` rises from 0 to 1 | yes | shipped |
-| `reachability` in an app | export no reached file of the app imports | file + export name | `unused-export` rises from 0 to 1 | yes | shipped |
+| `reachability` in an app | exported value no other file of the tree imports | file + export name | `unused-export` rises from 0 to 1 | yes | shipped |
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
@@ -4904,21 +4904,29 @@ A test file of 8.2 and a declaration file (`.d.ts`, `.d.mts`, `.d.cts`) is no
 entry and is never judged, so a module only its tests import is unreached.
 Each other file of the app is judged: its `unreached` value rises from 0 to 1
 where no entry reaches it, under the identity of a family member, its path
-and the text `file`. An unreached file's exports get no finding of their own.
-Each export of a reached file of the app, an entry's included, is judged: its
-`unused-export` value rises from 0 to 1 where no other reached file imports
-it. Its identity is the path and the text `export` and its name, at the line
-that first exports it. A file exports each declaration its top-level `export`
-exposes, by the name a consumer addresses it by (`default` for
-`export default function Page`), and each name an export clause, a default
-export or a re-export names. A bare star names none. A named import or named
+and the text `file`. An unreached file's exports get no finding of their own,
+and its finding holds them: an export a file had at the base while the base
+held the file unreached is held once the file is reached, so only an export
+the change adds is new there. Each exported value of a reached file of the
+app, an entry's included, is judged: its `unused-export` value rises from 0 to
+1 where no other file of the tree imports it. An import from an unreached file
+counts, so an export only dead code uses is no finding beside that file's own,
+and an import from a test does not, as tests are no entries. Its identity is
+the path and the text `export` and its name, at the line that first exports
+it. A file exports each declaration its top-level `export` exposes, by the
+name a consumer addresses it by (`default` for `export default function
+Page`), and each name an export clause, a default export or a re-export
+names. A bare star names none, and a type alias, an interface and an
+`export type` clause export no value, so an exported type is never a finding. A named import or named
 re-export takes the name it names in its source module, so
 `import { a as b }` takes `a`; a default import takes `default`; a namespace
 import, a star re-export and an `import()` take every name; a side-effect
 import takes none. A use from the exporting file itself does not count, except
 that a name the declared contract of another exported declaration of the file
-writes is used, so a type an exported function returns or an exported type
-holds is no finding. The
+writes is used, so a value an exported type reads through `typeof` is no
+finding. The remedy imports the export where it is needed or drops the
+`export`, and deletes no code: `dead-symbols` judges the private declaration
+left behind. So the row sits in the safe-remedy tier of ADR 0073. The
 check resolves each use through the graph and never by name, so a reached
 file that declares `generateId` is not used by an import of another file's
 `generateId`. Next.js reads these exports from the file kind named, so they
@@ -4981,7 +4989,9 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_kit_file_the_components_json_ui_alias_names_gets_neither_rule`,
 `with_no_components_json_a_kit_under_components_ui_gets_neither_rule`,
 `a_config_file_a_tool_reads_at_the_package_root_is_an_entry`,
-`a_type_an_exported_signature_names_counts_as_used`,
+`an_exported_type_is_no_finding_and_a_value_an_exported_type_names_is_used`,
+`a_file_the_base_held_unreached_keeps_its_exports_held_once_it_is_reached`,
+`an_export_only_an_unreached_file_imports_is_no_finding_of_its_own`,
 `a_file_a_package_script_runs_is_an_entry`,
 `a_file_the_section_excepts_is_excluded_and_not_judged`,
 `an_orphan_the_base_held_stays_a_note`,
