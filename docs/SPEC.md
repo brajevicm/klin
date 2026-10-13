@@ -5426,10 +5426,13 @@ source outside the scope directory names a path inside it under that config's
 relative, `paths` or `baseUrl` lookup. That covers imports, re-exports, and
 the string literals of `import()`, `require()` and `/// <reference path>`,
 read from the source because the facts do not hold them. A source klin
-cannot read, or an alias target it cannot work out, counts as naming a path
-inside. An `outDir` or `declarationDir` does not count as a written `exclude`
+cannot read, an alias target it cannot work out, or a specifier with an
+escape counts as naming a path inside. Every held source counts, even one
+outside that config's program, because klin does not model which sources a
+program holds. An `outDir` or `declarationDir` does not count as a written `exclude`
 here. Second, among the configs that remain, a `tsconfig.*.json` that writes
-and inherits no `include` or `files`, and that another one in its own
+and inherits no `include`, `files`, `compilerOptions.paths` or
+`compilerOptions.baseUrl`, and that another one in its own
 directory reaches through held local `extends` without being reached back,
 supplies settings and does not compete. A `tsconfig.json` always competes, because it is the default
 project. A config whose held local extends chain holds a cycle proves no
@@ -5489,7 +5492,8 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `a_sibling_config_that_extends_tsconfig_json_leaves_it_a_project`,
 `an_ancestor_that_imports_into_what_it_excludes_still_competes`,
 `an_ancestor_that_may_inherit_files_still_competes`,
-`a_base_config_with_its_own_roots_is_a_project_the_owner_extends` and
+`a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends`,
+`an_import_outside_the_ancestors_roots_still_keeps_it_competing` and
 `a_config_that_excludes_the_nested_directory_does_not_drop_the_parent_it_extends` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`

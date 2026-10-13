@@ -265,7 +265,11 @@ impl Scope {
     }
 
     /// The paths a specifier in `file` may name: relative, then a paths rule, then each `baseUrl`.
+    /// A specifier with an escape may spell any path, so it names an unknown one.
     fn names(&self, file: &str, specifier: &str) -> Vec<Option<String>> {
+        if specifier.contains('\\') {
+            return vec![None];
+        }
         if relative(specifier) {
             return joined(directory(file), specifier)
                 .map(Some)
@@ -507,10 +511,10 @@ fn reached(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
     seen
 }
 
-/// Whether TypeScript may hand this config a `key` such as `files` from its extends chain: no
-/// own `key`, and a parent that writes one or that klin cannot read.
+/// Whether TypeScript may hand this config the value at `key`, a JSON pointer such as `/files`,
+/// from its extends chain: no own value, and a parent that writes one or that klin cannot read.
 fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
-    if parsed[file].get(key).is_some() {
+    if parsed[file].pointer(key).is_some() {
         return false;
     }
     let mut seen = BTreeSet::new();
@@ -522,7 +526,7 @@ fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
         if !seen.insert(file.clone()) {
             continue;
         }
-        if seen.len() > 1 && value.get(key).is_some() {
+        if seen.len() > 1 && value.pointer(key).is_some() {
             return true;
         }
         let written = value
@@ -536,6 +540,15 @@ fn inherits(file: &str, key: &str, parsed: &BTreeMap<String, Value>) -> bool {
     }
     false
 }
+
+/// What a config that only supplies settings writes and inherits none of: roots that would make
+/// it a project of its own, and alias names that would give a file another local target.
+const SETTINGS_ONLY: [&str; 4] = [
+    "/include",
+    "/files",
+    "/compilerOptions/paths",
+    "/compilerOptions/baseUrl",
+];
 
 fn default_project(file: &str) -> bool {
     file.ends_with("/tsconfig.json") || file == "tsconfig.json"
@@ -553,11 +566,11 @@ impl Config {
         Self {
             file: file.to_string(),
             directory: directory(file).to_string(),
-            inherits_files: inherits(file, "files", parsed),
+            inherits_files: inherits(file, "/files", parsed),
             targets: OnceCell::new(),
-            settings_only: ["include", "files"]
+            settings_only: SETTINGS_ONLY
                 .into_iter()
-                .all(|key| value.get(key).is_none() && !inherits(file, key, parsed)),
+                .all(|key| value.pointer(key).is_none() && !inherits(file, key, parsed)),
             uncertain: cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
             reached,
             anchor,
@@ -566,7 +579,7 @@ impl Config {
         }
     }
 
-    /// A `tsconfig.*.json` with no roots of its own that another applicable config in its
+    /// A `tsconfig.*.json` with no roots and no alias names that another applicable config in its
     /// directory extends, outside a cycle, only supplies settings.
     fn extended(&self, applicable: &[&Config]) -> bool {
         self.settings_only

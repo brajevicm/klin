@@ -1759,6 +1759,11 @@ fn an_ancestor_that_imports_into_what_it_excludes_still_competes() {
             false,
         ),
         ("export const f = () => import(`~/model/index`);", false),
+        ("import \"./w\\u0065b/model/index\";", false),
+        (
+            "export const f = () => import(\"./w\\u0065b/model/index\");",
+            false,
+        ),
     ] {
         let tree = Tree::new();
         tree.write("main.ts", &format!("{import}\n"));
@@ -1805,24 +1810,38 @@ fn an_ancestor_that_may_inherit_files_still_competes() {
 }
 
 #[test]
-fn a_base_config_with_its_own_roots_is_a_project_the_owner_extends() {
-    for roots in [
-        r#""include":["web/**/*.ts"]"#,
-        r#""files":["web/model/index.ts"]"#,
+fn a_base_config_with_roots_or_aliases_is_a_project_the_owner_extends() {
+    for base in [
+        r#"{"include":["web/**/*.ts"]}"#,
+        r#"{"files":["web/model/index.ts"]}"#,
+        r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["other/*"]}}}"#,
+        r#"{"compilerOptions":{"baseUrl":"."}}"#,
+        r#"{"extends":"./config/aliases.json"}"#,
     ] {
         let tree = Tree::new();
         tree.write(
-            "tsconfig.base.json",
-            &format!(
-                r#"{{"compilerOptions":{{"baseUrl":".","paths":{{"@/*":["other/*"]}}}},{roots}}}"#
-            ),
+            "config/aliases.json",
+            r#"{"compilerOptions":{"paths":{"@/*":["../other/*"]}}}"#,
         );
+        tree.write("tsconfig.base.json", base);
         let run = an_alias_from_model_to_view(
             &tree,
             &format!(r#"{{"extends":"./tsconfig.base.json",{OWN_PATHS},{OWN_ROOTS}}}"#),
         );
         assert_a_hole(&run);
     }
+}
+
+#[test]
+fn an_import_outside_the_ancestors_roots_still_keeps_it_competing() {
+    let tree = Tree::new();
+    tree.write("app/main.ts", "export const m = 1;\n");
+    tree.write("scratch/unused.ts", "import \"../web/model/index\";\n");
+    let run = a_nested_alias(
+        &tree,
+        &format!(r#"{{{ROOT_PATHS},"include":["app"],"exclude":["web"]}}"#),
+    );
+    assert_a_hole(&run);
 }
 
 #[test]
