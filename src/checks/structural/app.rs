@@ -119,13 +119,21 @@ impl Kind {
     }
 }
 
-/// One package manifest: where it is, whether it states no entry point, whether it depends on
-/// Next.js, and the commands its scripts run.
+/// What a package manifest makes of its package: a library, which states an entry point or
+/// cannot be read, a Next.js app, or an app of a framework klin does not recognize. ADR 0044.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Role {
+    Library,
+    NextApp,
+    UnknownApp,
+}
+
+/// One package manifest: where it is, what it makes of its package, and the commands its scripts
+/// run.
 struct Package {
     manifest: String,
     directory: String,
-    app: bool,
-    next: bool,
+    role: Role,
     scripts: Vec<String>,
 }
 
@@ -138,11 +146,15 @@ impl Package {
                 .and_then(|held| held.get(*field)?.as_object())
                 .is_some_and(|held| held.contains_key(FRAMEWORK))
         };
+        let role = match fields.is_some_and(|held| !surface::declares_entry(held)) {
+            false => Role::Library,
+            true if DEPENDENCIES.iter().any(depends) => Role::NextApp,
+            true => Role::UnknownApp,
+        };
         Package {
             manifest: manifest.to_string(),
             directory: directory(manifest).to_string(),
-            app: fields.is_some_and(|held| !surface::declares_entry(held)),
-            next: DEPENDENCIES.iter().any(depends),
+            role,
             scripts: fields
                 .and_then(|held| held.get("scripts")?.as_object())
                 .into_iter()
@@ -153,7 +165,7 @@ impl Package {
     }
 
     fn judged(&self) -> bool {
-        self.app && self.next
+        self.role == Role::NextApp
     }
 }
 
@@ -181,6 +193,12 @@ pub(super) struct Side<'a> {
     pub renamed: &'a HashMap<String, String>,
 }
 
+/// One file app mode judged that is no entry, and whether no entry reaches it.
+pub(super) struct JudgedFile {
+    pub file: String,
+    pub unreached: bool,
+}
+
 /// One export of a reached file that no other reached file imports.
 pub(super) struct Unused {
     pub file: String,
@@ -194,7 +212,7 @@ pub(super) struct Unused {
 /// section's scope took out, and the holes that kept a package from being judged.
 #[derive(Default)]
 pub(super) struct Judged {
-    pub files: Vec<(String, bool)>,
+    pub files: Vec<JudgedFile>,
     pub unused: Vec<Unused>,
     pub exports: usize,
     pub owned: HashSet<String>,
@@ -217,7 +235,7 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     for (at, files) in &owned {
         let package = &packages[*at];
         let selected = files.iter().any(|file| scope.selects(&current(file)));
-        if package.app && !package.next && selected {
+        if package.role == Role::UnknownApp && selected {
             out.holes.push(Unresolved {
                 file: current(&package.manifest),
                 line: 0,
@@ -421,15 +439,18 @@ impl App<'_, '_> {
                 out.excluded.insert(now);
                 continue;
             }
-            out.judged.insert(now.clone());
             let kind = kinds.get(file).copied();
-            if kind.is_none() {
-                out.files.push((now.clone(), !reached[module]));
-            }
             let kit = kit.as_deref().is_some_and(|kit| under_or_at(file, kit));
             if reached[module] && !kit {
-                self.exports(file, (module, kind), &used, now, out);
+                self.exports(file, (module, kind), &used, &now, out);
             }
+            if kind.is_none() {
+                out.files.push(JudgedFile {
+                    file: now.clone(),
+                    unreached: !reached[module],
+                });
+            }
+            out.judged.insert(now);
         }
     }
 
@@ -440,7 +461,7 @@ impl App<'_, '_> {
             .walk
             .unproved
             .iter()
-            .filter(|hole| self.files.contains(&hole.file.as_str()))
+            .filter(|hole| self.files.binary_search(&hole.file.as_str()).is_ok())
             .map(|hole| Unresolved {
                 file: (self.current)(&hole.file),
                 line: hole.line,
@@ -510,7 +531,7 @@ impl App<'_, '_> {
         file: &str,
         (module, kind): (usize, Option<Kind>),
         used: &Used,
-        now: String,
+        now: &str,
         out: &mut Judged,
     ) {
         let Some(facts) = self.walk.topology.facts(file) else {
@@ -520,7 +541,7 @@ impl App<'_, '_> {
             out.exports += 1;
             if !used.holds(module, &name) && !kind.is_some_and(|kind| kind.reads(&name)) {
                 out.unused.push(Unused {
-                    file: now.clone(),
+                    file: now.to_string(),
                     line,
                     name,
                 });

@@ -144,16 +144,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::check::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let (before, (before_families, was), after, now) = sweeps(
+    let (before, after) = sweeps(
         at,
-        (&scope, &families),
+        (&scope, families),
         &commit,
-        &mut names,
-        &mut layout,
+        (&mut names, &mut layout),
         out,
     )?;
-    let (before_states, _) = judgement(&before, &mut names.before, (&before_families, &was));
-    let (after_states, unjudged) = judgement(&after, &mut names.after, (&families, &now));
+    let (before_states, _) = judgement(&before, &mut names.before);
+    let (after_states, unjudged) = judgement(&after, &mut names.after);
     out.record(|records| {
         records.names = Some(names);
         records.layout = layout;
@@ -164,10 +163,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .iter()
         .map(|state| finding(state, None))
         .collect();
-    prior.extend(app_findings(&was).filter(|found| project.was_held(&found.file)));
-    let found = failing(&after_states, &now);
-    let measured = measured(&found, (after_states.len(), unjudged), &now);
-    let said = out.covered(&covered(&after, (&families, &now)).coverage(None));
+    prior.extend(app_findings(&before.apps, true).filter(|found| project.was_held(&found.file)));
+    let found = failing(&after_states, &after.apps);
+    let measured = measured(&found, (after_states.len(), unjudged), &after.apps);
+    let said = out.covered(&covered(&after).coverage(None));
     let evaluator = evaluator();
     let code = evaluator.evaluate(
         found,
@@ -177,14 +176,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         Line::new(measured, said),
         out,
     );
-    coverage_result(
-        at,
-        (&before, (&before_families, &was)),
-        (&after, (&families, &now)),
-        out,
-    );
-    app_holes(at, (&was, &now), out);
-    base_note(&held_before, &was, project, out);
+    coverage_result(at, (&before, &after), out);
+    app_holes(at, (&before.apps, &after.apps), out);
+    base_note(&held_before, &before.apps, project, out);
     Ok(code)
 }
 
@@ -211,20 +205,27 @@ fn failing(states: &[State], now: &app::Judged) -> Vec<Finding> {
         .filter(|state| state.unreached)
         .map(|state| finding(state, sibling(states, state)))
         .collect();
-    found.extend(app_findings(now).filter(|found| found.values.get(UNREACHED) != Some(&0.into())));
+    found.extend(app_findings(now, false));
     found
 }
 
-/// App mode's findings in one tree: one per judged file, with whether no entry reaches it, and
-/// one per unused export. Spec 8.4.
-fn app_findings(judged: &app::Judged) -> impl Iterator<Item = Finding> + '_ {
-    let files = judged.files.iter().map(|(file, unreached)| Finding {
-        file: file.clone(),
-        line: 0,
-        text: LABEL.to_string(),
-        values: Values::from_iter([(UNREACHED.to_string(), Value::from(u64::from(*unreached)))]),
-        body: None,
-    });
+/// App mode's findings in one tree: one per unreached file, and per reached file too where
+/// `reached_too` asks, as the base's sites do, and one per unused export. Spec 8.4.
+fn app_findings(judged: &app::Judged, reached_too: bool) -> impl Iterator<Item = Finding> + '_ {
+    let files = judged
+        .files
+        .iter()
+        .filter(move |judged| reached_too || judged.unreached)
+        .map(|judged| Finding {
+            file: judged.file.clone(),
+            line: 0,
+            text: LABEL.to_string(),
+            values: Values::from_iter([(
+                UNREACHED.to_string(),
+                Value::from(u64::from(judged.unreached)),
+            )]),
+            body: None,
+        });
     let exports = judged.unused.iter().map(|unused| Finding {
         file: unused.file.clone(),
         line: unused.line,
@@ -241,22 +242,29 @@ fn app_holes(at: &Context, (was, now): (&app::Judged, &app::Judged), out: &mut S
     holes::unresolved_said((&now.holes, base), Unresolvable::App, at, out);
 }
 
-/// The two trees measured, the families under the base's scope with app mode's judgement of the
-/// base, and app mode's judgement of the working tree. Spec 8.4.
+/// One tree as the gate judges it: its measurement, the families under its scope, and app
+/// mode's judgement of it. Spec 8.4.
+struct Swept {
+    measured: Measurement,
+    families: Vec<Family>,
+    apps: app::Judged,
+}
+
+/// The base and the working tree, each measured and judged by app mode, the base under the
+/// families of the scope it recorded. Spec 8.4.
 fn sweeps(
     at: &Context,
-    (scope, families): (&Scope, &[Family]),
+    (scope, families): (&Scope, Vec<Family>),
     commit: &str,
-    names: &mut structural::NameCost,
-    layout: &mut Option<base::Layout>,
+    (names, layout): (&mut structural::NameCost, &mut Option<base::Layout>),
     out: &mut Sink,
-) -> Result<Swept, Error> {
+) -> Result<(Swept, Swept), Error> {
     let sides = measurement::sides_counted(
         at,
         commit,
         measurement::Counted { names, layout },
-        |unchanged| measure(at.project.tree(), families, unchanged),
-        |prior| before(at, (scope, families), prior),
+        |unchanged| measure(at.project.tree(), &families, unchanged),
+        |prior| before(at, (scope, &families), prior),
         out,
     )?;
     let tree = at.project.tree();
@@ -266,27 +274,27 @@ fn sweeps(
         facts: sides.after.facts(),
         renamed: &HashMap::new(),
     };
-    let now = app::judged(side, scope);
-    Ok((sides.before, sides.kept, sides.after, now))
+    let apps = app::judged(side, scope);
+    let after = Swept {
+        measured: sides.after,
+        families,
+        apps,
+    };
+    let (families, apps) = sides.kept;
+    let before = Swept {
+        measured: sides.before,
+        families,
+        apps,
+    };
+    Ok((before, after))
 }
 
-/// The base measured, its families with app mode's judgement of it, the working tree measured,
-/// and app mode's judgement of it.
-type Swept = (
-    Measurement,
-    (Vec<Family>, app::Judged),
-    Measurement,
-    app::Judged,
-);
-
 /// The families' members judged, less the files of an app package, which app mode judges.
-fn judgement(
-    measured: &Measurement,
-    cost: &mut structural::TreeNameCost,
-    (families, apps): (&[Family], &app::Judged),
-) -> (Vec<State>, usize) {
-    let index = measured.indexed(cost, None);
-    structural::timed(&mut cost.query, || states(&index, families, &apps.owned))
+fn judgement(swept: &Swept, cost: &mut structural::TreeNameCost) -> (Vec<State>, usize) {
+    let index = swept.measured.indexed(cost, None);
+    structural::timed(&mut cost.query, || {
+        states(&index, &swept.families, &swept.apps.owned)
+    })
 }
 
 fn families(project: &Project) -> Result<(Scope, Vec<Family>), Error> {
@@ -696,7 +704,8 @@ fn finding(state: &State, sibling: Option<&str>) -> Finding {
 
 /// The measured tree's files kept to the families' members and the files app mode judges:
 /// judged, no adapter, dropped by an exclusion, and refused by the grammar. Spec 8.6.
-fn covered(measured: &Measurement, (families, apps): (&[Family], &app::Judged)) -> coverage::Files {
+fn covered(swept: &Swept) -> coverage::Files {
+    let (measured, families, apps) = (&swept.measured, &swept.families, &swept.apps);
     let family = |file: &String| family_of(families, file).is_some();
     let judged = |file: &String| apps.judged.contains(file) || family(file);
     let member = |files: &[String]| -> Vec<String> {
@@ -735,19 +744,17 @@ impl contract::check::Based for Vec<&State> {
     }
 }
 
-fn coverage_result(
-    at: &Context,
-    (before, was): (&Measurement, (&[Family], &app::Judged)),
-    (after, now): (&Measurement, (&[Family], &app::Judged)),
-    out: &mut Sink,
-) {
-    let (families, apps) = now;
-    let now = covered(after, now);
-    let was = covered(before, was);
+fn coverage_result(at: &Context, (before, after): (&Swept, &Swept), out: &mut Sink) {
+    let now = covered(after);
+    let was = covered(before);
     let unparsed: Vec<syntax::Unparsed> = after
+        .measured
         .unparsed
         .iter()
-        .filter(|file| apps.owned.contains(&file.file) || family_of(families, &file.file).is_some())
+        .filter(|file| {
+            after.apps.owned.contains(&file.file)
+                || family_of(&after.families, &file.file).is_some()
+        })
         .map(|file| syntax::Unparsed {
             file: file.file.clone(),
             language: file.language,
@@ -810,8 +817,8 @@ fn base_note(states: &[&State], was: &app::Judged, project: &Project, out: &mut 
         .chain(
             was.files
                 .iter()
-                .filter(|(file, unreached)| *unreached && held(file))
-                .map(|(file, _)| file.clone()),
+                .filter(|judged| judged.unreached && held(&judged.file))
+                .map(|judged| judged.file.clone()),
         )
         .collect();
     if !unreached.is_empty() {
