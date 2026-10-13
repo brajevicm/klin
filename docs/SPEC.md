@@ -5419,10 +5419,12 @@ options, such as `moduleSuffixes` or `rootDirs`, are outside this guarantee.
 Every `tsconfig.json` or `tsconfig.*.json` in a file's directory or an
 ancestor directory competes to own the file, with two exceptions. A config
 that another config in its own directory reaches through held local
-`extends` supplies settings and does not compete. A config in an ancestor
-directory whose written `exclude` removes the whole scope directory, with no
-own `files` entry inside it, does not compete either. Two configs that still
-compete leave every alias under them a hole.
+`extends`, and does not reach back, supplies settings and does not compete.
+A config in an ancestor directory whose written `exclude` removes the whole
+scope directory, with no own `files` entry inside it, does not compete
+either. An `outDir` or `declarationDir` does not count as a written
+`exclude` here. Two configs that still compete, such as two that extend each
+other, leave every alias under them a hole.
 Other multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
@@ -5472,8 +5474,9 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `empty_module_suffixes_nearer_the_child_override_a_parent`,
 `own_paths_under_extends_stay_a_hole_while_the_parent_may_set_the_roots`,
 `a_sibling_base_config_the_owner_extends_is_not_a_second_owner`,
-`a_nested_config_that_extends_an_ancestor_owns_what_the_ancestor_excludes` and
-`sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole` in
+`a_nested_config_that_extends_an_ancestor_owns_what_the_ancestor_excludes`,
+`sibling_configs_that_do_not_extend_each_other_leave_the_alias_a_hole` and
+`configs_that_extend_each_other_leave_the_alias_a_hole` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in

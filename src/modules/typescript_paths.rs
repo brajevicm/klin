@@ -45,7 +45,7 @@ impl Anchor {
 struct Config {
     file: String,
     directory: String,
-    extends: BTreeSet<String>,
+    reached: BTreeSet<String>,
     anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
@@ -164,11 +164,7 @@ impl Scope {
         let owners: Vec<&Config> = candidates
             .iter()
             .copied()
-            .filter(|config| {
-                !candidates.iter().any(|other| {
-                    other.directory == config.directory && other.extends.contains(&config.file)
-                }) && !(config.directory != directory && config.roots.excludes(directory))
-            })
+            .filter(|config| config.competes(directory, &candidates))
             .collect();
         let mut scope = Self {
             roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
@@ -396,18 +392,20 @@ fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
     false
 }
 
-fn extended(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
-    let mut reached = BTreeSet::new();
+fn reached(file: &str, parsed: &BTreeMap<String, Value>) -> BTreeSet<String> {
+    let mut seen = BTreeSet::new();
     let mut pending = parents(file, &parsed[file]);
     while let Some(parent) = pending.pop() {
         let parent = held(parent, parsed);
-        if let Some(value) = parsed.get(&parent)
-            && reached.insert(parent.clone())
-        {
-            pending.extend(parents(&parent, value));
+        let Some(value) = parsed.get(&parent) else {
+            continue;
+        };
+        if !seen.insert(parent.clone()) {
+            continue;
         }
+        pending.extend(parents(&parent, value));
     }
-    reached
+    seen
 }
 
 impl Config {
@@ -417,12 +415,24 @@ impl Config {
         Self {
             file: file.to_string(),
             directory: directory(file).to_string(),
-            extends: extended(file, parsed),
+            reached: reached(file, parsed),
             uncertain: Self::uncertain(file, parsed, anchor.as_ref()),
             anchor,
             rules: rules(file, parsed),
             roots: Roots::read(file, value, value.get("extends").is_some()),
         }
+    }
+
+    /// A config another in its directory extends, outside a cycle, only supplies settings, and an
+    /// ancestor whose written `exclude` removes the scope directory does not compile it.
+    fn competes(&self, directory: &str, candidates: &[&Config]) -> bool {
+        let extended = candidates.iter().any(|other| {
+            other.directory == self.directory
+                && other.reached.contains(&self.file)
+                && !self.reached.contains(&other.file)
+        });
+        let excluded = self.directory != directory && self.roots.excludes(directory);
+        !extended && !excluded
     }
 
     fn uncertain(file: &str, parsed: &BTreeMap<String, Value>, anchor: Option<&Anchor>) -> bool {
@@ -443,6 +453,7 @@ struct Roots {
     files: BTreeSet<String>,
     include: Option<RootPatterns>,
     exclude: Option<RootPatterns>,
+    written_exclude: Option<RootPatterns>,
 }
 
 #[derive(Clone)]
@@ -487,6 +498,9 @@ impl Roots {
             .map_or((!inherits).then_some(default_include), |value| {
                 root_patterns(directory, value)
             });
+        let written_exclude = value
+            .get("exclude")
+            .and_then(|value| root_patterns(directory, value));
         let mut exclude = value.get("exclude").map_or(
             (!inherits).then_some(RootPatterns {
                 matching: Vec::new(),
@@ -509,13 +523,14 @@ impl Roots {
             files,
             include,
             exclude,
+            written_exclude,
         }
     }
 
     /// Whether the written `exclude` removes a whole directory that no `files` entry reaches into.
     fn excludes(&self, directory: &str) -> bool {
         !self.files.iter().any(|file| contains(directory, file))
-            && self.exclude.as_ref().is_some_and(|exclude| {
+            && self.written_exclude.as_ref().is_some_and(|exclude| {
                 exclude.matching.iter().any(|pattern| {
                     matches!(pattern, RootPattern::Subtree(_)) && pattern.matches(directory)
                 })
