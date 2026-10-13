@@ -146,8 +146,10 @@ pub struct Import {
     pub module: Option<String>,
     pub names: Vec<String>,
     /// Every path a Rust use tree names, one per leaf, its segments joined by `::`, with `self`
-    /// in a list read as the path above it and a glob kept as `*`. A language whose import names
-    /// a module specifier keeps none.
+    /// in a list read as the path above it and a glob kept as `*`. A TypeScript import keeps
+    /// the name each clause takes from its module instead: `default` for a default import, `*`
+    /// for a namespace import, a star re-export or an `import()`, and none for a side-effect
+    /// import.
     pub paths: Vec<String>,
 }
 

@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use super::resolver::{Attachment, Builder, Topology, directory, joined};
+use super::resolver::{Attachment, Builder, Doubt, Topology, directory, joined};
 
 /// Each script extension with the TypeScript extensions a specifier written with it stands for.
 const STANDS_FOR: &[(&str, &[&str])] = &[
@@ -71,7 +71,7 @@ fn resolved(
     };
     match located(paths, site.file, specifier, reaches) {
         Some(Ok((base, lookup))) => dependency(builder, modules, site, specifier, &base, lookup),
-        Some(Err(why)) => hole(builder, site, why),
+        Some(Err(why)) => hole(builder, site, why, Doubt::Unproved),
         None => builder.external += 1,
     }
     if !relative(specifier) {
@@ -125,18 +125,26 @@ impl Lookup {
         specifier: &str,
         base: &str,
         target: &str,
-    ) -> Option<String> {
+    ) -> Option<(String, Doubt)> {
         let Lookup::BaseUrl { proved } = self else {
             return None;
         };
         if !proved {
-            return Some(format!(
-                "{specifier} may be a baseUrl import whose configuration klin cannot prove"
+            return Some((
+                format!(
+                    "{specifier} may be a baseUrl import whose configuration klin cannot prove"
+                ),
+                Doubt::Unproved,
             ));
         }
         let manifest = manifest(base);
         (target.starts_with(&format!("{base}/")) && topology.holds(&manifest)).then(|| {
-            format!("{specifier} names a directory whose {manifest} may choose another entry point")
+            (
+                format!(
+                    "{specifier} names a directory whose {manifest} may choose another entry point"
+                ),
+                Doubt::Several(vec![target.to_string()]),
+            )
         })
     }
 
@@ -165,8 +173,14 @@ fn manifest(base: &str) -> String {
     format!("{base}/package.json")
 }
 
-fn hole(builder: &mut Builder, site: &Site, why: String) {
-    builder.hole_at(site.file, site.line, site.start_byte, site.text, why);
+fn hole(builder: &mut Builder, site: &Site, why: String, doubt: Doubt) {
+    builder.doubted_at(
+        site.file,
+        (site.line, site.start_byte),
+        site.text,
+        why,
+        doubt,
+    );
 }
 
 fn dependency(
@@ -185,7 +199,7 @@ fn dependency(
         .collect();
     match held.as_slice() {
         [target] => match lookup.doubt(topology, specifier, base, target) {
-            Some(why) => hole(builder, site, why),
+            Some((why, doubt)) => hole(builder, site, why, doubt),
             None => builder.depend_at(
                 site.from,
                 modules[target.as_str()],
@@ -204,6 +218,7 @@ fn dependency(
                 "{specifier} names no TypeScript file the tree holds: {}",
                 candidates.join(", ")
             ),
+            Doubt::Missing,
         ),
         _ => hole(
             builder,
@@ -215,6 +230,7 @@ fn dependency(
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Doubt::Several(held.iter().map(|file| file.to_string()).collect()),
         ),
     }
 }

@@ -1257,14 +1257,15 @@ export function charge(at: number): number {
     }
 
     #[test]
-    fn a_typescript_file_keeps_no_nesting_no_use_tree_paths_and_no_qualified_paths() {
+    fn a_typescript_import_keeps_no_nesting_and_the_names_it_takes_and_no_qualified_paths() {
         let facts = measured_facts("src/pay.ts", TYPESCRIPT);
-        assert!(
-            facts
-                .imports
-                .iter()
-                .all(|found| found.nesting.is_empty() && found.paths.is_empty())
-        );
+        let taken: Vec<Vec<&str>> = facts
+            .imports
+            .iter()
+            .map(|found| found.paths.iter().map(String::as_str).collect())
+            .collect();
+        assert_eq!(taken, vec![vec!["refund"], vec!["default"], vec!["total"]]);
+        assert!(facts.imports.iter().all(|found| found.nesting.is_empty()));
         assert!(facts.paths.is_empty());
     }
 

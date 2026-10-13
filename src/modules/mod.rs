@@ -165,6 +165,21 @@ pub struct ModuleGraph {
     pub time: Duration,
 }
 
+/// The TypeScript paths rules of one tree, read once, for a consumer that resolves an alias a
+/// configuration file writes rather than an import.
+pub struct Aliases(typescript_paths::Paths);
+
+impl Aliases {
+    pub fn read(topology: &Topology) -> Aliases {
+        Aliases(typescript_paths::Paths::read(topology))
+    }
+
+    /// The path an alias names from this file, and `None` where no rule proves one.
+    pub fn resolve(&self, file: &str, specifier: &str) -> Option<String> {
+        self.0.for_file(file)?.resolve(specifier)?.ok()
+    }
+}
+
 /// The graph of one tree, each resolver whose language the tree holds run over it once.
 pub fn build(topology: &Topology) -> ModuleGraph {
     let started = Instant::now();

@@ -58,6 +58,7 @@ const PATTERNS: &str = r#"
 (variable_declaration (variable_declarator) @variable)
 (import_statement) @import
 (export_statement source: (string)) @import
+(call_expression function: (import) arguments: (arguments . (string))) @import
 (export_statement) @export
 "#;
 
@@ -109,6 +110,9 @@ const MEMBERS: &[&str] = &[
 
 const INFERRED: &str = ": ?";
 
+/// What an import takes where it takes every name of its module.
+const EVERY: &str = "*";
+
 /// Whether this declaration leaves the file: an `export` above it says so, and a member of an
 /// exported class leaves with the class, and a global augmentation adds what it holds to the
 /// global scope.
@@ -125,15 +129,26 @@ fn in_a_global_augmentation(node: Node) -> bool {
     })
 }
 
-/// The module specifier an import or a re-export names, without its quotes, and the names it
-/// binds into this file.
+/// The module specifier an import, a re-export or an `import()` with a literal specifier names,
+/// without its quotes, the names it binds into this file, and the names it takes from that
+/// module. An `import()` takes every name, because the names it reads are not syntax.
 fn imported(node: Node, source: &[u8]) -> Imported {
+    if node.kind() == "call_expression" {
+        return Imported {
+            module: node
+                .child_by_field_name("arguments")
+                .and_then(|arguments| arguments.named_child(0))
+                .map(|from| specifier(from, source)),
+            names: Vec::new(),
+            paths: vec![EVERY.to_string()],
+        };
+    }
     Imported {
         module: node
             .child_by_field_name("source")
             .map(|from| specifier(from, source)),
         names: bindings(node, source),
-        paths: Vec::new(),
+        paths: taken(node, source),
     }
 }
 
@@ -969,6 +984,29 @@ fn binding(node: Node, source: &[u8]) -> Option<String> {
         "namespace_import" | "import_clause" => Some(text_of(sole_identifier(node)?, source)),
         _ => None,
     }
+}
+
+/// The name each clause takes from the module it names: its own name where `as` renames it,
+/// `default` for a default import, and `*` for a namespace import or a star re-export. A
+/// side-effect import takes none.
+fn taken(node: Node, source: &[u8]) -> Vec<String> {
+    let mut out = Vec::new();
+    walk(node, &mut |found| match found.kind() {
+        "import_specifier" | "export_specifier" => {
+            out.extend(
+                found
+                    .child_by_field_name("name")
+                    .map(|name| text_of(name, source)),
+            );
+        }
+        "namespace_import" | "namespace_export" => out.push(EVERY.to_string()),
+        "import_clause" if sole_identifier(found).is_some() => out.push("default".to_string()),
+        _ => {}
+    });
+    if node.kind() == "export_statement" && has_token(node, "*") && out.is_empty() {
+        out.push(EVERY.to_string());
+    }
+    out
 }
 
 fn alias_or_name(node: Node) -> Option<Node> {

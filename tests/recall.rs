@@ -463,7 +463,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "an orphan component",
-        &[Rule("reachability", Has("unreached"), Missed)],
+        &[Rule("reachability", Has("unreached"), Caught)],
         DASHBOARD_FILE,
         "",
     ),
@@ -471,14 +471,14 @@ const ROWS: &[Row] = &[
         "a file of exports nothing imports",
         &[
             Rule("dead-symbols", Any, Missed),
-            Rule("reachability", Has("unreached"), Missed),
+            Rule("reachability", Has("unreached"), Caught),
         ],
         FORMAT_FILE,
         "",
     ),
     row(
         "an exact -v2.tsx copy, which nothing imports",
-        &[Rule("reachability", Has("unreached"), Missed)],
+        &[Rule("reachability", Has("unreached"), Caught)],
         COPY_FILE,
         "",
     ),

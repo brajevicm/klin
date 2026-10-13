@@ -29,7 +29,7 @@ use crate::contract::measurement;
 use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::facts::tree::Tree;
-use crate::modules::resolver::{Attachment, Dependency, Hole};
+use crate::modules::resolver::{Attachment, Dependency, Doubt, Hole};
 use crate::modules::{self, Cycles, GraphCost, ModuleGraph};
 use crate::syntax::{self, structural};
 use crate::sys::error::Error;
@@ -834,6 +834,7 @@ fn edges(
         if let Some(what) = verdict.straddled {
             ambiguous.push(Hole {
                 local_alias: false,
+                doubt: Doubt::Unproved,
                 file: side.current(file),
                 line: dependency.line,
                 start_byte: dependency.start_byte,

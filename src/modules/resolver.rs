@@ -151,10 +151,20 @@ pub struct Dependency {
     pub start_byte: u64,
 }
 
+/// Why a form has no proved target: it names no file the tree holds, it may name any of several
+/// held files, or klin cannot prove the form or the configuration that names it.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Doubt {
+    Missing,
+    Several(Vec<String>),
+    Unproved,
+}
+
 /// One form a resolver supports and could not prove a target for.
 pub struct Hole {
     /// Whether an explicit TypeScript paths rule recognized this dependency as local.
     pub local_alias: bool,
+    pub doubt: Doubt,
     pub file: String,
     pub line: u64,
     /// Byte offset of the import in its source.
@@ -255,8 +265,20 @@ impl<'a> Builder<'a> {
         text: &str,
         why: String,
     ) {
+        self.doubted_at(file, (line, start_byte), text, why, Doubt::Unproved);
+    }
+
+    pub(super) fn doubted_at(
+        &mut self,
+        file: &str,
+        (line, start_byte): (u64, u64),
+        text: &str,
+        why: String,
+        doubt: Doubt,
+    ) {
         self.holes.push(Hole {
             local_alias: false,
+            doubt,
             file: file.to_string(),
             line,
             start_byte,

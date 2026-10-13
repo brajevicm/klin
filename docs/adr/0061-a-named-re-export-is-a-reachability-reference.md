@@ -3,6 +3,8 @@
 > Amends spec 8.4. The name-only rule of ADR 0035, the family derivation and
 > `dead-symbols` stand. What changes is what counts as a reference to a
 > member's declaration.
+>
+> Amended for apps by #580, 2026-10-13. See the last section.
 
 `reachability` reads a member as reached when another file holds a reference
 with the name of one of its eligible declarations. The structural index held
@@ -57,3 +59,17 @@ another file look referenced.
   ambiguity reads as reached.
 - **Resolve `export *` through the target's exports.** It takes module
   resolution too, and no labeled row needs it.
+
+## Amendment for apps (#580)
+
+An app is a TypeScript package with no entry point (ADR 0044) that depends on
+`next` (spec 8.4). In an app, `reachability` walks the module graph of
+`layering` from the files Next.js and the package scripts run. There a
+re-export reaches its target only where the file that writes it is reached,
+and a star re-export from a reached file takes every export of its target.
+
+The reason is the R056 case itself. A re-export made `isTypenameField.ts`
+reachable because a published entry point wrote it. An app has no entry point
+a consumer imports, so a barrel that nothing reached imports reaches nothing.
+The name-only rule of this ADR still holds for the families outside apps, and
+the rejection of "resolve the specifier" still holds for them.

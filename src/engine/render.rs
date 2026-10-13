@@ -121,6 +121,9 @@ fn unresolved(kind: Unresolvable) -> &'static str {
         Unresolvable::PublicSurface => {
             "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured"
         }
+        Unresolvable::App => {
+            "app package(s) klin could not prove, so reachability judged none of their files"
+        }
     }
 }
 
@@ -337,6 +340,28 @@ fn counted_aside(counted: &Counted) -> String {
     }
 }
 
+/// What `reachability` judged: files, and the exports app mode judged where it judged any.
+fn reachability_phrase(measured: &Measured) -> String {
+    let Measured::Reachability {
+        judged,
+        unreached,
+        unjudged,
+        exports,
+        unused,
+    } = measured
+    else {
+        return String::new();
+    };
+    let exports = match exports {
+        0 => String::new(),
+        _ => format!(", {exports} export(s) judged, {unused} unused"),
+    };
+    format!(
+        "{judged} file(s) judged, {unreached} unreached, {unjudged} measured with no eligible \
+         declaration{exports}"
+    )
+}
+
 /// The state, the aside before the coverage, and what closes the line, of a gate that measures
 /// structure.
 fn measured_phrases(measured: &Measured) -> (String, String, String) {
@@ -345,14 +370,7 @@ fn measured_phrases(measured: &Measured) -> (String, String, String) {
         Measured::DeadSymbols { judged, dead } => state(format!(
             "{judged} declaration(s) judged, {dead} dead symbol(s)"
         )),
-        Measured::Reachability {
-            judged,
-            unreached,
-            unjudged,
-        } => state(format!(
-            "{judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
-             eligible declaration"
-        )),
+        Measured::Reachability { .. } => state(reachability_phrase(measured)),
         Measured::Complexity(complexity) => (
             format!(
                 "{} function(s) judged, {} over the gate{}",
@@ -566,6 +584,13 @@ fn noted(listed: &Listed) -> Option<String> {
         Listed::Held(HeldAtBase::Unreached(files)) => (
             format!("{} unreached file(s) the base already held:", files.len()),
             files.clone(),
+        ),
+        Listed::Held(HeldAtBase::UnusedExports(exports)) => (
+            format!("{} unused export(s) the base already held:", exports.len()),
+            exports
+                .iter()
+                .map(|export| format!("{}:{}  {}", export.file, export.line, export.text))
+                .collect(),
         ),
         Listed::NoSurface(held) => (
             format!(
