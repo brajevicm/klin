@@ -17,6 +17,17 @@ enum Anchor {
 }
 
 impl Anchor {
+    fn read(file: &str, value: &Value) -> Option<Self> {
+        match value.pointer("/compilerOptions/baseUrl") {
+            None => Some(Anchor::Config(directory(file).to_string())),
+            Some(value) => value
+                .as_str()
+                .filter(|path| !absolute(path))
+                .and_then(|path| joined(directory(file), path))
+                .map(Anchor::BaseUrl),
+        }
+    }
+
     fn path(&self) -> &str {
         match self {
             Anchor::Config(path) | Anchor::BaseUrl(path) => path,
@@ -340,14 +351,7 @@ fn rules(file: &str, parsed: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
 impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
-        let anchor = match value.pointer("/compilerOptions/baseUrl") {
-            None => Some(Anchor::Config(directory(file).to_string())),
-            Some(value) => value
-                .as_str()
-                .filter(|path| !absolute(path))
-                .and_then(|path| joined(directory(file), path))
-                .map(Anchor::BaseUrl),
-        };
+        let anchor = Anchor::read(file, value);
         let inherits = value.get("extends").is_some();
         let own_paths = value.pointer("/compilerOptions/paths").is_some()
             && !matches!(anchor, Some(Anchor::Config(_)));
