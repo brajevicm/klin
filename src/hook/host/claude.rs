@@ -75,9 +75,10 @@ impl Adapter for Claude {
             path => path,
         };
         let tool = text(payload.get("tool_name"));
-        let rewrites = match path.is_empty() {
-            true => Vec::new(),
-            false => vec![(path.clone(), rewrite(&tool, payload))],
+        let rewrites = match (path.is_empty(), self.asks) {
+            (true, _) => Vec::new(),
+            (false, true) => vec![(path.clone(), rewrite(&tool, payload))],
+            (false, false) => vec![(path.clone(), Rewrite::Unread)],
         };
         Event {
             tool,

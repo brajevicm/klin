@@ -63,10 +63,15 @@ guard is feedback, not a boundary: CI and CODEOWNERS stay the authority
 Cursor sends no edit payload klin reads, and the harness protocol carries
 none, so an edit of `klin.json` there is denied with no approval, as before.
 
+The Codex hooks documentation lists the JSON deny on PreToolUse and a
+`tool_use_id` per call, and Codex PR #18391 puts the raw patch body in
+`tool_input.command`. The documentation says only that `systemMessage` is
+"surfaced as a warning in the UI or event stream".
+
 These host checks stay open until a person runs them:
 
 - that a PreToolUse `systemMessage` reaches the person and not the model, on
-  Claude Code and on Codex, and that Codex honors the JSON deny;
+  Claude Code and on Codex;
 - which messages fire the prompt hook, and how each host wraps them;
 - whether Cursor has any person-only channel.
 

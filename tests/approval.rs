@@ -223,6 +223,28 @@ fn an_edit_klin_cannot_read_is_refused_with_no_approval() {
     ));
 }
 
+/// A host klin cannot place has no channel klin trusts, so its edit is refused with no
+/// approval, and no request waits for a code nobody was told. Spec 10.8.2.
+#[test]
+fn an_edit_on_a_host_klin_cannot_place_is_refused_with_no_approval() {
+    let tree = tree();
+    let event = json!({
+        "hook_event_name": "PreToolUse",
+        "session_id": "s-1",
+        "tool_use_id": "t-1",
+        "tool_name": "Write",
+        "tool_input": { "file_path": tree.at("klin.json"), "content": LOOSER },
+    });
+    let run = feed(
+        tree.root(),
+        &["__agent", "event", "--host", "elsewhere"],
+        &event.to_string(),
+    );
+    refused(&run);
+    assert!(!run.says("asked the person"), "{}", run.out);
+    assert!(!tree.state("approval").exists());
+}
+
 /// Codex edits through `apply_patch`. klin reads the patch the way Codex applies it.
 #[test]
 fn a_codex_patch_of_the_configuration_is_put_to_the_person() {
