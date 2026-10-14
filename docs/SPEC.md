@@ -1575,7 +1575,9 @@ site with what it matched, and its `derived:`, `window:` and `changed:`
 lines. The JSON document keeps all of it.
 
 Each kind of `escapes` site gets its own repair direction: a cast to `any`
-gets one about types, and an `unwrap()` gets one about errors. A remedy that
+gets one about types, and an `unwrap()` gets one about errors. A row that
+names its own remedy prints it on each of its sites and adds none to the
+gate's remedy. A remedy that
 names another gate prints only when that gate failed in the same run. The
 `reachability` remedy names a `public-api` break only then. Pinned by
 `the_stop_text_leaves_out_the_provenance_klin_check_prints`,

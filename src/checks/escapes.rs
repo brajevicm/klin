@@ -171,7 +171,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         LANGUAGES
             .iter()
             .flat_map(|language| language.patterns)
-            .all(|(row, ..)| kind_remedy(row).is_some()),
+            .all(|(row, _, own)| !own.is_empty() || kind_remedy(row).is_some()),
         "every escape row needs a remedy of its kind"
     );
     markers::gate(&KIND, at, out)
@@ -182,11 +182,14 @@ fn show(values: &Values) -> String {
 }
 
 /// One remedy per kind of escape that failed, in the order each first failed, then what every
-/// escape shares. A worsened site whose values name no kind gets the remedy of every kind.
-/// Spec 10.6.
+/// escape shares. A site whose row names its own remedy already shows it on its line. A worsened
+/// site whose values name no kind gets the remedy of every kind. Spec 10.6.
 fn remedy(failed: &[&Values]) -> String {
     let mut said: Vec<&str> = Vec::new();
-    for values in failed {
+    for values in failed
+        .iter()
+        .filter(|values| !values.contains_key("remedy"))
+    {
         let kind = values
             .get(LABEL)
             .and_then(Value::as_str)
@@ -201,7 +204,7 @@ fn remedy(failed: &[&Values]) -> String {
 }
 
 /// The remedy of one row of `LANGUAGES`, and nothing for a name no row holds. The gate asserts
-/// that every row has one.
+/// that every row without its own remedy has one.
 fn kind_remedy(row: &str) -> Option<&'static str> {
     Some(match row {
         "unwrap" | "expect" | "force try" | "bare except" | "errors ignored" => {
