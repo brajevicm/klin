@@ -1575,15 +1575,21 @@ site with what it matched, and its `derived:`, `window:` and `changed:`
 lines. The JSON document keeps all of it.
 
 Each kind of `escapes` site gets its own repair direction: a cast to `any`
-gets one about types, and an `unwrap()` gets one about errors. A row that
-names its own remedy prints it on each of its sites and adds none to the
-gate's remedy. A remedy that
+gets one about types, and an `unwrap()` gets one about errors. A worsened
+site gets the remedy of its kind too. A row that names its own remedy prints
+it on each of its sites and adds none to the gate's remedy. In the JSON
+document, the remedy of each finding starts with its row's own remedy, as a
+sentence, and then gives the gate's remedy, unless the gate's remedy already
+holds the row's. A remedy that
 names another gate prints only when that gate failed in the same run. The
 `reachability` remedy names a `public-api` break only then. Pinned by
 `the_stop_text_leaves_out_the_provenance_klin_check_prints`,
 `the_stop_text_names_the_base_site_a_worsened_finding_matched`,
 `the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest`,
-`each_escape_kind_gets_its_own_remedy` and
+`each_escape_kind_gets_its_own_remedy`,
+`a_worsened_escape_site_gets_the_remedy_of_its_kind`,
+`a_focused_test_and_a_skipped_test_each_get_their_own_remedy`,
+`the_remedy_of_a_site_leads_the_remedy_of_its_finding` and
 `the_remedy_names_public_api_only_when_public_api_failed`.
 
 The Stop keeps these 0.x shapes, with vNext command names:
@@ -4394,7 +4400,9 @@ the line patterns and #114 the body shapes, which the function walk reads.
 The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
-`@Disabled`, `t.Skip` and `XCTSkip`, are already there.
+`@Disabled`, `t.Skip` and `XCTSkip`, are already there. `.only` is a
+`focused test` with `fit(` and `fdescribe(`, because its repair removes the
+focus, not a skip.
 
 For the same reason a Rust `#[cfg_attr(P, ignore)]` or
 `#[cfg_attr(P, ignore = "...")]` is a skipped test only where `P` is always

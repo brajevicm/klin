@@ -17,10 +17,6 @@ const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, markers::SKIP_TEST_IDIOMS];
 
 const LABEL: &str = "escape";
 
-/// The remedy of a worsened site, whose values name no kind.
-const EVERY_KIND_REMEDY: &str = "Fix what the escape hides: handle the error instead of \
-                                 unwrapping it, address the lint instead of allowing it. Remove \
-                                 the skip, or fix what made the test fail.";
 const SHARED_REMEDY: &str = "Swallowing an error in place of the escape is not a fix. Accepting \
                              a new escape is a policy decision for a person, in the config, in a \
                              reviewed commit.";
@@ -123,10 +119,14 @@ const LANGUAGES: &[Language] = &[
             ("non-null assertion", r"[\w)\]]!\.", ""),
             (
                 "skipped test",
-                r"\b(?:it|test|describe)\.(?:skip|only)\(|\bx(?:it|test|describe)\(",
+                r"\b(?:it|test|describe)\.skip\(|\bx(?:it|test|describe)\(",
                 "",
             ),
-            ("focused test", r"^[ \t]*f(?:it|describe)\(", ""),
+            (
+                "focused test",
+                r"^[ \t]*f(?:it|describe)\(|\b(?:it|test|describe)\.only\(",
+                "",
+            ),
         ],
         test_idioms: Some(TestIdioms {
             rows: &["ts-expect-error"],
@@ -182,19 +182,19 @@ fn show(values: &Values) -> String {
 }
 
 /// One remedy per kind of escape that failed, in the order each first failed, then what every
-/// escape shares. A site whose row names its own remedy already shows it on its line. A worsened
-/// site whose values name no kind gets the remedy of every kind. Spec 10.6.
+/// escape shares. A site whose row names its own remedy already shows it on its line. Spec 10.6.
 fn remedy(failed: &[&Values]) -> String {
     let mut said: Vec<&str> = Vec::new();
-    for values in failed
+    let kinds = failed
         .iter()
-        .filter(|values| !values.contains_key(markers::REMEDY))
-    {
-        let kind = values
-            .get(LABEL)
-            .and_then(Value::as_str)
-            .and_then(kind_remedy)
-            .unwrap_or(EVERY_KIND_REMEDY);
+        .filter(|values| !values.contains_key(ratchet::REMEDY))
+        .filter_map(|values| {
+            values
+                .get(LABEL)
+                .and_then(Value::as_str)
+                .and_then(kind_remedy)
+        });
+    for kind in kinds {
         if !said.contains(&kind) {
             said.push(kind);
         }

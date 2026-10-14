@@ -223,9 +223,6 @@ type Marks = BTreeMap<(String, String), Vec<(u64, String)>>;
 /// The value that lists the lines of a site keyed by its row whose text the base file lacks.
 const NEW_LINES: &str = "new_lines";
 
-/// The value that holds the remedy a row names for each of its sites.
-pub const REMEDY: &str = "remedy";
-
 /// One tree read: the sites, how many test idioms test code took out of the count, and the
 /// files the walk reached, which is what the gate's coverage counts.
 struct Read {
@@ -269,7 +266,7 @@ pub fn show(label: &str, values: &Values) -> String {
         let plural = if lines.contains(',') { "s" } else { "" };
         let _ = write!(named, ", new on line{plural} {lines}");
     }
-    match values.get(REMEDY).and_then(Value::as_str) {
+    match values.get(ratchet::REMEDY).and_then(Value::as_str) {
         Some(remedy) if !remedy.is_empty() => format!("{named} — {remedy}"),
         _ => named,
     }
@@ -670,7 +667,7 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Findi
             values.insert(kind.label.into(), tally.name.into());
             values.insert("count".into(), tally.count.into());
             if !tally.remedy.is_empty() {
-                values.insert(REMEDY.into(), tally.remedy.into());
+                values.insert(ratchet::REMEDY.into(), tally.remedy.into());
             }
             Finding {
                 file,

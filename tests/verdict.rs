@@ -564,8 +564,11 @@ fn the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest() {
             .count()
     };
     assert_eq!(sites(&run.out), 20, "{}", run.out);
-    assert!(run.says("… and 5 more"), "{}", run.out);
-    assert!(run.says("klin check --changed"), "{}", run.out);
+    assert!(
+        run.says("  … and 5 more — klin check --changed lists every site\n"),
+        "{}",
+        run.out
+    );
     let check = tree.run(&["check", "--changed"]);
     assert_eq!(sites(&check.out), 25, "{}", check.out);
 }
