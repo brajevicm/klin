@@ -21,6 +21,9 @@ const ACCEPTED: &str = "accepted";
 
 const BODY: &str = "body_hash";
 
+/// The value that holds the remedy a row names for each of its sites.
+pub const REMEDY: &str = "remedy";
+
 /// A pattern row klin retired from a built-in table, as the gate that held it, the values key
 /// its name is recorded under, the name, the file suffix the row read, and where the row went.
 /// An accepted entry naming one matches nothing for a reason the entry cannot show, so the note
@@ -625,7 +628,7 @@ fn failed(gate: &str, finding: &Finding, entry: Option<&Values>, evaluator: &Eva
             at: came_from(finding, entry),
         }),
         text: finding.text.clone(),
-        fix_advice: evaluator.fix_advice.text(&[&risen]),
+        fix_advice: advice(&finding.values, evaluator.fix_advice.text(&[&risen])),
         matched,
         ceiling: evaluator.ceiling.map(str::to_string),
         lead: None,
@@ -658,11 +661,36 @@ fn remedy(comparison: &Comparison, evaluator: &Evaluator) -> String {
     evaluator.fix_advice.text(&failing)
 }
 
+/// One failure's remedy: the remedy its row names, as a sentence, then the gate's, where the
+/// gate's does not already hold it. Spec 10.6.
+fn advice(values: &Values, gate: String) -> String {
+    let Some(own) = values
+        .get(REMEDY)
+        .and_then(Value::as_str)
+        .filter(|own| !own.is_empty() && !gate.contains(own))
+    else {
+        return gate;
+    };
+    let mut chars = own.chars();
+    let first: String = chars
+        .next()
+        .into_iter()
+        .flat_map(char::to_uppercase)
+        .collect();
+    let stop = if own.ends_with('.') { "" } else { "." };
+    format!("{first}{}{stop} {gate}", chars.as_str())
+        .trim_end()
+        .to_string()
+}
+
+/// A worsened finding's values with only the metrics that rose, so its remedy names what grew
+/// and still reads the row it belongs to.
 fn risen(finding: &Finding, entry: &Values, metrics: &[&str]) -> Values {
-    metrics
+    finding
+        .values
         .iter()
-        .filter(|metric| rose(finding, entry, metric))
-        .filter_map(|metric| Some((metric.to_string(), finding.values.get(*metric)?.clone())))
+        .filter(|(key, _)| !metrics.contains(&key.as_str()) || rose(finding, entry, key))
+        .map(|(key, value)| (key.clone(), value.clone()))
         .collect()
 }
 

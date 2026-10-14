@@ -706,8 +706,8 @@ pub fn choose(root: &Path) -> Result<Window, Error> {
         .text(&["rev-parse", "--is-shallow-repository"])
         .is_some_and(|said| said.trim() == "true");
     let mut tried: Vec<String> = Vec::new();
-    let mut notes = Vec::new();
-    for candidate in candidates(root) {
+    let (candidates, mut notes) = candidates(root);
+    for candidate in candidates {
         tried.push(candidate.named.clone());
         let found = candidate
             .references
@@ -879,8 +879,9 @@ fn remote_reference(branch: &str) -> Option<String> {
         .map(|remote| format!("refs/remotes/origin/{remote}"))
 }
 
-fn candidates(root: &Path) -> Vec<Candidate> {
+fn candidates(root: &Path) -> (Vec<Candidate>, Vec<String>) {
     let mut out = Vec::new();
+    let mut notes = Vec::new();
     if let Some(target) = environment("GITHUB_BASE_REF") {
         out.push(Candidate {
             references: vec![
@@ -902,20 +903,315 @@ fn candidates(root: &Path) -> Vec<Candidate> {
             absent: Absent::Rewritten,
         });
     }
-    for branch in default_branches(root) {
-        let (reference, source) = match remote_reference(&branch) {
-            Some(remote) => (remote, Source::Remote),
-            None => (branch.clone(), Source::Local),
-        };
-        out.push(Candidate {
-            references: vec![(format!("{reference}...HEAD"), source)],
-            how: format!("the merge-base with {branch}"),
-            named: branch,
-            kind: Kind::Branch,
-            absent: Absent::Unrelated(reference),
-        });
+    let defaults = default_branches(root);
+    if out.is_empty() {
+        let resolved = stacked_on(root, &defaults);
+        notes.extend(resolved.notes);
+        out.extend(resolved.stacked.map(Stacked::candidate));
     }
-    out
+    out.extend(defaults.into_iter().map(merge_base_with));
+    (out, notes)
+}
+
+/// The merge-base with one of the default branch's names.
+fn merge_base_with(branch: String) -> Candidate {
+    let (reference, source) = match remote_reference(&branch) {
+        Some(remote) => (remote, Source::Remote),
+        None => (branch.clone(), Source::Local),
+    };
+    Candidate {
+        references: vec![(format!("{reference}...HEAD"), source)],
+        how: format!("the merge-base with {branch}"),
+        named: branch,
+        kind: Kind::Branch,
+        absent: Absent::Unrelated(reference),
+    }
+}
+
+const REMOTES: &str = "refs/remotes/";
+
+/// The branch this one is stacked on, by its full ref, and `None` where the default branch is
+/// the base. The turn stamp records it, so a Stop tracks the same branch. Spec 6.5, 6.6.
+pub fn stacked(root: &Path) -> Option<String> {
+    stacked_on(root, &default_branches(root))
+        .stacked
+        .map(|stacked| stacked.reference)
+}
+
+/// The branch a stacked branch was cut from, and how klin learned it. Spec 6.5.
+struct Stacked {
+    reference: String,
+    named: String,
+    how: String,
+}
+
+impl Stacked {
+    fn candidate(self) -> Candidate {
+        let source = match self.reference.starts_with(REMOTES) {
+            true => Source::Remote,
+            false => Source::Local,
+        };
+        Candidate {
+            references: vec![(format!("{}...HEAD", self.reference), source)],
+            how: format!("the merge-base with {} ({})", self.named, self.how),
+            named: self.named,
+            kind: Kind::Branch,
+            absent: Absent::Unrelated(self.reference),
+        }
+    }
+}
+
+/// What candidate 3 found: the branch HEAD is stacked on, if any, and the notes a person can act
+/// on, a key that names no branch and a fork point several branches hold. Spec 6.5.
+#[derive(Default)]
+struct Resolved {
+    stacked: Option<Stacked>,
+    notes: Vec<String>,
+}
+
+/// The branch `branch.<name>.klin-base` names, or else the one inferred from the fork point. The
+/// default branch is the first of its names whose remote ref resolves, and a fallback name past it
+/// is an ordinary branch. A branch on the default branch, or with no name, is stacked on nothing.
+/// Spec 6.5.
+fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
+    let repo = Repo::at(root);
+    let Some(name) = branch_name(&repo) else {
+        return Resolved::default();
+    };
+    let default_ref = defaults
+        .iter()
+        .filter_map(|branch| remote_reference(branch))
+        .find(|reference| resolve(root, reference).is_some());
+    let copies = Copies::of(&repo, &name);
+    if default_ref
+        .as_deref()
+        .is_some_and(|reference| copies.holds(reference))
+    {
+        return Resolved::default();
+    }
+    let key = format!("branch.{name}.klin-base");
+    let mut notes = Vec::new();
+    match keyed(&repo, &copies, &key) {
+        Some(Ok(stacked)) => {
+            return Resolved {
+                stacked: Some(stacked),
+                notes,
+            };
+        }
+        Some(Err(note)) => notes.push(note),
+        None => {}
+    }
+    let stacked = inferred(&repo, &copies, default_ref.as_deref()).unwrap_or_else(|holders| {
+        notes.push(ambiguous(&key, &holders));
+        None
+    });
+    Resolved { stacked, notes }
+}
+
+/// The name of the branch HEAD is on, and `None` when HEAD is detached.
+fn branch_name(repo: &Repo) -> Option<String> {
+    let head = repo.text(&["symbolic-ref", "-q", "HEAD"])?;
+    head.trim().strip_prefix("refs/heads/").map(str::to_string)
+}
+
+/// The branch the key names, `None` when the key is not set, and the note for a key that names
+/// no branch, this branch itself or one of its remote copies however far behind, or a branch that
+/// already holds HEAD, because such a base hides commits of the branch.
+fn keyed(repo: &Repo, copies: &Copies, key: &str) -> Option<Result<Stacked, String>> {
+    let named = repo.text(&["config", "--get", key])?;
+    let named = named.trim();
+    let Some(reference) = full_name(repo, named) else {
+        return Some(Err(format!(
+            "{key} names {named}, which does not resolve, so klin infers the base"
+        )));
+    };
+    if copies.holds(&reference) {
+        return Some(Err(format!(
+            "{key} names {named}, which is this branch or a copy of it and would hide its \
+             commits, so klin infers the base. Name the branch this one was cut from"
+        )));
+    }
+    if repo.is_ancestor("HEAD", &reference) == Some(true) {
+        return Some(Err(format!(
+            "{key} names {named}, which already holds HEAD and would hide this branch's \
+             commits, so klin infers the base. Name the branch this one was cut from"
+        )));
+    }
+    Some(Ok(Stacked {
+        reference,
+        named: named.to_string(),
+        how: key.to_string(),
+    }))
+}
+
+/// The one remote branch other than the default that holds the fork point. Where the default
+/// branch holds it, or no branch does, there is none, and where several do, they are the error.
+fn inferred(
+    repo: &Repo,
+    copies: &Copies,
+    default_ref: Option<&str>,
+) -> Result<Option<Stacked>, Vec<String>> {
+    let Some(holders) = holding_the_fork_point(repo, copies) else {
+        return Ok(None);
+    };
+    if holders
+        .iter()
+        .any(|held| Some(held.as_str()) == default_ref)
+    {
+        return Ok(None);
+    }
+    match holders.as_slice() {
+        [held] => Ok(Some(Stacked {
+            named: remote_name(held).to_string(),
+            reference: held.clone(),
+            how: "inferred".to_string(),
+        })),
+        [] => Ok(None),
+        _ => Err(holders),
+    }
+}
+
+/// The note for a fork point several remote branches hold.
+fn ambiguous(key: &str, holders: &[String]) -> String {
+    format!(
+        "this branch forks from a commit that {} all hold, so klin judges against the default \
+         branch. Set {key} to the branch it was cut from",
+        holders
+            .iter()
+            .map(|held| remote_name(held))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+/// A remote-tracking ref without its `refs/remotes/` prefix, as `origin/main`.
+fn remote_name(reference: &str) -> &str {
+    reference.strip_prefix(REMOTES).unwrap_or(reference)
+}
+
+/// This branch and its copies on every remote, `refs/heads/<name>` and `<remote>/<name>`, and
+/// every `<remote>/HEAD`, among the remote-tracking refs that exist. Each ref belongs to the
+/// longest configured remote its path starts with, whose name may hold a slash, and only a ref no
+/// configured remote matches falls back to its first segment, for a remote no longer configured.
+/// So with `upstream/fork` configured, `upstream/fork/child` is a copy of `child` and no copy of
+/// `fork/child`, and `origin/team/child` is no copy of `child`. Spec 6.5.
+struct Copies {
+    own: Vec<String>,
+    left_out: Vec<String>,
+    remote_refs: bool,
+}
+
+impl Copies {
+    fn of(repo: &Repo, name: &str) -> Copies {
+        let refs = repo
+            .text(&["for-each-ref", "--format=%(refname)", REMOTES])
+            .unwrap_or_default();
+        let configured = repo.text(&["remote"]).unwrap_or_default();
+        let configured: Vec<&str> = configured.lines().collect();
+        let left_out: Vec<String> = refs
+            .lines()
+            .filter(|reference| {
+                branch_of(reference, &configured)
+                    .is_some_and(|branch| branch == name || branch == "HEAD")
+            })
+            .map(str::to_string)
+            .collect();
+        let own = std::iter::once(format!("refs/heads/{name}"))
+            .chain(
+                left_out
+                    .iter()
+                    .filter(|reference| branch_of(reference, &configured) == Some(name))
+                    .cloned(),
+            )
+            .collect();
+        Copies {
+            own,
+            left_out,
+            remote_refs: !refs.trim().is_empty(),
+        }
+    }
+
+    /// Whether a ref is this branch or one of its copies.
+    fn holds(&self, reference: &str) -> bool {
+        self.own.iter().any(|own| own == reference)
+    }
+
+    /// Whether a remote-tracking ref is left out of the fork point: a copy or a `<remote>/HEAD`.
+    fn leaves_out(&self, reference: &str) -> bool {
+        self.left_out.iter().any(|left| left == reference)
+    }
+}
+
+/// The branch a remote-tracking ref names: its path after the longest configured remote that
+/// prefixes it, or after its first segment where no configured remote does.
+fn branch_of<'a>(reference: &'a str, configured: &[&str]) -> Option<&'a str> {
+    let path = reference.strip_prefix(REMOTES)?;
+    let owner = configured
+        .iter()
+        .filter(|remote| {
+            path.strip_prefix(**remote)
+                .is_some_and(|rest| rest.starts_with('/'))
+        })
+        .max_by_key(|remote| remote.len());
+    match owner {
+        Some(remote) => Some(&path[remote.len() + 1..]),
+        None => path.split_once('/').map(|(_, branch)| branch),
+    }
+}
+
+/// The remote branches other than this branch's own copies that hold the fork point. Spec 6.5.
+fn holding_the_fork_point(repo: &Repo, copies: &Copies) -> Option<Vec<String>> {
+    let fork = fork_point(repo, copies)?;
+    let holders = repo.text(&[
+        "for-each-ref",
+        "--contains",
+        &fork,
+        "--format=%(refname)",
+        REMOTES,
+    ])?;
+    Some(
+        holders
+            .lines()
+            .filter(|held| !copies.leaves_out(held))
+            .map(str::to_string)
+            .collect(),
+    )
+}
+
+/// The first parent of the oldest commit on HEAD's first-parent chain that no remote branch
+/// other than this branch's own copies holds. Where one holds HEAD itself there is none, because
+/// a base at HEAD would hide every commit of the branch, and with no remote branch there is none
+/// and no history is walked.
+fn fork_point(repo: &Repo, copies: &Copies) -> Option<String> {
+    if !copies.remote_refs {
+        return None;
+    }
+    let excluded: Vec<String> = copies
+        .left_out
+        .iter()
+        .filter_map(|reference| reference.strip_prefix(REMOTES))
+        .map(|copy| format!("--exclude={copy}"))
+        .collect();
+    let mut walk = vec!["rev-list", "--first-parent", "--parents", "HEAD", "--not"];
+    walk.extend(excluded.iter().map(String::as_str));
+    walk.push("--remotes");
+    let walked = repo.text(&walk)?;
+    let oldest = walked.lines().last()?;
+    oldest.split_whitespace().nth(1).map(str::to_string)
+}
+
+/// The full ref of the branch a name resolves to, local or remote-tracking, and `None` for a
+/// name that is not a branch, such as a tag.
+fn full_name(repo: &Repo, named: &str) -> Option<String> {
+    let found = repo.text(&[
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "--symbolic-full-name",
+        named,
+    ])?;
+    let found = found.trim();
+    (found.starts_with("refs/heads/") || found.starts_with(REMOTES)).then(|| found.to_string())
 }
 
 fn pushed_from() -> Option<String> {

@@ -177,7 +177,9 @@ builds and checks with no cache.
 ## Out of scope
 
 klin does not sandbox the coding agent, harden the developer machine, manage
-secrets, or automate organization policy. It reads no secrets. No native check
+secrets, or automate organization policy. It reads secrets only to find them:
+the `secrets` check keys a finding by a redacted fingerprint and never stores
+or prints the key (SPEC section 16.3). No native check
 or recipe reads the network, and no measurement sends anything anywhere.
 `klin update` uses the network to fetch a release, and the guard denies it to
 an agent. On a release build, or a plugin's, a session start, `klin status` and

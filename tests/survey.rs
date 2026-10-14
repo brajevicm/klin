@@ -694,20 +694,30 @@ fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent
     tree.commit("a change inside the turn that would move the percentile");
     tree.write(".git/unusable", "a file where the state directory would go");
 
-    let run = harness::feed_with(
+    let (_, report) = harness::stop_report(
         tree.root(),
-        &[("KLIN_STATE_DIR", &tree.at(".git/unusable"))],
-        harness::AGENT,
         STOP,
+        &[("KLIN_STATE_DIR", &tree.at(".git/unusable"))],
     );
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
+    let cc = stop_cc(&report);
+    assert_eq!(cc["value"], 11, "{report}");
+    let rule = format!("95th percentile of 50 functions at {parent}, floor 10;");
     assert!(
-        run.says(&format!(
-            "derived: complexity cc 11 (95th percentile of 50 functions at {parent}, floor 10)"
-        )),
-        "{}",
-        run.out
+        cc["rule"]
+            .as_str()
+            .is_some_and(|said| said.starts_with(&rule)),
+        "{report}"
     );
+}
+
+/// The `complexity` `cc` a Stop's check document records as derived.
+fn stop_cc(report: &Value) -> Value {
+    let derived = &harness::derived(report);
+    find(derived, |entry| {
+        entry["section"] == "complexity" && entry["key"] == "cc"
+    })
+    .clone()
 }
 
 fn pinned_cc(tree: &Tree) -> Value {
@@ -964,11 +974,14 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
     tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
     tree.commit("widen the recorded scope later");
 
-    let held = stop(&tree);
+    let (held, report) = harness::stop_report(tree.root(), STOP, &[]);
+    let cc = stop_cc(&report);
+    assert_eq!(cc["value"], 10, "{report}");
     assert!(
-        held.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
-        "{}",
-        held.out
+        cc["rule"]
+            .as_str()
+            .is_some_and(|rule| rule.starts_with("the floor of 10, over 50 function(s) at")),
+        "{report}"
     );
 
     assert_eq!(held.code, 0, "{}", held.out);

@@ -670,14 +670,20 @@ or take the turn's history away, so a precise local judgement is no longer
 possible. klin then degrades to reporting for one Stop. The stamp records
 the merge-base of HEAD with the default branch, HEAD's symbolic ref (an
 in-progress rebase counts as its `head-name` branch), and the position of
-HEAD's reflog. A Stop is advisory when, since the stamp was taken, one of
+HEAD's reflog. On a stacked branch it also records the ref of the branch it
+is stacked on (candidate 3 of B.6.3), resolved when the stamp is taken, and
+the merge-base of HEAD with it. Rules 1 and 3 apply to that merge-base as to
+the default branch's, while its ref resolves, so a merge of either branch is
+incoming commits. A later Stop reads the ref from the git directory's files,
+and each merge-base has its own cache, so a Stop where nothing moved starts
+no git process. A Stop is advisory when, since the stamp was taken, one of
 these happened:
 
 1. **Incoming commits.** The default-branch merge-base moved forward, so
    the recorded one is an ancestor of it, and HEAD's
    reflog since the recorded position holds a `merge`, `pull`, `rebase` or
    `reset` entry, or the `commit (merge)` entry of a merge that stopped on a
-   conflict. The default branch is found by candidate 3 of B.6.3
+   conflict. The default branch is found by candidate 4 of B.6.3
    without the GitHub variables, and only a remote-tracking ref
    (`refs/remotes/...`) counts. The reflog is compared by entry position,
    never by time. When HEAD has no reflog, a merge-base that moved forward
@@ -807,8 +813,9 @@ changes:
 - The journal `reset` kind is not written, and a reader reads none, because
   it reads no schema 1 line. A Stop line can carry the verdict `advisory`
   (section 13.1).
-- The stamp also records the default-branch merge-base, HEAD's symbolic ref
-  and HEAD's reflog position (section 6.6).
+- The stamp also records the default-branch merge-base, the ref of the
+  branch a stacked branch is stacked on and the merge-base with it, HEAD's
+  symbolic ref and HEAD's reflog position (section 6.6).
 - vNext adds no readiness record and no readiness drift check.
 - `klin cache clean` does not exist. The cache stays safe to delete by hand.
   `klin status` prints the state directory and the cache path.
@@ -1303,6 +1310,7 @@ measurement rules are section B.8, amended below and by section 7.
 | `lockfile` | check | Automatic | `{stop, check}` | None. |
 | `escapes` | check | Automatic | `{stop, check}` | None. Known rewordings stay documented limitations. |
 | `stubs` | check | Automatic | `{stop, check}` | None. File-and-kind marker identity (ADR 0064). |
+| `secrets` | check | Automatic | `{stop, check}` | New (#582). A live-shaped vendor token, keyed by a redacted fingerprint (B.8.2.1). |
 | `inventory` | check | Automatic | `{stop, check}` | A deleted test is a review item (section 9.2). |
 | `complexity` | check | Automatic | `{stop, check}` | None. Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). |
 | `dead-symbols` | check | Automatic | `{stop, check}` | None. |
@@ -1414,7 +1422,15 @@ evaluator names the tier of each row from the finding's values, and the
 ratchet sets that tier on each finding. The ratchet's exit code counts only
 the failures of blocking rows. A gate that fails for any other reason fails,
 whatever ride-along findings it also holds.
-No shipped row is in this tier yet. #581 and #582 may add the first ones.
+The `biome-ignore` row of `escapes` is in this tier, at N 4.9 on the
+replay of #572 (#581). Pinned by
+`a_stop_whose_only_new_escape_is_a_biome_ignore_does_not_block_and_prints_nothing`,
+`a_biome_ignore_appears_in_a_stop_that_blocks_for_another_escape`,
+`at_klin_check_a_biome_ignore_is_a_ride_along_review_item_and_the_exit_does_not_change`
+and
+`at_klin_check_a_blocking_escape_beside_a_biome_ignore_fails_on_the_blocking_one`
+in `tests/escapes.rs`.
+`secrets` blocks: its replay over the frozen `nextjs` sample of #572 found 0 findings in 102 changes, so N = 0.
 
 At the Stop:
 
@@ -1558,17 +1574,46 @@ Per evidence kind:
   on host integration is addressed to a person, such as "ask a person to run
   `klin setup`".
 
-The Stop text is a bounded repair queue. When it leaves out sites, it says
-how many and that `klin report` lists them. Repeated evidence that a family
-identifies safely is shown once.
+The Stop text is a bounded repair queue. A gate lists at most 20 new sites.
+When it leaves out new sites, it says how many and that `klin check
+--changed` lists every one. Repeated evidence that a family identifies safely is shown
+once.
+
+The Stop text leaves out provenance that does not change the repair:
+
+- a new site does not say that nothing matched it;
+- no `derived:` line prints above a gate's row;
+- no `window:` line and no `changed:` line prints.
+
+A worsened site still names the base site or the accepted entry it matched,
+because that says why the site counts as worse. `klin check` prints every
+site with what it matched, and its `derived:`, `window:` and `changed:`
+lines. The JSON document keeps all of it.
+
+Each kind of `escapes` site gets its own repair direction: a cast to `any`
+gets one about types, and an `unwrap()` gets one about errors. A worsened
+site gets the remedy of its kind too. A row that names its own remedy prints
+it on each of its sites and adds none to the gate's remedy. In the JSON
+document, the remedy of each finding starts with its row's own remedy, as a
+sentence, and then gives the gate's remedy, unless the gate's remedy already
+holds the row's. A remedy that
+names another gate prints only when that gate failed in the same run. The
+`reachability` remedy names a `public-api` break only then. Pinned by
+`the_stop_text_leaves_out_the_provenance_klin_check_prints`,
+`the_stop_text_names_the_base_site_a_worsened_finding_matched`,
+`the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest`,
+`each_escape_kind_gets_its_own_remedy`,
+`a_worsened_escape_site_gets_the_remedy_of_its_kind`,
+`a_focused_test_and_a_skipped_test_each_get_their_own_remedy`,
+`the_remedy_of_a_site_leads_the_remedy_of_its_finding` and
+`the_remedy_names_public_api_only_when_public_api_failed`.
 
 The Stop keeps these 0.x shapes, with vNext command names:
 
 - a block opens with one lead line that says how many gates failed, what to
   do, and which gate block of two the Stop spends;
 - the Stop prints only the gates that did not pass, each with its own
-  `derived:` and `pinned:` lines, and a gate that passed with a note it
-  tells;
+  `pinned:` lines, and a gate that passed with a note it tells;
 - a Stop that spends no gate block says why klin does not block again, and
   that the window stays open until the finding is fixed or a person accepts
   it;
@@ -2644,8 +2689,12 @@ The README MUST name both levels and say which one a setup reaches.
 
 ### 16.3 Secrets and safety
 
-klin reads no secrets. No native check or recipe reads the network, and no
-measurement sends anything anywhere. `klin update` uses the network to fetch
+klin reads secrets only to find them, and never stores or prints one. The
+`secrets` check reads each source file and each `.env` file the tree does
+not ignore, and keys a finding by a redacted fingerprint, so no output,
+journal record, check document or accepted entry holds the key (B.8.2.1).
+No native check or recipe reads the network, and no measurement sends
+anything anywhere. `klin update` uses the network to fetch
 a release, and the guard denies it to an agent. `klin status` and `klin setup`
 and a session start ask GitHub for the newest release once a day, in a
 detached child (section 11.9). The ask sends no data of the repository.
@@ -2873,8 +2922,18 @@ ticket that implements the area MUST measure them:
    on the agent's own feature branch does not move the default-branch
    merge-base, so it is not advisory, and those commits read as new at the
    Stop.
-3. **Stacked branches.** A merge of a branch other than the default branch
-   does not move the default-branch merge-base either.
+3. **Stacked branches.** klin infers the branch a branch is stacked on
+   (candidate 3 of B.6.3). A teammate's branch cut from this branch holds
+   some of its commits, so the inferred base is too new and this branch's
+   earlier commits do not read as new. `branch.<name>.klin-base` names the
+   right branch. A stacked branch that merges the default branch is judged
+   against the branch it is stacked on, so the default branch's commits read
+   as new at `klin check` until that branch holds them. A merge of a third
+   branch, neither the default branch nor the one the branch is stacked on,
+   moves no recorded merge-base. Nor does a merge of a local parent's commits
+   that its remote-tracking branch does not hold yet, as for the default
+   branch (rule 1 counts only a remote-tracking ref). Setting
+   `branch.<name>.klin-base` to the local branch tracks it.
 4. **Cross-file findings.** A finding in a file the agent changed that an
    earlier commit of the branch caused, without incoming commits.
 5. **Reflog dependence.** Rule 1 of section 6.6 reads HEAD's reflog. A
@@ -2947,17 +3006,14 @@ Result model and exit codes:
 - a finding of a ride-along row appears in a Stop that blocks for another
   finding, a Stop whose only findings ride along does not block, and at
   `klin check` the finding is a `ride-along` review item and the exit does
-  not change (section 9.6). No shipped row is in the tier yet, so these are
-  `#[cfg(test)]` pins under the AGENTS.md exception until #581 or #582 ships
-  one. The pins are
-  `a_ride_along_finding_appears_in_a_stop_that_blocks_for_another_finding`,
-  `a_stop_whose_only_findings_ride_along_does_not_block_and_prints_nothing`,
-  `a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them`,
-  `a_ride_along_finding_does_not_mask_a_failure_its_gate_found_apart`,
-  `at_klin_check_a_ride_along_finding_is_a_review_item_and_the_exit_does_not_change`
-  and
-  `at_klin_check_a_gate_with_a_blocking_and_a_ride_along_finding_fails_on_the_blocking_one`
-  in `src/engine/document.rs`;
+  not change (section 9.6). Section 9.6 names the CLI tests. A ride-along
+  finding of a gate that erred, or of a gate that failed apart from its
+  findings, stays unprinted or beside that failure. No shipped gate with a
+  ride-along row does either, so these are `#[cfg(test)]` pins under the
+  AGENTS.md exception. The pins are
+  `a_stop_whose_only_findings_ride_along_on_a_gate_that_erred_does_not_print_them`
+  and `a_ride_along_finding_does_not_mask_a_failure_its_gate_found_apart` in
+  `src/engine/document.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities
@@ -3178,7 +3234,7 @@ Three kinds exist.
 | Kind | `before` | `after` | Who uses it |
 |---|---|---|---|
 | `turn` | the tree as it stood when the current turn's window opened | working tree | the Stop hook, `klin radius` |
-| `branch` | the merge-base with the default branch, or the pull request base | working tree, or HEAD in CI | `klin check` by hand, CI on a pull request |
+| `branch` | the merge-base with the default branch or the branch it is stacked on, or the pull request base | working tree, or HEAD in CI | `klin check` by hand, CI on a pull request |
 | `push` | the push event's previous commit | HEAD | CI on a push |
 
 Every run MUST print the window it used, as one line, before any gate output.
@@ -3468,8 +3524,9 @@ reads `test_lines`, of the same shape, which only a person pins, and which
 holds the length of test code as `lines` holds the length of production code
 (5.4, 8.2.1, ADR 0063). `escapes`
 additionally reads `skip_test_idioms`, default `true`, which leaves `unwrap` and
-`expect` out of Rust test code and `@ts-expect-error` out of TypeScript and
-JavaScript test files, and nothing else (8.2, ADR 0049, ADR 0060). The key was
+`expect` out of Rust test code and `@ts-expect-error`, `as unknown as` and
+empty error handlers out of TypeScript and JavaScript test files, and nothing
+else (8.2, ADR 0049, ADR 0060, #581). The key was
 `skip_rust_tests`, and a section that still names it MUST get the migration
 error of 5.2 naming `skip_test_idioms`. Pinned by
 `the_retired_skip_rust_tests_key_names_the_key_that_replaced_it` in
@@ -3997,12 +4054,65 @@ Candidates, in order:
    `refs/remotes/origin/<target>` then as a local name. Kind `branch`.
 2. The push event's `before` commit from `GITHUB_EVENT_PATH`, when it is not
    the null commit. Kind `push`.
-3. The merge-base of HEAD with the default branch, trying the remote HEAD
+3. The merge-base of HEAD with the branch HEAD's branch `<name>` is stacked
+   on, only when neither candidate above is present. Kind `branch`.
+   - `git config branch.<name>.klin-base REF` names it, when REF resolves to a
+     local or remote-tracking branch. The window says
+     `(branch.<name>.klin-base)`. A REF that names no branch, such as a tag,
+     this branch itself or one of its copies however far behind HEAD, or
+     another branch that already holds HEAD is a note, and klin infers the
+     branch, because such a base hides commits of the branch.
+   - Otherwise klin infers it from the fork point. The branch's own copies
+     are `<remote>/<name>` on every remote. Each remote-tracking ref belongs
+     to the longest remote `git remote` lists whose name, which may hold a
+     slash, prefixes its path. Only a ref that no listed remote prefixes
+     falls back to its first segment, for a remote no longer configured. So
+     with `upstream/fork` configured, `upstream/fork/child` is a copy of
+     `child` and another branch for `fork/child`, and `origin/team/child` is
+     no copy of `child`. The copies and every `<remote>/HEAD` are left out. The fork point is the first parent of the oldest commit on HEAD's
+     first-parent chain that no other remote-tracking branch holds. A merge
+     into the branch therefore never moves it. Where another branch holds
+     HEAD itself, a base at HEAD would hide every commit of the branch, so
+     klin infers nothing and the default branch is the base.
+     The default branch here is the first name of candidate 4 whose
+     remote-tracking ref resolves, and a fallback name past it, such as a
+     legacy `origin/master`, is an ordinary branch. When exactly one other
+     branch holds the fork point and the default branch does not, it is the
+     base, and the window says `(inferred)`. When
+     the default branch holds it, the default branch is the base. When two
+     or more other branches hold it, a note names them and the key, and the
+     default branch is the base.
+   - A detached HEAD, a branch whose `origin/<name>` is the default branch,
+     and a repository with no remote-tracking branch are stacked on nothing,
+     and klin walks no history for them.
+4. The merge-base of HEAD with the default branch, trying the remote HEAD
    symbolic ref, then `origin/main`, `origin/master`, `main`, `master`. Kind
    `branch`.
 
 The first candidate that resolves wins. None resolving is exit 2 with the list
-of what was tried. No flag overrides the list.
+of what was tried. No flag overrides the list. The key of candidate 3 is a
+person's override of the inference, and it never outranks candidates 1 and
+2, so CI is unchanged. `tests/base.rs` pins candidate 3 in
+`a_branch_stacked_on_another_remote_branch_is_judged_against_it`,
+`the_branch_base_key_overrides_the_inferred_base`,
+`a_branch_base_key_that_does_not_resolve_falls_back_to_the_inferred_base`,
+`a_fork_point_two_remote_branches_hold_is_judged_against_the_default_branch`,
+`the_pull_request_target_wins_over_the_branch_base`,
+`a_branch_that_tracks_the_default_branch_is_judged_against_it`,
+`a_stacked_branch_that_merged_the_default_branch_stays_stacked`,
+`a_branch_cut_from_the_default_branch_that_merged_a_teammates_branch_is_not_stacked`,
+`a_copy_of_the_branch_on_another_remote_is_not_its_base`,
+`a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base`,
+`a_branch_base_key_that_already_holds_head_is_refused`,
+`a_branch_base_key_that_names_a_copy_behind_head_is_refused`,
+`a_parent_whose_name_ends_in_the_branch_name_is_still_its_base`,
+`a_copy_on_a_remote_whose_name_holds_a_slash_is_not_its_base`,
+`a_parent_on_a_remote_whose_name_holds_a_slash_is_its_base` and
+`a_fallback_default_name_past_the_remote_head_is_an_ordinary_branch`, and
+`tests/advisory.rs` pins the Stop in
+`a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory`,
+`a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory`
+and `a_merge_of_an_unpushed_local_parent_the_key_names_makes_the_stop_advisory`.
 
 #### B.6.5 Materialization
 
@@ -4278,6 +4388,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text, or file + kind for a comment marker | `count` rises | yes | **new** |
+| `secrets` | live vendor key written into the code | file + redacted fingerprint | `count` rises | yes | shipped, #582 |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
 | `lockfile` | dependency added without a lockfile entry, pin removed, pin the lockfile does not record | manifest + name | `unlocked`, `unpinned`, `stale` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
@@ -4386,7 +4497,9 @@ the line patterns and #114 the body shapes, which the function walk reads.
 The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
-`@Disabled`, `t.Skip` and `XCTSkip`, are already there.
+`@Disabled`, `t.Skip` and `XCTSkip`, are already there. `.only` is a
+`focused test` with `fit(` and `fdescribe(`, because its repair removes the
+focus, not a skip.
 
 For the same reason a Rust `#[cfg_attr(P, ignore)]` or
 `#[cfg_attr(P, ignore = "...")]` is a skipped test only where `P` is always
@@ -4453,9 +4566,11 @@ match of every pattern in the language's table, on every line whose trimmed
 text is equal, lands on that one site. Its `count` is the number of those
 matches. Its label and remedy are the ones of the first pattern, in table
 order, that matched a line with that text, and its line is the first line
-that pattern matched. The built-in language table comes first. A line that
-carries two kinds is one site labelled by
-the earlier row, and a second copy of that line, indented differently, adds
+that pattern matched. A row in the ride-along tier of 9.6 gives way: a
+blocking row that matches the same text takes the label, the remedy and the
+line, so a line that holds kinds of both tiers blocks. The built-in language
+table comes first. A line that carries two kinds of one tier is one site
+labelled by the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
 the text as written, so a pattern inside a string literal is a match. Unless
 `skip_test_idioms` is `false`, it leaves each language's test idioms out of
@@ -4464,8 +4579,9 @@ tests. Each language's table names its test idioms and its test code, and a
 language that names none has every row judged in a test. The Rust test idioms
 are `unwrap` and `expect`, and Rust test code is an inline `#[cfg(test)]`
 module or a `.rs` file under a test root the survey finds in the tree being
-read (5.4). The TypeScript and JavaScript test idiom is `@ts-expect-error`, a
-row of its own, and their test code is a test file of 5.4: one under a test
+read (5.4). The TypeScript and JavaScript test idioms are `@ts-expect-error`,
+the double cast `as unknown as` and the empty handler, each a row of its own,
+and their test code is a test file of 5.4: one under a test
 root, or one a test directory segment or a test affix marks. It needs no
 description, the same way a reason on `#[ignore]` silences nothing. Each tree
 is classified over its own files, so a root that stops being test-only has its
@@ -4493,13 +4609,39 @@ predicate always holds, as 8.2 states. Pinned by
 `a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test` and
 `a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
-`stubs` throws away a match that lies wholly inside a quoted span on one
-line, judges a test module like any other code, and refuses the key. Pinned by
+`stubs` throws away a match that starts inside a quoted span on one line
+and searches again after that span, so the `//` of a URL in a string starts
+no comment and a real marker later on the line is still a site, judges a test module like any other code, and refuses the key. Pinned by
 `repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
 `a_line_carrying_two_escape_kinds_counts_both_under_the_first` and
 `the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in
 `tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
-line. A finding that says `unwrap x4` may hold two `expect` calls.
+line. A finding that says `unwrap x4` may hold two `expect` calls, and an
+`empty handler x2` may hold a `biome-ignore`.
+
+The TypeScript and JavaScript table also holds these rows, each with its own
+remedy (#581): the double cast `as unknown as`, `any` as a generic argument
+beside another argument such as `Record<string, any>`, as an array such as
+`Map<string, any[]>` or in a union such as `Result<any | undefined, E>` (a
+lone `<any>` stays the `any` row), `biome-ignore`, an ESLint configuration
+comment such as `/* eslint no-console: off */`, `NOSONAR`,
+`@codescene(disable`, and an empty handler: `} catch {}` and
+`} catch (e) {}` after the `try` block's brace on the same line, and
+`.catch(() => {})`, `.catch(async e => {})` or `.catch(function () {})` with
+nothing but whitespace in the body, a callback return type such as
+`(e): void =>` and a trailing comma included. A handler whose body holds a
+comment is no site, and a method named `catch` with no parameter is no
+handler. Known limits: a `catch` clause on a line apart from the brace that
+closes its `try` block is no site, and a one-line class whose method
+`catch(e) {}` follows another member's closing brace is one. `biome-ignore` rides along (9.6), and every other row
+blocks. Pinned by `each_new_typescript_row_fails_with_its_own_remedy`,
+`a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass`,
+`a_method_named_catch_is_not_an_empty_handler`,
+`array_and_union_generic_arguments_and_typed_or_trailing_comma_handlers_fail`,
+`a_double_cast_and_an_empty_handler_in_a_test_file_are_left_out_by_default`
+and
+`a_line_that_holds_a_biome_ignore_and_a_blocking_escape_blocks_as_the_blocking_one`
+in `tests/escapes.rs`.
 
 `stubs` keys a comment marker by its file and the row kind,
 `comment marker`, in place of a line text (ADR 0064). Every marker match in
@@ -4524,6 +4666,20 @@ as new. The pairing is `n log n` in the marks of a file, the line count is
 linear in the file for each pattern, and the quoted-span lookup is a binary
 search. Known limit: a reworded marker, or a marker deleted while another is
 added in the same file, holds the count.
+The TypeScript and JavaScript table also keys a `placeholder comment` this
+way: a `//` comment, or a `/*` comment up to its `*/` over any number of
+lines, that says "in a real implementation", "simplified version", "replace
+with actual" or "mock data", in any case. "for now" is not a phrase, because
+#362 measured it as noise (#581). A row keyed this way marks the line where
+its match ends, so a phrase on a later line of a block comment names that
+line. Known limit: a quote that closes on a later line holds no span, so a
+`//` or `/*` inside a template literal over several lines starts a comment
+here, as it does for a comment marker. Pinned by
+`a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not`,
+`a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder`,
+`a_phrase_outside_a_comment_on_a_line_that_starts_with_a_star_is_not_a_placeholder` and
+`a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails` in
+`tests/stubs.rs`.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
 `a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
 `every_marker_line_the_base_file_lacks_is_named`,
@@ -4578,6 +4734,44 @@ grammar rejection: `stubs` MUST propagate the named error of section 13,
 including in a direct `stubs` command or a run selecting only that gate.
 Pinned by `an_oversized_source_preserves_the_named_resource_error_in_stubs`
 in `tests/stubs.rs`.
+
+**`secrets` keys a token by a redacted fingerprint.** It reads every file
+of a language klin knows, test files included, and each `.env` or `.env.*`
+file the tree does not ignore. It runs on a tree that holds a source root
+or a `.env` file. A token is a match of one vendor's prefix and
+the rest at its usual length: `sk-proj-` and 40 or more characters,
+`sk-ant-` and a kind with two digits and 80 or more characters, `sk_live_`
+and 24 or more, `ghp_` and 36, `github_pat_` and 82, `AKIA` and 16, `xox`
+with one of `a`, `b`, `p`, `o`, `s` or `r`, a dash, 8 or more digits, a
+dash and 20 or more characters, `AIza` and 35, and `glpat-` and 20 or more. A token that holds `test`, `xxx` or `example` in any
+case, or that `...` follows, is a placeholder and is not a site. A site is
+one file plus the fingerprint: the vendor prefix, `...` and a hash of the
+vendor and the whole token, the same FNV-1a hash as the identity of 11.2.
+Its `count` is the number of matches of that token in the file, and its
+line is the first. No site holds the token, the line it is on or any part
+of the token after the prefix, so the text report, the check document, the
+journal and an accepted entry a person copies from them hold no key. A
+person accepts a key with the fingerprint as the entry's `text`. Pinned by
+`a_new_openai_project_key_fails`,
+`every_vendor_token_of_its_usual_length_fails`,
+`a_token_shorter_than_its_usual_length_passes`,
+`no_text_json_or_journal_holds_the_key`,
+`a_token_that_holds_a_placeholder_word_passes`,
+`a_person_accepts_a_secret_without_writing_the_key`,
+`a_key_the_base_holds_passes_where_its_line_moved`,
+`a_tracked_env_file_is_read_and_an_ignored_one_is_not`,
+`a_key_in_a_test_file_fails`,
+`a_tree_that_holds_only_an_env_file_is_read`,
+`a_token_cut_short_by_an_ellipsis_or_a_slack_placeholder_passes` and
+`a_key_that_ends_in_a_dash_before_its_quote_fails` in
+`tests/secrets.rs`. Known limit: a key of another vendor, a key split
+across a concatenation and a key in a file of no language klin knows, such
+as JSON or YAML, are not read. A file under a directory of the default skip set,
+such as `fixtures/` or `vendor/`, is not read either, because the tree's one
+file list leaves those directories out for every check. Another check whose finding
+text is the source line still prints a key on that line, and a prompt that
+holds a key still lands in the journal's prompt excerpt, which
+`journal.prompt: false` turns off. #653 tracks both.
 
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and
@@ -4901,10 +5095,10 @@ and is neither unreached nor unsupported. A file that leaves the tree is
 member that loses its last external reference is `worsened`, and one
 unreached in both trees is one NOTE. The remedy names the first proven
 reached sibling of the family in path order, and none when every sibling is
-unreached or reached only through a shared name. The remedy also names the
-conflict with a public-api break over what an unreached member held, on
-every unreached finding because a check reads no other gate's findings, and
-keeps the two decisions apart. The task decides the public contract: it is
+unreached or reached only through a shared name. Where `public-api` failed in
+the same run, the remedy of every unreached finding also names the conflict
+with a public-api break over what an unreached member held, and keeps the two
+decisions apart (10.6). The task decides the public contract: it is
 restored where the task keeps it, and the break is left for a person to
 accept where the task removes it. Whether the implementation is still needed
 decides the file: it is kept and wired in, or deleted only if unused. A
@@ -6462,7 +6656,8 @@ Every check MUST:
 - print, per failure, the site it matched in `before` or the accepted entry it
   matched, and the value on each side, with the ceiling in force beside them,
   so an agent fixes the right thing and a person can dispute a wrong match. A
-  `new` finding says that nothing matched. A check that prints a held site
+  `new` finding says that nothing matched, except in the Stop text (10.6).
+  A check that prints a held site
   says the value the base holds it at, for the same reason. Section 11.1
   fixes those line shapes.
 - print one `OK:` line with what it judged on success, plus any `NOTE:`
@@ -6992,7 +7187,7 @@ runner and on its own by the gate's subcommand, because 8.6 asks for the same
 output from both. `FAIL:` for a failure with its remedy under it. `NOTE:` for
 a note. One `window:` line first. One `derived:` or `pinned:` line per value
 a gate used, above that gate's row, and the hook's build lines above every
-row.
+row. The Stop text prints no `window:` and no `derived:` line (10.6).
 
 Every `OK:` line ends in the gate's coverage, as `(N file(s) found, N
 measured, N not measured, N excluded, N unreadable)` when the check has
@@ -7011,7 +7206,8 @@ Every failure line ends in what the ratchet judged it against: `— matched the
 base site at FILE:LINE`, `— matched the accepted entry for FILE`, or `—
 nothing matched` for a `new` finding, with `, ceiling C` after it wherever
 the gate has a ceiling of its own. So an agent fixes the site the ratchet
-compared, and a person can dispute a wrong match.
+compared, and a person can dispute a wrong match. The Stop text leaves out
+`nothing matched` and keeps `— ceiling C` (10.6).
 
 #### B.11.4 The journal record
 

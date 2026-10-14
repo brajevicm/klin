@@ -201,6 +201,21 @@ fn shaped() -> Tree {
     tree
 }
 
+/// Spec 10.6.
+#[test]
+fn the_remedy_of_a_site_leads_the_remedy_of_its_finding() {
+    let tree = shaped();
+    tree.write("src/a.py", "def save(key):\n    pass\n");
+
+    let report = tree.run(&["check", "stubs", "--json"]).json();
+    assert!(
+        report["findings"][0]["remedy"]
+            .as_str()
+            .is_some_and(|remedy| remedy.starts_with("Implement the body. Do what the marker")),
+        "{report}"
+    );
+}
+
 #[test]
 fn a_pass_body_fails_and_the_same_declaration_with_a_body_stays_green() {
     let tree = shaped();
@@ -645,5 +660,71 @@ fn an_oversized_new_source_is_a_resource_limit_review_item_in_stubs() {
         direct.says("REVIEW: src/bundle.js is not measured (resource-limit)"),
         "{}",
         direct.out
+    );
+}
+
+#[test]
+fn a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not() {
+    let tree = tree();
+    tree.write(
+        "src/stats.ts",
+        "// In a real implementation, this would fetch from the API\n\
+         const stats = [1, 2];\n\
+         const label = \"mock data\";\n\
+         /* simplified version of the parser */\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(
+        run.says("src/stats.ts:1  placeholder comment x2, new on lines 1, 4 — write the real code"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder() {
+    let tree = tree();
+    tree.write(
+        "src/api.ts",
+        "const url = \"https://example.com/v1\"; const label = \"mock data\";\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("placeholder comment"), "{}", run.out);
+}
+
+#[test]
+fn a_phrase_outside_a_comment_on_a_line_that_starts_with_a_star_is_not_a_placeholder() {
+    let tree = tree();
+    tree.write(
+        "src/label.ts",
+        "/* Initial documentation */ const label = \"mock data\";\n\
+         const chars = 4\n  * \"mock data\".length;\n\
+         const documentation = `\n * mock data\n`;\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("placeholder comment"), "{}", run.out);
+}
+
+#[test]
+fn a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails() {
+    let tree = tree();
+    tree.write(
+        "src/data.ts",
+        "/**\n * In a real implementation, fetch data\n */\nexport const data = [];\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/data.ts:2  placeholder comment"),
+        "{}",
+        run.out
     );
 }

@@ -244,6 +244,80 @@ fn an_advisory_stop_tells_the_finding_as_a_note_and_never_blocks() {
 }
 
 #[test]
+fn a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory() {
+    let remote = Remote::unstamped(CONFIG);
+    let tree = &remote.tree;
+    tree.git(&["checkout", "-q", "-b", "parent", "main"]);
+    tree.write("src/parent.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the parent branch"]);
+    tree.git(&["push", "-q", "origin", "parent"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/child.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the child branch"]);
+    prompt(tree);
+    assert_eq!(tree.field("stacked"), "refs/remotes/origin/parent");
+    tree.git(&["checkout", "-q", "parent"]);
+    tree.write("src/theirs.rs", text::ONE);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "more parent work"]);
+    tree.git(&["push", "-q", "origin", "parent"]);
+    tree.git(&["checkout", "-q", "child"]);
+    tree.git(&["merge", "-q", "--no-edit", "origin/parent"]);
+
+    assert_advisory(tree, "incoming-commits");
+}
+
+#[test]
+fn a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory() {
+    let remote = Remote::unstamped(CONFIG);
+    let tree = &remote.tree;
+    tree.git(&["checkout", "-q", "-b", "parent", "main"]);
+    tree.write("src/parent.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the parent branch"]);
+    tree.git(&["push", "-q", "origin", "parent"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/child.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the child branch"]);
+    prompt(tree);
+    remote.incoming();
+    tree.git(&["pull", "-q", "--no-rebase", "--no-edit", "origin", "main"]);
+
+    assert_advisory(tree, "incoming-commits");
+}
+
+/// The remote never holds the parent's new commit, so only a key that names the local branch
+/// tracks it. Spec 6.6, 18.7.
+#[test]
+fn a_merge_of_an_unpushed_local_parent_the_key_names_makes_the_stop_advisory() {
+    let remote = Remote::unstamped(CONFIG);
+    let tree = &remote.tree;
+    tree.git(&["checkout", "-q", "-b", "parent", "main"]);
+    tree.write("src/parent.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the parent branch"]);
+    tree.git(&["push", "-q", "origin", "parent"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/child.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the child branch"]);
+    tree.git(&["config", "branch.child.klin-base", "parent"]);
+    prompt(tree);
+    assert_eq!(tree.field("stacked"), "refs/heads/parent");
+    tree.git(&["checkout", "-q", "parent"]);
+    tree.write("src/theirs.rs", text::ONE);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "unpushed parent work"]);
+    tree.git(&["checkout", "-q", "child"]);
+    tree.git(&["merge", "-q", "--no-edit", "parent"]);
+
+    assert_advisory(tree, "incoming-commits");
+}
+
+#[test]
 fn a_switch_to_a_branch_without_the_stamps_parent_makes_the_stop_advisory() {
     let remote = Remote::new();
     remote.tree.git(&["checkout", "-q", "main"]);
@@ -257,9 +331,9 @@ fn a_branch_made_at_the_same_head_keeps_the_turn_window() {
     remote.tree.git(&["switch", "-q", "-c", "another"]);
     remote.tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&remote.tree);
+    let (run, report) = harness::stop_report(remote.tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(last_stop(&remote.tree)["verdict"], "red");
 }
 
@@ -298,9 +372,9 @@ fn restamp(tree: &Tree) {
 /// The rewritten commit's red finding, judged against the stamp as any stop is.
 fn assert_turn_blocks(tree: &Tree) {
     tree.write("src/lib.rs", text::WRAPPED);
-    let run = stop(tree);
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert!(!run.says(MOVED), "{}", run.out);
     assert_eq!(last_stop(tree)["verdict"], "red");
 }
@@ -498,10 +572,10 @@ fn a_state_directory_deleted_while_the_ref_survives_restores_the_stamp() {
     std::fs::remove_dir_all(remote.tree.path(".git/klin")).expect("the state directory");
     remote.tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&remote.tree);
+    let (run, report) = harness::stop_report(remote.tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(remote.tree.field("commit"), held);
 }
 

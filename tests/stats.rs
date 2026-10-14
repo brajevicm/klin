@@ -1536,11 +1536,11 @@ fn a_turn_that_changed_nothing_after_a_gate_block_sends_no_turn_end_line() {
 
     prompt(&tree);
     assert_eq!(hook(&tree, A_STOP).code, 2);
-    let quiet = hook(&tree, A_SECOND_STOP);
+    let (quiet, report) = harness::stop_report(tree.root(), A_SECOND_STOP, &[]);
 
     assert_eq!(quiet.code, 0, "{}", quiet.out);
     assert_eq!(told(&quiet), "", "{}", quiet.out);
-    assert!(quiet.says("changed: 1 file(s)"), "{}", quiet.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(tree.field("verdict"), "red", "{}", quiet.out);
 }
 

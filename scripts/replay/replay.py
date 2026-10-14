@@ -12,7 +12,8 @@ Local only: it clones apps and runs klin once per change, so CI never runs it.
       N, the not-appropriate findings per 100 changes.
 
 ROW is CHECK, CHECK:KEY or CHECK:KEY=VALUE, the catch rule of tests/recall.rs:
-a finding of CHECK whose values[KEY] exists or equals VALUE.
+a finding of CHECK whose values[KEY] exists or equals VALUE. A ride-along
+review item counts as a finding.
 
 Labels live in labels/ROW--SET.tsv, one finding per line:
 commit, file, line, label (appropriate, not-appropriate or ?), reason, and
@@ -141,7 +142,8 @@ def run(args):
         result = report(klin, version, change, check)
         if result.get("measurement") != "complete":
             failed.append(change["commit"])
-        for finding in result.get("findings", []):
+        riders = [item for item in result.get("reviews", []) if item.get("kind") == "ride-along"]
+        for finding in result.get("findings", []) + riders:
             if matches(args.row, finding):
                 found.append((change["commit"], finding["file"], str(finding["line"])))
     for key in found:
