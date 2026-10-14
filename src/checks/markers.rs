@@ -143,14 +143,22 @@ struct Pattern {
     remedy: String,
     /// Whether `skip_test_idioms` leaves a match of this row out inside test code.
     test_idiom: bool,
-    /// Whether this row's matches in one file are one site, keyed by the row, each marked on the
-    /// line where it ends.
+    /// Whether this row's matches in one file are one site, keyed by the row.
     keyed_by_row: bool,
     /// Whether this row is in the ride-along tier of spec 9.6.
     rides_along: bool,
 }
 
 impl Pattern {
+    /// The offset whose line names a match: where it ends for a row that keys its site, so a
+    /// comment over several lines names the line of its phrase, and where it starts otherwise.
+    fn marked_at(&self, found: &regex::Match) -> usize {
+        match self.keyed_by_row {
+            true => found.end(),
+            false => found.start(),
+        }
+    }
+
     /// One match on a line, at the site of that line's text, or at the site of this row with
     /// the line marked where the row keys the site.
     fn record(
@@ -641,10 +649,7 @@ fn tally(
             unquoted(&pattern.regex, text, &past.literals).filter(|found| set.stands(past, found));
         let (mut scanned, mut line) = (0, 1);
         for found in stands {
-            let at = match pattern.keyed_by_row {
-                true => found.end(),
-                false => found.start(),
-            };
+            let at = pattern.marked_at(&found);
             line += text[scanned..at].matches('\n').count() as u64;
             scanned = at;
             if pattern.test_idiom
