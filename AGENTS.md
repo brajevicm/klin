@@ -36,8 +36,9 @@ to a CLI test once a shipped language reaches it.
 
 ## The rules klin enforces on itself
 
-Edit `klin.json` only when the person explicitly asks for that change, and
-show them the change before you write it. Never edit it or the hooks on your
+Edit `klin.json` only when the person explicitly asks for that change, as the
+klin skill says: make an exact change they gave and show the diff, and show
+any value you chose before you write it. Never edit it or the hooks on your
 own to make a gate pass, and never add an `accepted` entry the person did not
 ask for. That list records debt a person accepted. A gate that fails names
 code to fix.

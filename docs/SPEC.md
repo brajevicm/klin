@@ -1626,8 +1626,9 @@ guard answers nothing (section 5.1).
 
 `klin.json` is not in the guarded set (ADR 0074). Every agent on every host
 may edit it. The klin skill tells the agent to change it only when the person
-explicitly asks for that change, and to write it only after the person
-approves the exact edit. klin does not enforce this rule. The Stop and `klin
+explicitly asks for that change. The agent makes an exact change the person
+gave and shows the diff, and it shows a value it chose itself and writes it
+only after the person says yes. klin does not enforce this rule. The Stop and `klin
 check` judge under the `klin.json` in the tree, so only a person who reads
 its diff catches a `klin.json` that an agent weakened.
 
