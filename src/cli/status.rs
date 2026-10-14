@@ -113,7 +113,7 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         "unasked": [],
         "error": null,
         "aborted_since": null,
-        "default_branch": Here::read(root).default.map(|(name, _)| name),
+        "default_branch": Here::read(root, None).default.map(|(name, _)| name),
         "last_advisory": last_advisory(lines),
         "notices": journal::open_notices(lines, held.commit.as_deref())
             .into_iter()
