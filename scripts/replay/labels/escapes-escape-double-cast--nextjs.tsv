@@ -1,2 +1,2 @@
 commit	file	line	label	reason	reviewed
-90d51b673272b73a43ef7481f3cecf5f1fe685f9	lib/ai/models.mock.ts	73	not-appropriate	a test mock the app loads only in its test environment; the double cast is the mock idiom, outside a test file	
+90d51b673272b73a43ef7481f3cecf5f1fe685f9	lib/ai/models.mock.ts	73	not-appropriate	a test mock the app loads only in its test environment; the change (#1522, lint tooling) only reformatted an existing `} as unknown as LanguageModel`, so the cast is not new	

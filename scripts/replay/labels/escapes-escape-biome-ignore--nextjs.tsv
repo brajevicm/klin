@@ -4,4 +4,4 @@ f9652b452a4dc006af947c29301f4845efec892a	app/(auth)/register/page.tsx	24	not-app
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	app/(auth)/login/page.tsx	28	not-appropriate	the change only edited the reason of a suppression the base held (updateSession to refetch); line-text identity makes it new	
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	app/(auth)/register/page.tsx	27	not-appropriate	the change only edited the reason of a suppression the base held; line-text identity makes it new	
 b4f595a68c4f5d36b4e7b44ba5184b3b76df7514	lib/auth.ts	11	appropriate	a new blanket `lint:` suppression that hides a non-null assertion on process.env.POSTGRES_URL	
-453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	34	not-appropriate	vendored AI Elements kit upgrade; shiki font styles are bit flags, so the bitwise rule is wrong here	
+453f5bb3e61af03344ce7848b463c4c8064e6b29	components/ai-elements/code-block.tsx	34	not-appropriate	vendored AI Elements kit upgrade; the same commit drops components/ai-elements from Biome files.includes and turns noBitwiseOperators off, and shiki font styles are bit flags	
