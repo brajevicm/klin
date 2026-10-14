@@ -597,24 +597,25 @@ fn a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base() {
     );
 }
 
-/// The branch's own remote copy holds HEAD, so as a base it would hide every commit of the
-/// branch. Spec 6.5.
+/// Another branch that holds HEAD, such as a snapshot pushed from this one, would hide every
+/// commit of the branch as a base. It also holds the fork point, so klin infers nothing and the
+/// default branch is the base. Spec 6.5.
 #[test]
 fn a_branch_base_key_that_already_holds_head_is_refused() {
     let tree = stacked();
     tree.write("src/mine.rs", text::ONE);
     tree.commit("work with an escape");
-    tree.git(&["update-ref", "refs/remotes/origin/child", "HEAD"]);
-    tree.git(&["config", "branch.child.klin-base", "origin/child"]);
+    tree.git(&["update-ref", "refs/remotes/origin/snapshot", "HEAD"]);
+    tree.git(&["config", "branch.child.klin-base", "origin/snapshot"]);
 
     let run = tree.run(&["check"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("branch.child.klin-base names origin/child, which already holds HEAD"),
+        run.says("branch.child.klin-base names origin/snapshot, which already holds HEAD"),
         "{}",
         run.out
     );
-    assert!(run.says("origin/parent (inferred)"), "{}", run.out);
+    assert!(run.says("the merge-base with origin/main"), "{}", run.out);
 }
 
 /// `origin/HEAD` names `origin/main`, so a legacy `origin/master` that holds the fork point is an
@@ -637,6 +638,52 @@ fn a_fallback_default_name_past_the_remote_head_is_an_ordinary_branch() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("origin/master, origin/parent all hold"),
+        "{}",
+        run.out
+    );
+}
+
+/// `origin/child` is behind HEAD, so it does not hold HEAD, and is still this branch's own copy:
+/// as a base it would hide the escape in the pushed commit. Spec 6.5.
+#[test]
+fn a_branch_base_key_that_names_a_copy_behind_head_is_refused() {
+    let tree = stacked();
+    tree.write("src/mine.rs", text::ONE);
+    tree.commit("pushed work with an escape");
+    tree.git(&["update-ref", "refs/remotes/origin/child", "HEAD"]);
+    tree.write("src/next.rs", CLEAN);
+    tree.commit("unpushed clean work");
+    tree.git(&["config", "branch.child.klin-base", "origin/child"]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("branch.child.klin-base names origin/child, which is this branch or a copy of it"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("origin/parent (inferred)"), "{}", run.out);
+}
+
+/// `origin/team/child` is another branch, not a copy of `child`. Spec 6.5.
+#[test]
+fn a_parent_whose_name_ends_in_the_branch_name_is_still_its_base() {
+    let tree = tree();
+    tree.repository();
+    tree.commit("the default branch");
+    tree.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "team/child"]);
+    tree.write("src/theirs.rs", text::ONE);
+    tree.commit("the team branch's work");
+    tree.git(&["update-ref", "refs/remotes/origin/team/child", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/work.rs", CLEAN);
+    tree.commit("the child branch's work");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the merge-base with origin/team/child (inferred)"),
         "{}",
         run.out
     );

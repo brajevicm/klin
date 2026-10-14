@@ -987,7 +987,7 @@ fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
     }
     let key = format!("branch.{name}.klin-base");
     let mut notes = Vec::new();
-    match keyed(&repo, &key) {
+    match keyed(&repo, &name, &key) {
         Some(Ok(stacked)) => {
             return Resolved {
                 stacked: Some(stacked),
@@ -1011,9 +1011,9 @@ fn branch_name(repo: &Repo) -> Option<String> {
 }
 
 /// The branch the key names, `None` when the key is not set, and the note for a key that names
-/// no branch or a branch that already holds HEAD, such as this branch's own remote copy, because
-/// a base at HEAD would hide every commit of the branch.
-fn keyed(repo: &Repo, key: &str) -> Option<Result<Stacked, String>> {
+/// no branch, this branch itself or one of its remote copies however far behind, or a branch that
+/// already holds HEAD, because such a base hides commits of the branch.
+fn keyed(repo: &Repo, name: &str, key: &str) -> Option<Result<Stacked, String>> {
     let named = repo.text(&["config", "--get", key])?;
     let named = named.trim();
     let Some(reference) = full_name(repo, named) else {
@@ -1021,6 +1021,12 @@ fn keyed(repo: &Repo, key: &str) -> Option<Result<Stacked, String>> {
             "{key} names {named}, which does not resolve, so klin infers the base"
         )));
     };
+    if reference == format!("refs/heads/{name}") || own_copy(&reference, name) {
+        return Some(Err(format!(
+            "{key} names {named}, which is this branch or a copy of it and would hide its \
+             commits, so klin infers the base. Name the branch this one was cut from"
+        )));
+    }
     if repo.is_ancestor("HEAD", &reference) == Some(true) {
         return Some(Err(format!(
             "{key} names {named}, which already holds HEAD and would hide this branch's \
@@ -1090,18 +1096,23 @@ fn holding_the_fork_point(repo: &Repo, name: &str) -> Option<Vec<String>> {
         "--format=%(refname)",
         REMOTES,
     ])?;
-    let own = |held: &str| {
-        held.strip_prefix(REMOTES)
-            .and_then(|remote| remote.split_once('/'))
-            .is_some_and(|(_, branch)| branch == name || branch == "HEAD")
-    };
     Some(
         holders
             .lines()
-            .filter(|held| !own(held))
+            .filter(|held| !own_copy(held, name) && !own_copy(held, "HEAD"))
             .map(str::to_string)
             .collect(),
     )
+}
+
+/// Whether a remote-tracking ref is `<remote>/<name>`: the first segment after `refs/remotes/`
+/// is the remote, and the rest is the whole branch name, so `origin/team/child` is no copy of
+/// `child`.
+fn own_copy(reference: &str, name: &str) -> bool {
+    reference
+        .strip_prefix(REMOTES)
+        .and_then(|remote| remote.split_once('/'))
+        .is_some_and(|(_, branch)| branch == name)
 }
 
 /// The first parent of the oldest commit on HEAD's first-parent chain that no remote branch
@@ -1109,21 +1120,20 @@ fn holding_the_fork_point(repo: &Repo, name: &str) -> Option<Vec<String>> {
 /// a base at HEAD would hide every commit of the branch, and with no remote branch there is none
 /// and no history is walked.
 fn fork_point(repo: &Repo, name: &str) -> Option<String> {
-    let any = repo.text(&["for-each-ref", "--count=1", "--format=%(refname)", REMOTES])?;
-    if any.trim().is_empty() {
+    let remotes = repo.text(&["for-each-ref", "--format=%(refname)", REMOTES])?;
+    if remotes.trim().is_empty() {
         return None;
     }
-    let exclude = format!("--exclude=*/{name}");
-    let walked = repo.text(&[
-        "rev-list",
-        "--first-parent",
-        "--parents",
-        "HEAD",
-        "--not",
-        &exclude,
-        "--exclude=*/HEAD",
-        "--remotes",
-    ])?;
+    let excluded: Vec<String> = remotes
+        .lines()
+        .filter(|reference| own_copy(reference, name) || own_copy(reference, "HEAD"))
+        .filter_map(|reference| reference.strip_prefix(REMOTES))
+        .map(|copy| format!("--exclude={copy}"))
+        .collect();
+    let mut walk = vec!["rev-list", "--first-parent", "--parents", "HEAD", "--not"];
+    walk.extend(excluded.iter().map(String::as_str));
+    walk.push("--remotes");
+    let walked = repo.text(&walk)?;
     let oldest = walked.lines().last()?;
     oldest.split_whitespace().nth(1).map(str::to_string)
 }
