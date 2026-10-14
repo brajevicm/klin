@@ -4572,7 +4572,8 @@ in `tests/stubs.rs`.
 
 **`secrets` keys a token by a redacted fingerprint.** It reads every file
 of a language klin knows, test files included, and each `.env` or `.env.*`
-file the tree does not ignore. A token is a match of one vendor's prefix and
+file the tree does not ignore. It runs on a tree that holds a source root
+or a `.env` file. A token is a match of one vendor's prefix and
 the rest at its usual length: `sk-proj-` and 40 or more characters,
 `sk-ant-` and a kind with two digits and 80 or more characters, `sk_live_`
 and 24 or more, `ghp_` and 36, `github_pat_` and 82, `AKIA` and 16, `xox`
@@ -4595,12 +4596,17 @@ person accepts a key with the fingerprint as the entry's `text`. Pinned by
 `a_key_the_base_holds_passes_where_its_line_moved`,
 `a_tracked_env_file_is_read_and_an_ignored_one_is_not`,
 `a_key_in_a_test_file_fails`,
+`a_tree_that_holds_only_an_env_file_is_read`,
 `a_token_cut_short_by_an_ellipsis_or_a_slack_placeholder_passes` and
 `a_key_that_ends_in_a_dash_before_its_quote_fails` in
 `tests/secrets.rs`. Known limit: a key of another vendor, a key split
 across a concatenation and a key in a file of no language klin knows, such
-as JSON or YAML, are not read. A prompt that holds a key still lands in the
-journal's prompt excerpt, which `journal.prompt: false` turns off.
+as JSON or YAML, are not read. A file under a directory of the default skip set,
+such as `fixtures/` or `vendor/`, is not read either, because the tree's one
+file list leaves those directories out for every check. Another check whose finding
+text is the source line still prints a key on that line, and a prompt that
+holds a key still lands in the journal's prompt excerpt, which
+`journal.prompt: false` turns off. #653 tracks both.
 
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and

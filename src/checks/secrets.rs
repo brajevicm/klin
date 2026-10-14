@@ -203,6 +203,16 @@ fn read_scope(project: &Project) -> Result<Scope, Error> {
     Ok(scope)
 }
 
+/// Whether the check has anything to read: a source root, or a `.env` file the tree lists, which
+/// no survey counts as source.
+pub fn applies(project: &Project) -> bool {
+    !project.found_no_source_root()
+        || project
+            .tree()
+            .files()
+            .is_ok_and(|files| files.iter().any(|file| env(file)))
+}
+
 /// Whether the check reads a file at this path: a source file of a language klin knows, or a
 /// `.env` file.
 fn reads(path: &str) -> bool {
@@ -212,8 +222,12 @@ fn reads(path: &str) -> bool {
             .flat_map(|row| syntax::suffixes(row.id))
             .collect()
     });
+    env(path) || SUFFIXES.iter().any(|end| path.ends_with(end))
+}
+
+fn env(path: &str) -> bool {
     let name = path.rsplit('/').next().unwrap_or(path);
-    name == ".env" || name.starts_with(".env.") || SUFFIXES.iter().any(|end| name.ends_with(end))
+    name == ".env" || name.starts_with(".env.")
 }
 
 fn selected(scope: &Scope, tree: &Tree) -> Result<files::Found, Error> {
@@ -289,8 +303,10 @@ struct Tally {
     count: u64,
 }
 
-/// Each live-shaped token in one file, at the site of its fingerprint.
+/// Each live-shaped token in one file, at the site of its fingerprint. Matches come in order, so
+/// one cursor counts the lines once over the whole file.
 fn tally(token: &Regex, rel: &str, text: &str, seen: &mut BTreeMap<(String, Fingerprint), Tally>) {
+    let (mut at_byte, mut at_line) = (0, 1);
     for found in token.captures_iter(text) {
         let Some((at, key)) = found
             .iter()
@@ -303,12 +319,14 @@ fn tally(token: &Regex, rel: &str, text: &str, seen: &mut BTreeMap<(String, Fing
         if placeholder(key.as_str()) || text[key.end()..].starts_with("...") {
             continue;
         }
+        at_line += text[at_byte..key.start()].matches('\n').count() as u64;
+        at_byte = key.start();
         let vendor = &VENDORS[at];
         seen.entry((rel.to_string(), Fingerprint::of(vendor, key.as_str())))
             .and_modify(|tally| tally.count += 1)
-            .or_insert_with(|| Tally {
+            .or_insert(Tally {
                 vendor,
-                line: text[..key.start()].matches('\n').count() as u64 + 1,
+                line: at_line,
                 count: 1,
             });
     }

@@ -82,6 +82,7 @@ fn every_vendor_token_of_its_usual_length_fails() {
     let run = tree.run(&["check", "secrets"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL: 9 new secret(s)"), "{}", run.out);
+    assert!(run.says("src/app.ts:9"), "{}", run.out);
 }
 
 #[test]
@@ -229,4 +230,15 @@ fn a_key_that_ends_in_a_dash_before_its_quote_fails() {
     let run = tree.run(&["check", "secrets"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL: 2 new secret(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_tree_that_holds_only_an_env_file_is_read() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    tree.write(".env.production", &format!("OPENAI_API_KEY={}\n", openai()));
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says(".env.production:1"), "{}", run.out);
 }
