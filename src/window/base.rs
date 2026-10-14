@@ -905,7 +905,9 @@ fn candidates(root: &Path) -> (Vec<Candidate>, Vec<String>) {
     }
     let defaults = default_branches(root);
     if out.is_empty() {
-        out.extend(stacked_on(root, &defaults, &mut notes).map(Stacked::candidate));
+        let resolved = stacked_on(root, &defaults);
+        notes.extend(resolved.notes);
+        out.extend(resolved.stacked.map(Stacked::candidate));
     }
     out.extend(defaults.into_iter().map(merge_base_with));
     (out, notes)
@@ -931,7 +933,9 @@ const REMOTES: &str = "refs/remotes/";
 /// The branch this one is stacked on, by its full ref, and `None` where the default branch is
 /// the base. The turn stamp records it, so a Stop tracks the same branch. Spec 6.5, 6.6.
 pub fn stacked(root: &Path) -> Option<String> {
-    stacked_on(root, &default_branches(root), &mut Vec::new()).map(|stacked| stacked.reference)
+    stacked_on(root, &default_branches(root))
+        .stacked
+        .map(|stacked| stacked.reference)
 }
 
 /// The branch a stacked branch was cut from, and how klin learned it. Spec 6.5.
@@ -957,74 +961,110 @@ impl Stacked {
     }
 }
 
+/// What candidate 3 found: the branch HEAD is stacked on, if any, and the notes a person can act
+/// on, a key that names no branch and a fork point several branches hold. Spec 6.5.
+#[derive(Default)]
+struct Resolved {
+    stacked: Option<Stacked>,
+    notes: Vec<String>,
+}
+
 /// The branch `branch.<name>.klin-base` names, or else the one inferred from the fork point. A
 /// branch on the default branch, or with no name, is stacked on nothing. Spec 6.5.
-fn stacked_on(root: &Path, defaults: &[String], notes: &mut Vec<String>) -> Option<Stacked> {
+fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
     let repo = Repo::at(root);
-    let head = repo.text(&["symbolic-ref", "-q", "HEAD"])?;
-    let name = head.trim().strip_prefix("refs/heads/")?;
-    let defaults: Vec<String> = defaults
+    let Some(name) = branch_name(&repo) else {
+        return Resolved::default();
+    };
+    let default_refs: Vec<String> = defaults
         .iter()
         .filter_map(|branch| remote_reference(branch))
         .collect();
-    if defaults.contains(&format!("{REMOTES}origin/{name}")) {
-        return None;
+    if default_refs.contains(&format!("{REMOTES}origin/{name}")) {
+        return Resolved::default();
     }
     let key = format!("branch.{name}.klin-base");
-    keyed(&repo, &key, notes).or_else(|| inferred(&repo, name, &defaults, &key, notes))
+    let mut notes = Vec::new();
+    match keyed(&repo, &key) {
+        Some(Ok(stacked)) => {
+            return Resolved {
+                stacked: Some(stacked),
+                notes,
+            };
+        }
+        Some(Err(note)) => notes.push(note),
+        None => {}
+    }
+    let stacked = inferred(&repo, &name, &default_refs).unwrap_or_else(|holders| {
+        notes.push(ambiguous(&key, &holders));
+        None
+    });
+    Resolved { stacked, notes }
 }
 
-/// The branch the key names, and a note when it names nothing that resolves.
-fn keyed(repo: &Repo, key: &str, notes: &mut Vec<String>) -> Option<Stacked> {
+/// The name of the branch HEAD is on, and `None` when HEAD is detached.
+fn branch_name(repo: &Repo) -> Option<String> {
+    let head = repo.text(&["symbolic-ref", "-q", "HEAD"])?;
+    head.trim().strip_prefix("refs/heads/").map(str::to_string)
+}
+
+/// The branch the key names, `None` when the key is not set, and the note for a key that names
+/// no branch.
+fn keyed(repo: &Repo, key: &str) -> Option<Result<Stacked, String>> {
     let named = repo.text(&["config", "--get", key])?;
     let named = named.trim();
-    let Some(reference) = full_name(repo, named) else {
-        notes.push(format!(
+    Some(match full_name(repo, named) {
+        Some(reference) => Ok(Stacked {
+            reference,
+            named: named.to_string(),
+            how: key.to_string(),
+        }),
+        None => Err(format!(
             "{key} names {named}, which does not resolve, so klin infers the base"
-        ));
-        return None;
-    };
-    Some(Stacked {
-        reference,
-        named: named.to_string(),
-        how: key.to_string(),
+        )),
     })
 }
 
 /// The one remote branch other than the default that holds the fork point. Where the default
-/// branch holds it, or no branch does, the default branch is the base, and where several do, a
-/// note names them.
+/// branch holds it, or no branch does, there is none, and where several do, they are the error.
 fn inferred(
     repo: &Repo,
     name: &str,
-    defaults: &[String],
-    key: &str,
-    notes: &mut Vec<String>,
-) -> Option<Stacked> {
-    let holders = holding_the_fork_point(repo, name)?;
-    if holders.iter().any(|held| defaults.contains(held)) {
-        return None;
+    default_refs: &[String],
+) -> Result<Option<Stacked>, Vec<String>> {
+    let Some(holders) = holding_the_fork_point(repo, name) else {
+        return Ok(None);
+    };
+    if holders.iter().any(|held| default_refs.contains(held)) {
+        return Ok(None);
     }
-    let short = |held: &str| held.strip_prefix(REMOTES).unwrap_or(held).to_string();
     match holders.as_slice() {
-        [held] => Some(Stacked {
+        [held] => Ok(Some(Stacked {
+            named: remote_name(held).to_string(),
             reference: held.clone(),
-            named: short(held),
             how: "inferred".to_string(),
-        }),
-        [] => None,
-        many => {
-            notes.push(format!(
-                "this branch forks from a commit that {} all hold, so klin judges against the \
-                 default branch. Set {key} to the branch it was cut from",
-                many.iter()
-                    .map(|held| short(held))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
-            None
-        }
+        })),
+        [] => Ok(None),
+        _ => Err(holders),
     }
+}
+
+/// The note for a fork point several remote branches hold.
+fn ambiguous(key: &str, holders: &[String]) -> String {
+    format!(
+        "this branch forks from a commit that {} all hold, so klin judges against the default \
+         branch. Set {key} to the branch it was cut from",
+        holders
+            .iter()
+            .map(|held| remote_name(held))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+/// A remote-tracking ref without its `refs/remotes/` prefix, as `origin/main`.
+fn remote_name(reference: &str) -> &str {
+    reference.strip_prefix(REMOTES).unwrap_or(reference)
 }
 
 /// The remote branches other than this branch's own copies, `<remote>/<name>`, that hold the

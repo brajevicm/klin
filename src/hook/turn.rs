@@ -311,7 +311,7 @@ pub fn window(
 
 /// The branch a stamp recorded as stacked on, which a Stop keeps tracking. Spec 6.6.
 fn recorded_base(stamp: Option<&Stamp>) -> Option<&str> {
-    stamp?.history.stacked.as_deref()
+    Some(stamp?.history.stacked.as_ref()?.reference.as_str())
 }
 
 /// Why a Stop is advisory: the history moved under the turn, so a precise local judgement is
@@ -354,7 +354,11 @@ fn advisory(root: &Path, at: &Path, stamp: &Stamp, here: &Here) -> Option<Reason
     let stacked = Tracked {
         cache: stamp::STACKED_MERGE_BASE,
         pair: here.stacked_pair(),
-        recorded: stamp.history.stacked_merge_base.as_deref(),
+        recorded: stamp
+            .history
+            .stacked
+            .as_ref()
+            .and_then(|stacked| stacked.merge_base.as_deref()),
     };
     tracked(root, at, stamp, here, default).or_else(|| tracked(root, at, stamp, here, stacked))
 }
@@ -376,6 +380,31 @@ impl Tracked<'_> {
             None => stamp::merge_base(root, at, self.cache, stamp.parent.as_deref()?, tip),
         }
     }
+
+    /// A merge-base that moved. Forward past the recorded one, it is incoming commits when the
+    /// reflog says so, and the agent's own push otherwise. Anywhere else, the turn lost its
+    /// history when neither HEAD nor the branch's tip holds the recorded merge-base any more. So
+    /// the agent's own rewrite of commits the branch still holds, as a `reset --soft` or an
+    /// amend after a push of the default branch, keeps the turn, and a reset onto a branch
+    /// someone rewound or rewrote does not.
+    fn moved(
+        &self,
+        root: &Path,
+        here: &Here,
+        stamp: &Stamp,
+        recorded: &str,
+        now: &str,
+    ) -> Option<Reason> {
+        let (_, tip) = self.pair?;
+        let repo = Repo::at(root);
+        if repo.is_ancestor(recorded, now) == Some(true) {
+            return incoming(here, stamp).then_some(Reason::IncomingCommits);
+        }
+        if repo.is_ancestor(recorded, tip) == Some(true) {
+            return None;
+        }
+        lost(root, recorded)
+    }
 }
 
 /// Rules 1 to 3 for one tracked branch. HEAD with no merge-base at all, as after a reset onto
@@ -385,32 +414,9 @@ fn tracked(root: &Path, at: &Path, stamp: &Stamp, here: &Here, branch: Tracked) 
     let recorded = branch.recorded(root, at, stamp, tip)?;
     match stamp::merge_base(root, at, branch.cache, head, tip) {
         Some(now) if now == recorded => None,
-        Some(now) => moved(root, here, stamp, (tip, &recorded), &now),
+        Some(now) => branch.moved(root, here, stamp, &recorded, &now),
         None => lost(root, &recorded),
     }
-}
-
-/// A merge-base that moved. Forward past the recorded one, it is incoming commits when the
-/// reflog says so, and the agent's own push otherwise. Anywhere else, the turn lost its history
-/// when neither HEAD nor the branch's tip holds the recorded merge-base any more. So the
-/// agent's own rewrite of commits the branch still holds, as a `reset --soft` or an amend
-/// after a push of the default branch, keeps the turn, and a reset onto a branch someone
-/// rewound or rewrote does not.
-fn moved(
-    root: &Path,
-    here: &Here,
-    stamp: &Stamp,
-    (tip, recorded): (&str, &str),
-    now: &str,
-) -> Option<Reason> {
-    let repo = Repo::at(root);
-    if repo.is_ancestor(recorded, now) == Some(true) {
-        return incoming(here, stamp).then_some(Reason::IncomingCommits);
-    }
-    if repo.is_ancestor(recorded, tip) == Some(true) {
-        return None;
-    }
-    lost(root, recorded)
 }
 
 /// Rule 3: HEAD no longer holds the recorded merge-base, on git's proven answer alone.
@@ -436,12 +442,14 @@ fn incoming(here: &Here, stamp: &Stamp) -> bool {
 /// lost history at the Stop after the reset. Nothing is written when nothing moved.
 fn settled(root: &Path, at: &Path, stamp: &Stamp, here: &Here, out: &mut String) {
     let mut history = History::now(root, at, here);
-    history.merge_base = forward(root, &stamp.history.merge_base, history.merge_base);
-    history.stacked_merge_base = forward(
+    history.merge_base = forward(
         root,
-        &stamp.history.stacked_merge_base,
-        history.stacked_merge_base,
+        stamp.history.merge_base.as_deref(),
+        history.merge_base,
     );
+    if let (Some(now), Some(was)) = (history.stacked.as_mut(), stamp.history.stacked.as_ref()) {
+        now.merge_base = forward(root, was.merge_base.as_deref(), now.merge_base.take());
+    }
     if history == stamp.history {
         return;
     }
@@ -452,12 +460,12 @@ fn settled(root: &Path, at: &Path, stamp: &Stamp, here: &Here, out: &mut String)
 
 /// The merge-base a stamp keeps: the one now where it moved forward from the recorded one or
 /// nothing was recorded, and the recorded one otherwise.
-fn forward(root: &Path, was: &Option<String>, now: Option<String>) -> Option<String> {
+fn forward(root: &Path, was: Option<&str>, now: Option<String>) -> Option<String> {
     match (was, &now) {
         (Some(was), Some(found))
             if was != found && Repo::at(root).is_ancestor(was, found) != Some(true) =>
         {
-            Some(was.clone())
+            Some(was.to_string())
         }
         _ => now,
     }
