@@ -226,7 +226,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
-         complexity — runs\ndead-symbols — runs\nreachability — runs\n\
+         secrets — runs\ncomplexity — runs\ndead-symbols — runs\nreachability — runs\n\
          public-api — runs\n\
          lockfile — not-applicable\n\
          inventory — not-applicable\n\
@@ -252,6 +252,7 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          lockfile — not-applicable\n\
          escapes — not-applicable\n\
          stubs — not-applicable\n\
+         secrets — not-applicable\n\
          inventory — not-applicable\n\
          dead-symbols — not-applicable\n\
          reachability — not-applicable\n\
@@ -632,7 +633,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("7 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("8 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -1267,7 +1268,7 @@ fn list_names_the_excluded_gates() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
-        "doc-size — runs\ndoc-citations — runs\nstubs — runs\ncomplexity — runs\n\
+        "doc-size — runs\ndoc-citations — runs\nstubs — runs\nsecrets — runs\ncomplexity — runs\n\
          dead-symbols — runs\nreachability — runs\npublic-api — runs\n\
          escapes — excluded\nlockfile — not-applicable\n\
          inventory — not-applicable\n\
@@ -1491,7 +1492,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
 fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let tree = tree(
         r#"{ "doc_size": false, "doc_citations": false, "escapes": false,
-              "stubs": false, "complexity": false, "dead_symbols": false,
+              "stubs": false, "secrets": false, "complexity": false, "dead_symbols": false,
               "reachability": false, "public_api": false }"#,
     );
 
@@ -1500,7 +1501,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     assert_eq!(
         rows(&run),
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
-         stubs — excluded\ncomplexity — excluded\n\
+         stubs — excluded\nsecrets — excluded\ncomplexity — excluded\n\
          dead-symbols — excluded\nreachability — excluded\n\
          public-api — excluded\n\
          lockfile — not-applicable\n\
@@ -1517,8 +1518,8 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     assert_eq!(judged.code, 2, "{}", judged.out);
     assert!(
         judged.says(
-            "excludes every gate it names: doc-size, doc-citations, escapes, stubs, complexity, \
-             dead-symbols"
+            "excludes every gate it names: doc-size, doc-citations, escapes, stubs, secrets, \
+             complexity, dead-symbols"
         ),
         "{}",
         judged.out

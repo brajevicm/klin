@@ -111,19 +111,19 @@ fn the_reference_prints_one_matrix_of_languages_against_checks() {
     assert_eq!(
         matrix.first().copied(),
         Some(
-            "| Language | `escapes` | `stubs` | `complexity` | `dead_symbols` | `reachability` \
-             | `layering` | `public_api` | `conventions` |"
+            "| Language | `escapes` | `stubs` | `secrets` | `complexity` | `dead_symbols` \
+             | `reachability` | `layering` | `public_api` | `conventions` |"
         ),
         "no matrix header in: {coverage}"
     );
     assert!(
-        matrix.contains(&"| `shell` | yes | — | — | — | — | — | — | — |"),
-        "no shell row naming only escapes in: {coverage}"
+        matrix.contains(&"| `shell` | yes | — | yes | — | — | — | — | — | — |"),
+        "no shell row naming only escapes and secrets in: {coverage}"
     );
     assert!(
         matrix
             .iter()
-            .any(|row| row.starts_with("| `tsx` | — | — | yes |")),
+            .any(|row| row.starts_with("| `tsx` | — | — | — | yes |")),
         "no tsx row apart from typescript in: {coverage}"
     );
     assert!(

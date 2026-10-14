@@ -51,6 +51,13 @@ No keys: the section is absent, or `false` to exclude the gate.
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
 
+### `secrets`
+
+| Key | Holds | Required | Source | Derivation rule | Default |
+| --- | --- | --- | --- | --- | --- |
+| `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
+| `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
+
 ### `inventory`
 
 | Key | Holds | Required | Source | Derivation rule | Default |
@@ -123,19 +130,19 @@ A Cargo library target and a TypeScript package entry point are surfaces whether
 
 The matrix reports which check discovers which language, and the tables after it report the source extensions each check discovers automatically. Both are capabilities of the binary, not selectors accepted in `klin.json`.
 
-| Language | `escapes` | `stubs` | `complexity` | `dead_symbols` | `reachability` | `layering` | `public_api` | `conventions` |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `go` | yes | yes | yes | — | — | — | — | — |
-| `java` | yes | — | yes | — | — | — | — | — |
-| `javascript` | yes | yes | yes | — | — | — | — | — |
-| `kotlin` | yes | — | yes | — | — | — | — | — |
-| `python` | yes | yes | yes | — | — | — | — | — |
-| `ruby` | yes | — | yes | — | — | — | — | — |
-| `rust` | yes | yes | yes | yes | yes | yes | yes | yes |
-| `shell` | yes | — | — | — | — | — | — | — |
-| `swift` | yes | — | yes | — | — | — | — | — |
-| `tsx` | — | — | yes | — | — | — | — | — |
-| `typescript` | yes | yes | yes | yes | yes | yes | yes | yes |
+| Language | `escapes` | `stubs` | `secrets` | `complexity` | `dead_symbols` | `reachability` | `layering` | `public_api` | `conventions` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `go` | yes | yes | yes | yes | — | — | — | — | — |
+| `java` | yes | — | yes | yes | — | — | — | — | — |
+| `javascript` | yes | yes | yes | yes | — | — | — | — | — |
+| `kotlin` | yes | — | yes | yes | — | — | — | — | — |
+| `python` | yes | yes | yes | yes | — | — | — | — | — |
+| `ruby` | yes | — | yes | yes | — | — | — | — | — |
+| `rust` | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| `shell` | yes | — | yes | — | — | — | — | — | — |
+| `swift` | yes | — | yes | yes | — | — | — | — | — |
+| `tsx` | — | — | — | yes | — | — | — | — | — |
+| `typescript` | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
 ### `escapes`
 
@@ -161,6 +168,21 @@ The matrix reports which check discovers which language, and the tables after it
 | `python` | `.py` |
 | `rust` | `.rs` |
 | `typescript` | `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs` |
+
+### `secrets`
+
+| Name | Extensions |
+| --- | --- |
+| `go` | `.go` |
+| `java` | `.java` |
+| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` |
+| `kotlin` | `.kt`, `.kts` |
+| `python` | `.py` |
+| `ruby` | `.rb` |
+| `rust` | `.rs` |
+| `shell` | `.sh`, `.bash`, `.zsh` |
+| `swift` | `.swift` |
+| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` |
 
 ### `complexity`
 
