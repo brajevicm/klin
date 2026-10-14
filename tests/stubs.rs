@@ -683,6 +683,20 @@ fn a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder() {
 }
 
 #[test]
+fn a_phrase_after_a_closed_comment_or_in_a_multiplied_string_is_not_a_placeholder() {
+    let tree = tree();
+    tree.write(
+        "src/label.ts",
+        "/* Initial documentation */ const label = \"mock data\";\n\
+         const chars = 4\n  * \"mock data\".length;\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("placeholder comment"), "{}", run.out);
+}
+
+#[test]
 fn a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails() {
     let tree = tree();
     tree.write(

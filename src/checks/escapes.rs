@@ -154,7 +154,7 @@ const LANGUAGES: &[Language] = &[
             (
                 EMPTY_HANDLER,
                 concat!(
-                    r"\}[ \t]*catch\s*(?:\([^)]*\))?\s*\{\s*\}",
+                    r"\}[ \t]*catch\s*(?:\(\s*[^)\s][^)]*\))?\s*\{\s*\}",
                     r"|\.catch\(\s*(?:(?:async\s+)?(?:\([^)]*\)(?:\s*:\s*[^=(){};]+?)?|\w+)\s*=>",
                     r"|(?:async\s+)?function\s*\w*\s*\([^)]*\)(?:\s*:\s*[^=(){};]+?)?)",
                     r"\s*\{\s*\}\s*,?\s*\)",

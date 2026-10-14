@@ -4514,9 +4514,10 @@ comment such as `/* eslint no-console: off */`, `NOSONAR`,
 `.catch(() => {})`, `.catch(async e => {})` or `.catch(function () {})` with
 nothing but whitespace in the body, a callback return type such as
 `(e): void =>` and a trailing comma included. A handler whose body holds a
-comment is no site, and a method named `catch` is no handler. Known limit: a
-`catch` clause on a line apart from the brace that closes its `try` block is
-no site. `biome-ignore` rides along (9.6), and every other row
+comment is no site, and a method named `catch` with no parameter is no
+handler. Known limits: a `catch` clause on a line apart from the brace that
+closes its `try` block is no site, and a one-line class whose method
+`catch(e) {}` follows another member's closing brace is one. `biome-ignore` rides along (9.6), and every other row
 blocks. Pinned by `each_new_typescript_row_fails_with_its_own_remedy`,
 `a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass`,
 `a_method_named_catch_is_not_an_empty_handler`,
@@ -4550,12 +4551,13 @@ linear in the file for each pattern, and the quoted-span lookup is a binary
 search. Known limit: a reworded marker, or a marker deleted while another is
 added in the same file, holds the count.
 The TypeScript and JavaScript table also keys a `placeholder comment` this
-way: a `//` or `/*` comment, or a line of a block comment that starts with
-`*`, that says "in a real implementation", "simplified version", "replace
+way: a `//` comment, a `/*` comment up to its `*/`, or a line that starts
+with `*` and holds no quote before the phrase, that says "in a real implementation", "simplified version", "replace
 with actual" or "mock data", in any case. "for now" is not a phrase, because
 #362 measured it as noise (#581). Pinned by
 `a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not`,
-`a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder` and
+`a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder`,
+`a_phrase_after_a_closed_comment_or_in_a_multiplied_string_is_not_a_placeholder` and
 `a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails` in
 `tests/stubs.rs`.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,

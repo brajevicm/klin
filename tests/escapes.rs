@@ -1297,6 +1297,7 @@ fn a_method_named_catch_is_not_an_empty_handler() {
         "src/result.ts",
         "class Result { catch() {} }\n\
          const handler = { catch() {} };\n\
+         class Handler { first() {} catch() {} }\n\
          class Retry {\n  catch(error) {}\n}\n",
     );
 
