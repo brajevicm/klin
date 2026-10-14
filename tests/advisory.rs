@@ -331,9 +331,9 @@ fn a_branch_made_at_the_same_head_keeps_the_turn_window() {
     remote.tree.git(&["switch", "-q", "-c", "another"]);
     remote.tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&remote.tree);
+    let (run, report) = harness::stop_report(remote.tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(last_stop(&remote.tree)["verdict"], "red");
 }
 
@@ -372,9 +372,9 @@ fn restamp(tree: &Tree) {
 /// The rewritten commit's red finding, judged against the stamp as any stop is.
 fn assert_turn_blocks(tree: &Tree) {
     tree.write("src/lib.rs", text::WRAPPED);
-    let run = stop(tree);
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert!(!run.says(MOVED), "{}", run.out);
     assert_eq!(last_stop(tree)["verdict"], "red");
 }
@@ -572,10 +572,10 @@ fn a_state_directory_deleted_while_the_ref_survives_restores_the_stamp() {
     std::fs::remove_dir_all(remote.tree.path(".git/klin")).expect("the state directory");
     remote.tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&remote.tree);
+    let (run, report) = harness::stop_report(remote.tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(remote.tree.field("commit"), held);
 }
 

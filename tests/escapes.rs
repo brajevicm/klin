@@ -4,6 +4,7 @@ mod harness;
 mod text;
 
 use harness::Tree;
+use serde_json::{Value, json};
 
 const CONFIG: &str = r#"{
   "escapes": { "in": "src" }
@@ -204,9 +205,79 @@ fn failure_output_names_the_fix_and_no_command_that_records_debt() {
 
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("Fix what the escape hides"), "{}", run.out);
+    assert!(
+        run.says("Handle the error instead of unwrapping"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("--write-baseline"), "{}", run.out);
     assert!(!run.says("Tighten"), "{}", run.out);
+}
+
+/// Spec 10.6.
+#[test]
+fn each_escape_kind_gets_its_own_remedy() {
+    let tree = tree();
+    tree.write("src/a.ts", "export const a = b as any;\n");
+
+    let typed = tree.run(&["check", "escapes"]);
+    assert_eq!(typed.code, 1, "{}", typed.out);
+    assert!(typed.says("Give the value its real type"), "{}", typed.out);
+    assert!(!typed.says("unwrap"), "{}", typed.out);
+
+    tree.remove("src/a.ts");
+    tree.write("src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
+
+    let erred = tree.run(&["check", "escapes"]);
+    assert_eq!(erred.code, 1, "{}", erred.out);
+    assert!(erred.says("Handle the error"), "{}", erred.out);
+    assert!(!erred.says("real type"), "{}", erred.out);
+}
+
+/// Spec 10.6.
+#[test]
+fn a_worsened_escape_site_gets_the_remedy_of_its_kind() {
+    let tree = tree();
+    tree.write("src/a.ts", "export const a = b as any;\n");
+    tree.base();
+    tree.write(
+        "src/a.ts",
+        "export const a = b as any;\nexport const a = b as any;\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("Give the value its real type"), "{}", run.out);
+    assert!(!run.says("unwrapping"), "{}", run.out);
+    let report = tree.run(&["check", "escapes", "--json"]).json();
+    assert!(
+        report["findings"][0]["remedy"]
+            .as_str()
+            .is_some_and(|remedy| remedy.starts_with("Give the value its real type")),
+        "{report}"
+    );
+}
+
+/// Spec 10.6.
+#[test]
+fn a_focused_test_and_a_skipped_test_each_get_their_own_remedy() {
+    let tree = tree();
+    tree.write("src/a.ts", "it.only('x', () => {});\n");
+
+    let focused = tree.run(&["check", "escapes"]);
+    assert_eq!(focused.code, 1, "{}", focused.out);
+    assert!(focused.says("src/a.ts:1  focused test"), "{}", focused.out);
+    assert!(focused.says("Remove the focus"), "{}", focused.out);
+    assert!(!focused.says("Remove the skip"), "{}", focused.out);
+
+    tree.write("src/a.ts", "it.skip('x', () => {});\n");
+
+    let skipped = tree.run(&["check", "escapes"]);
+    assert_eq!(skipped.code, 1, "{}", skipped.out);
+    assert!(skipped.says("src/a.ts:1  skipped test"), "{}", skipped.out);
+    assert!(skipped.says("Remove the skip"), "{}", skipped.out);
+    assert!(!skipped.says("Remove the focus"), "{}", skipped.out);
 }
 
 fn spread() -> Tree {
@@ -489,7 +560,7 @@ fn javascript_is_read_by_the_typescript_set() {
 
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/thing.js:1  skipped test"), "{}", run.out);
+    assert!(run.says("src/thing.js:1  focused test"), "{}", run.out);
 }
 
 #[test]
@@ -581,7 +652,7 @@ fn every_alternative_inside_a_pattern_matches_too() {
         "src/alt.ts:1  any",
         "src/alt.ts:2  any",
         "src/alt.ts:3  skipped test",
-        "src/alt.ts:4  skipped test",
+        "src/alt.ts:4  focused test",
         "src/alt.ts:5  skipped test",
         "src/alt.rs:2  allow",
         "src/alt.go:1  skipped test",
@@ -1225,4 +1296,233 @@ fn a_skipped_test_gets_a_remedy_that_restores_the_test_and_rejects_swallowed_err
         "{}",
         run.out
     );
+}
+
+const SHORTCUTS: &str = "const a = b as unknown as C;
+const m: Record<string, any> = {};
+// biome-ignore lint/suspicious/noExplicitAny: legacy
+/* eslint no-console: off */
+const x = 1; // NOSONAR
+// @codescene(disable:\"Complex Method\")
+try { f(); } catch {}
+try { f(); } catch (e) {}
+p.catch(() => {});
+try {
+  f();
+} catch (error) {
+}
+p.catch(async (e) => {});
+p.catch(function () {});
+";
+
+#[test]
+fn each_new_typescript_row_fails_with_its_own_remedy() {
+    let tree = tree();
+    tree.write("src/shortcuts.ts", SHORTCUTS);
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("11 new escape site(s)"), "{}", run.out);
+    assert!(run.says("REVIEW: 1 escape site(s)"), "{}", run.out);
+    for expected in [
+        "src/shortcuts.ts:1  double cast — give the value the type it has",
+        "src/shortcuts.ts:2  any generic argument — name the type the argument holds",
+        "src/shortcuts.ts:3  biome-ignore — fix what the Biome rule reports",
+        "src/shortcuts.ts:4  eslint config — fix what the ESLint rule reports",
+        "src/shortcuts.ts:5  NOSONAR — fix what the analyzer reports",
+        "src/shortcuts.ts:6  codescene disable — fix what the analyzer reports",
+        "src/shortcuts.ts:7  empty handler — handle the error",
+        "src/shortcuts.ts:8  empty handler",
+        "src/shortcuts.ts:9  empty handler",
+        "src/shortcuts.ts:12  empty handler",
+        "src/shortcuts.ts:14  empty handler",
+        "src/shortcuts.ts:15  empty handler",
+    ] {
+        assert!(run.says(expected), "missing {expected}\n{}", run.out);
+    }
+}
+
+#[test]
+fn a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass() {
+    let tree = tree();
+    tree.write(
+        "src/fine.ts",
+        "try {\n  f();\n} catch (error) {\n  // the cache is optional\n}\n\
+         p.catch(() => { /* best effort */ });\n\
+         const n: Map<string, Anything> = m;\n\
+         // pick one, any of them works\n\
+         /* eslint-disable no-console */\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/fine.ts:9  eslint-disable"), "{}", run.out);
+}
+
+#[test]
+fn a_method_named_catch_is_not_an_empty_handler() {
+    let tree = tree();
+    tree.write(
+        "src/result.ts",
+        "class Result { catch() {} }\n\
+         const handler = { catch() {} };\n\
+         class Handler { first() {} catch() {} }\n\
+         class Retry {\n  catch(error) {}\n}\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("empty handler"), "{}", run.out);
+}
+
+#[test]
+fn array_and_union_generic_arguments_and_typed_or_trailing_comma_handlers_fail() {
+    let tree = tree();
+    tree.write(
+        "src/forms.ts",
+        "const a: Map<string, any[]> = new Map();\n\
+         const b: Map<string, any | null> = new Map();\n\
+         let c: Result<any | undefined, Error>;\n\
+         const d: Array<any[]> = [];\n\
+         p.catch(\n  () => {},\n);\n\
+         p.catch((error): void => {});\n\
+         p.catch(function (error): void {});\n\
+         const ok = n < anyLimit || n > 0;\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("7 new escape site(s)"), "{}", run.out);
+    for expected in [
+        "src/forms.ts:1  any generic argument",
+        "src/forms.ts:2  any generic argument",
+        "src/forms.ts:3  any generic argument",
+        "src/forms.ts:4  any generic argument",
+        "src/forms.ts:5  empty handler",
+        "src/forms.ts:8  empty handler",
+        "src/forms.ts:9  empty handler",
+    ] {
+        assert!(run.says(expected), "missing {expected}\n{}", run.out);
+    }
+}
+
+#[test]
+fn a_double_cast_and_an_empty_handler_in_a_test_file_are_left_out_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "web/src/count.test.ts",
+        "const a = b as unknown as C;\np.catch(() => {});\nconst m: Record<string, any> = {};\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(
+        run.says("web/src/count.test.ts:3  any generic argument"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("double cast"), "{}", run.out);
+    assert!(!run.says("empty handler"), "{}", run.out);
+}
+
+const ENV: &str = "export const url = process.env.URL;\n";
+const IGNORED_ENV: &str = "// biome-ignore lint/style/noProcessEnv: read once at boot\nexport const url = process.env.URL;\n";
+const CAST: &str = "export const n = 1;\n";
+const DOUBLE_CAST: &str = "export const n = 1 as unknown as number;\n";
+
+fn riding(blocking: bool) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("web/src/env.ts", ENV);
+    tree.write("web/src/cast.ts", CAST);
+    tree.base();
+    tree.write("web/src/env.ts", IGNORED_ENV);
+    if blocking {
+        tree.write("web/src/cast.ts", DOUBLE_CAST);
+    }
+    tree
+}
+
+#[test]
+fn a_stop_whose_only_new_escape_is_a_biome_ignore_does_not_block_and_prints_nothing() {
+    let tree = riding(false);
+
+    let (run, _) = tree.stop_report();
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("biome-ignore"), "{}", run.out);
+}
+
+#[test]
+fn a_biome_ignore_appears_in_a_stop_that_blocks_for_another_escape() {
+    let tree = riding(true);
+
+    let (run, report) = tree.stop_report();
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("web/src/cast.ts:1  double cast"), "{}", run.out);
+    assert!(run.says("web/src/env.ts:1  biome-ignore"), "{}", run.out);
+    let marks: Vec<(&Value, &Value)> = report["findings"]
+        .as_array()
+        .expect("findings")
+        .iter()
+        .map(|finding| (&finding["file"], &finding["rides_along"]))
+        .collect();
+    assert!(
+        marks.contains(&(&json!("web/src/env.ts"), &json!(true))),
+        "{report}"
+    );
+    assert!(
+        marks.contains(&(&json!("web/src/cast.ts"), &Value::Null)),
+        "{report}"
+    );
+}
+
+#[test]
+fn at_klin_check_a_biome_ignore_is_a_ride_along_review_item_and_the_exit_does_not_change() {
+    let tree = riding(false);
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("REVIEW"), "{}", run.out);
+    let json = tree.run(&["check", "escapes", "--json"]).json();
+    assert_eq!(json["reviews"][0]["kind"], "ride-along", "{json}");
+    assert_eq!(json["reviews"][0]["file"], "web/src/env.ts", "{json}");
+    assert_eq!(json["findings"], json!([]), "{json}");
+}
+
+#[test]
+fn at_klin_check_a_blocking_escape_beside_a_biome_ignore_fails_on_the_blocking_one() {
+    let tree = riding(true);
+
+    let json = tree.run(&["check", "escapes", "--json"]).json();
+    assert_eq!(json["judgement"], "fail", "{json}");
+    let findings = json["findings"].as_array().expect("findings");
+    assert_eq!(findings.len(), 1, "{json}");
+    assert_eq!(findings[0]["file"], "web/src/cast.ts", "{json}");
+    assert_eq!(json["reviews"][0]["file"], "web/src/env.ts", "{json}");
+}
+
+#[test]
+fn a_line_that_holds_a_biome_ignore_and_a_blocking_escape_blocks_as_the_blocking_one() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("web/src/load.ts", "export const n = 1;\n");
+    tree.base();
+    tree.write(
+        "web/src/load.ts",
+        "export const n = 1;\np.catch(() => {}); // biome-ignore lint: best effort\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("web/src/load.ts:2  empty handler x2"),
+        "{}",
+        run.out
+    );
+    let (stop, _) = tree.stop_report();
+    assert_eq!(stop.code, 2, "{}", stop.out);
+    assert!(stop.says("empty handler"), "{}", stop.out);
 }

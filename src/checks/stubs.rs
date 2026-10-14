@@ -23,6 +23,15 @@ const NOTE: &str = "do the work the comment names, or record it in the tracker a
 /// ADR 0064.
 const MARKER: &str = "comment marker";
 
+/// The row of comments that say the code beside them stands in for real code. ADR 0064.
+const PLACEHOLDER: &str = "placeholder comment";
+const PHRASES: &str = concat!(
+    r"(?://[^\n]*|/\*(?:[^*]|\*+[^*/])*?)",
+    r"(?i:\b(?:in a real implementation|simplified version|replace with actual|mock data)\b)",
+);
+const PLACEHOLDER_NOTE: &str = "write the real code the comment says is missing, or record the \
+                                gap in the tracker and delete the comment";
+
 /// A comment marker in a language whose comments start with `//` or `/*`.
 const SLASH: &str = r"(?://|/\*)[^\n]*\b(?:TODO|FIXME|XXX|HACK)\b";
 /// The same, for a language whose comments start with `#`.
@@ -69,6 +78,7 @@ const LANGUAGES: &[Language] = &[
                 BODY,
             ),
             (MARKER, SLASH, NOTE),
+            (PLACEHOLDER, PHRASES, PLACEHOLDER_NOTE),
         ],
         test_idioms: None,
     },
@@ -92,7 +102,8 @@ pub const KIND: Kind = Kind {
     skips_literals: true,
     reads_shapes: true,
     reads_cfg_attr: false,
-    keyed_by_row: &[MARKER],
+    keyed_by_row: &[MARKER, PLACEHOLDER],
+    ride_along: &[],
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "stub site(s)",
