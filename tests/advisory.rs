@@ -289,6 +289,34 @@ fn a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory()
     assert_advisory(tree, "incoming-commits");
 }
 
+/// The remote never holds the parent's new commit, so only a key that names the local branch
+/// tracks it. Spec 6.6, 18.7.
+#[test]
+fn a_merge_of_an_unpushed_local_parent_the_key_names_makes_the_stop_advisory() {
+    let remote = Remote::unstamped(CONFIG);
+    let tree = &remote.tree;
+    tree.git(&["checkout", "-q", "-b", "parent", "main"]);
+    tree.write("src/parent.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the parent branch"]);
+    tree.git(&["push", "-q", "origin", "parent"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/child.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the child branch"]);
+    tree.git(&["config", "branch.child.klin-base", "parent"]);
+    prompt(tree);
+    assert_eq!(tree.field("stacked"), "refs/heads/parent");
+    tree.git(&["checkout", "-q", "parent"]);
+    tree.write("src/theirs.rs", text::ONE);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "unpushed parent work"]);
+    tree.git(&["checkout", "-q", "child"]);
+    tree.git(&["merge", "-q", "--no-edit", "parent"]);
+
+    assert_advisory(tree, "incoming-commits");
+}
+
 #[test]
 fn a_switch_to_a_branch_without_the_stamps_parent_makes_the_stop_advisory() {
     let remote = Remote::new();

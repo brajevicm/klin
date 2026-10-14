@@ -969,18 +969,20 @@ struct Resolved {
     notes: Vec<String>,
 }
 
-/// The branch `branch.<name>.klin-base` names, or else the one inferred from the fork point. A
-/// branch on the default branch, or with no name, is stacked on nothing. Spec 6.5.
+/// The branch `branch.<name>.klin-base` names, or else the one inferred from the fork point. The
+/// default branch is the first of its names whose remote ref resolves, and a fallback name past it
+/// is an ordinary branch. A branch on the default branch, or with no name, is stacked on nothing.
+/// Spec 6.5.
 fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
     let repo = Repo::at(root);
     let Some(name) = branch_name(&repo) else {
         return Resolved::default();
     };
-    let default_refs: Vec<String> = defaults
+    let default_ref = defaults
         .iter()
         .filter_map(|branch| remote_reference(branch))
-        .collect();
-    if default_refs.contains(&format!("{REMOTES}origin/{name}")) {
+        .find(|reference| resolve(root, reference).is_some());
+    if default_ref.as_deref() == Some(format!("{REMOTES}origin/{name}").as_str()) {
         return Resolved::default();
     }
     let key = format!("branch.{name}.klin-base");
@@ -995,7 +997,7 @@ fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
         Some(Err(note)) => notes.push(note),
         None => {}
     }
-    let stacked = inferred(&repo, &name, &default_refs).unwrap_or_else(|holders| {
+    let stacked = inferred(&repo, &name, default_ref.as_deref()).unwrap_or_else(|holders| {
         notes.push(ambiguous(&key, &holders));
         None
     });
@@ -1009,20 +1011,27 @@ fn branch_name(repo: &Repo) -> Option<String> {
 }
 
 /// The branch the key names, `None` when the key is not set, and the note for a key that names
-/// no branch.
+/// no branch or a branch that already holds HEAD, such as this branch's own remote copy, because
+/// a base at HEAD would hide every commit of the branch.
 fn keyed(repo: &Repo, key: &str) -> Option<Result<Stacked, String>> {
     let named = repo.text(&["config", "--get", key])?;
     let named = named.trim();
-    Some(match full_name(repo, named) {
-        Some(reference) => Ok(Stacked {
-            reference,
-            named: named.to_string(),
-            how: key.to_string(),
-        }),
-        None => Err(format!(
+    let Some(reference) = full_name(repo, named) else {
+        return Some(Err(format!(
             "{key} names {named}, which does not resolve, so klin infers the base"
-        )),
-    })
+        )));
+    };
+    if repo.is_ancestor("HEAD", &reference) == Some(true) {
+        return Some(Err(format!(
+            "{key} names {named}, which already holds HEAD and would hide this branch's \
+             commits, so klin infers the base. Name the branch this one was cut from"
+        )));
+    }
+    Some(Ok(Stacked {
+        reference,
+        named: named.to_string(),
+        how: key.to_string(),
+    }))
 }
 
 /// The one remote branch other than the default that holds the fork point. Where the default
@@ -1030,12 +1039,15 @@ fn keyed(repo: &Repo, key: &str) -> Option<Result<Stacked, String>> {
 fn inferred(
     repo: &Repo,
     name: &str,
-    default_refs: &[String],
+    default_ref: Option<&str>,
 ) -> Result<Option<Stacked>, Vec<String>> {
     let Some(holders) = holding_the_fork_point(repo, name) else {
         return Ok(None);
     };
-    if holders.iter().any(|held| default_refs.contains(held)) {
+    if holders
+        .iter()
+        .any(|held| Some(held.as_str()) == default_ref)
+    {
         return Ok(None);
     }
     match holders.as_slice() {

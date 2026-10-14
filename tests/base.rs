@@ -596,3 +596,48 @@ fn a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base() {
         run.out
     );
 }
+
+/// The branch's own remote copy holds HEAD, so as a base it would hide every commit of the
+/// branch. Spec 6.5.
+#[test]
+fn a_branch_base_key_that_already_holds_head_is_refused() {
+    let tree = stacked();
+    tree.write("src/mine.rs", text::ONE);
+    tree.commit("work with an escape");
+    tree.git(&["update-ref", "refs/remotes/origin/child", "HEAD"]);
+    tree.git(&["config", "branch.child.klin-base", "origin/child"]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("branch.child.klin-base names origin/child, which already holds HEAD"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("origin/parent (inferred)"), "{}", run.out);
+}
+
+/// `origin/HEAD` names `origin/main`, so a legacy `origin/master` that holds the fork point is an
+/// ordinary branch: the fork point is ambiguous, and the note names both. Spec 6.5.
+#[test]
+fn a_fallback_default_name_past_the_remote_head_is_an_ordinary_branch() {
+    let tree = stacked();
+    tree.git(&[
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+    ]);
+    tree.git(&[
+        "update-ref",
+        "refs/remotes/origin/master",
+        "refs/remotes/origin/parent",
+    ]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("origin/master, origin/parent all hold"),
+        "{}",
+        run.out
+    );
+}

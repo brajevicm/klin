@@ -2873,7 +2873,10 @@ ticket that implements the area MUST measure them:
    against the branch it is stacked on, so the default branch's commits read
    as new at `klin check` until that branch holds them. A merge of a third
    branch, neither the default branch nor the one the branch is stacked on,
-   moves no recorded merge-base.
+   moves no recorded merge-base. Nor does a merge of a local parent's commits
+   that its remote-tracking branch does not hold yet, as for the default
+   branch (rule 1 counts only a remote-tracking ref). Setting
+   `branch.<name>.klin-base` to the local branch tracks it.
 4. **Cross-file findings.** A finding in a file the agent changed that an
    earlier commit of the branch caused, without incoming commits.
 5. **Reflog dependence.** Rule 1 of section 6.6 reads HEAD's reflog. A
@@ -4001,7 +4004,9 @@ Candidates, in order:
    - `git config branch.<name>.klin-base REF` names it, when REF resolves to a
      local or remote-tracking branch. The window says
      `(branch.<name>.klin-base)`. A REF that names no branch, such as a tag,
-     is a note, and klin infers the branch.
+     and a branch that already holds HEAD, such as this branch's own remote
+     copy, are a note, and klin infers the branch, because a base at HEAD
+     would hide every commit of the branch.
    - Otherwise klin infers it from the fork point. The branch's own copies
      are `<remote>/<name>` on every remote, and every `*/HEAD` is left out
      too. The fork point is the first parent of the oldest commit on HEAD's
@@ -4009,8 +4014,11 @@ Candidates, in order:
      into the branch therefore never moves it. Where another branch holds
      HEAD itself, a base at HEAD would hide every commit of the branch, so
      klin infers nothing and the default branch is the base.
-     When exactly one other branch holds the fork point and the default
-     branch does not, it is the base, and the window says `(inferred)`. When
+     The default branch here is the first name of candidate 4 whose
+     remote-tracking ref resolves, and a fallback name past it, such as a
+     legacy `origin/master`, is an ordinary branch. When exactly one other
+     branch holds the fork point and the default branch does not, it is the
+     base, and the window says `(inferred)`. When
      the default branch holds it, the default branch is the base. When two
      or more other branches hold it, a note names them and the key, and the
      default branch is the base.
@@ -4033,11 +4041,14 @@ person's override of the inference, and it never outranks candidates 1 and
 `a_branch_that_tracks_the_default_branch_is_judged_against_it`,
 `a_stacked_branch_that_merged_the_default_branch_stays_stacked`,
 `a_branch_cut_from_the_default_branch_that_merged_a_teammates_branch_is_not_stacked`,
-`a_copy_of_the_branch_on_another_remote_is_not_its_base` and
-`a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base`, and
+`a_copy_of_the_branch_on_another_remote_is_not_its_base`,
+`a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base`,
+`a_branch_base_key_that_already_holds_head_is_refused` and
+`a_fallback_default_name_past_the_remote_head_is_an_ordinary_branch`, and
 `tests/advisory.rs` pins the Stop in
-`a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory` and
-`a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory`.
+`a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory`,
+`a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory`
+and `a_merge_of_an_unpushed_local_parent_the_key_names_makes_the_stop_advisory`.
 
 #### B.6.5 Materialization
 
