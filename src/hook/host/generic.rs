@@ -155,7 +155,7 @@ impl Adapter for Generic {
                 "klin: refused — {reason} A custom harness declares no question klin can rely \
                  on, so this call fails closed."
             )),
-            Decision::Deny(reason) | Decision::Refer { reason, .. } => denied(reason),
+            Decision::Deny(reason) => denied(reason),
         }
     }
 

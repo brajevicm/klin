@@ -10,10 +10,19 @@ const SESSION: &str =
 const PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s1", "prompt_id": "p1", "prompt": "go"}"#;
 const STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const AN_ORDINARY_EDIT: &str = r#"{"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": "src/main.rs"}}"#;
-const A_CONFIG_EDIT: &str = r#"{"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": "klin.json"}}"#;
+const A_STATE_EDIT: &str = r#"{"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": ".git/klin/turn"}}"#;
 
 fn event(tree: &Tree, event: &str) -> Run {
     feed(tree.root(), AGENT, event)
+}
+
+/// A write of the tree's own state, named by its absolute path so it names the same file from
+/// any directory.
+fn state_edit(tree: &Tree) -> String {
+    format!(
+        r#"{{"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {{"file_path": {:?}}}}}"#,
+        tree.at(".git/klin/turn")
+    )
 }
 
 /// A configuration that does not parse breaks only what reads it: the guard reads no
@@ -26,7 +35,7 @@ fn an_invalid_config_still_answers_pre_tool_session_and_prompt() {
     let allowed = event(&tree, AN_ORDINARY_EDIT);
     assert_eq!(allowed.code, 0, "{}", allowed.out);
     assert_eq!(allowed.out, "", "{}", allowed.out);
-    let denied = event(&tree, A_CONFIG_EDIT);
+    let denied = event(&tree, A_STATE_EDIT);
     assert_eq!(denied.code, 2, "{}", denied.out);
     assert!(denied.says("refused"), "{}", denied.out);
 
@@ -45,7 +54,7 @@ fn without_a_config_every_event_answers_nothing() {
     let tree = Tree::new();
     tree.write("src/main.rs", "fn main() {}\n");
 
-    for payload in [SESSION, PROMPT, A_CONFIG_EDIT, STOP] {
+    for payload in [SESSION, PROMPT, A_STATE_EDIT, STOP] {
         let run = event(&tree, payload);
         assert_eq!(run.code, 0, "{payload}: {}", run.out);
         assert_eq!(run.out, "", "{payload}: {}", run.out);
@@ -66,7 +75,7 @@ fn a_usage_error_an_unknown_argument_or_an_unreadable_event_never_exits_two() {
         &["__agent", "nonsense"],
         &["__agent", "--host"],
     ] {
-        let run = feed(tree.root(), args, A_CONFIG_EDIT);
+        let run = feed(tree.root(), args, A_STATE_EDIT);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
     }
     for payload in [
@@ -90,7 +99,7 @@ fn a_usage_error_an_unknown_argument_or_an_unreadable_event_never_exits_two() {
             "claude",
             "extra",
         ],
-        A_CONFIG_EDIT,
+        A_STATE_EDIT,
     );
     assert_eq!(unknown.code, 2, "{}", unknown.out);
     assert!(unknown.says("refused"), "{}", unknown.out);
@@ -196,25 +205,18 @@ fn the_opt_in_walk_stops_at_the_first_git_entry() {
     tree.write("inner/src/main.rs", "fn main() {}\n");
     tree.git(&["-C", "inner", "init", "-q"]);
 
-    let inner = feed(&tree.path("inner"), AGENT, A_CONFIG_EDIT);
+    let inner = feed(&tree.path("inner"), AGENT, &state_edit(&tree));
     assert_eq!(inner.code, 0, "{}", inner.out);
     assert_eq!(inner.out, "", "{}", inner.out);
 
     tree.write("linked/src/main.rs", "fn main() {}\n");
     tree.write("linked/.git", &format!("gitdir: {}\n", tree.at(".git")));
-    let linked = feed(&tree.path("linked"), AGENT, A_CONFIG_EDIT);
+    let linked = feed(&tree.path("linked"), AGENT, &state_edit(&tree));
     assert_eq!(linked.code, 0, "{}", linked.out);
     assert_eq!(linked.out, "", "{}", linked.out);
 
     tree.write("stale/src/main.rs", "fn main() {}\n");
     tree.write("stale/.git", "gitdir: /nowhere/at/all\n");
-    let outer = feed(
-        &tree.path("stale"),
-        AGENT,
-        &format!(
-            r#"{{"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {{"file_path": {:?}}}}}"#,
-            tree.at("klin.json")
-        ),
-    );
+    let outer = feed(&tree.path("stale"), AGENT, &state_edit(&tree));
     assert_eq!(outer.code, 2, "{}", outer.out);
 }

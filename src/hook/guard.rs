@@ -1,7 +1,6 @@
 use std::cell::OnceCell;
 use std::path::{Component, Path, PathBuf};
 
-use crate::hook::approval;
 use crate::hook::copy;
 use crate::hook::host::adapter::{Decision, Event};
 use crate::hook::journal;
@@ -30,14 +29,6 @@ const NESTING: u8 = 4;
 /// The shells whose `-c` text, or whose heredoc, the guard reads as the command they run.
 const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
 
-const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json). Fix \
-    the code the gate names instead. Only a person changes it, in a reviewed commit.";
-
-/// The agent's reason for a `klin.json` edit klin put to the person. It never holds the code,
-/// because an agent that knew the code could relay it into a prompt. Spec 10.8.2.
-const ASKED: &str = "klin: refused — this edit changes klin.json, so klin asked the person to \
-    approve it. Make the same edit again only after the person approves it.";
-
 const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the turn, under \
     .git/klin. It holds the window a gate failed in and the questions this turn already put to \
     you. No command moves it: fix what the gate names.";
@@ -64,11 +55,6 @@ const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
 const HOST_REFUSAL: &str = "host-refusal";
 
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
-/// The one file klin guards, beside klin's own state directory. A check's own configuration, a
-/// host's hook file and the code owners are ordinary files: klin cannot tell a loosening from a
-/// fix in any of them, and refusing a whole settings file refuses the work that has nothing to
-/// do with klin. ADR 0027, ADR 0032.
-const NAME: &str = "klin.json";
 /// The commands that write every argument they take, so a guarded path among the arguments is a
 /// write under any reading. `cp` and `install` write their destination alone, which the copy
 /// reader finds. ADR 0033, ADR 0068.
@@ -82,93 +68,39 @@ const IN_PLACE: &[&str] = &["sed", "perl"];
 /// that took the call journals it. Spec 9.8, 10.8.
 pub fn run(event: &Event, root: &Path) -> u8 {
     let guarded = Guarded::at(event.root.clone(), root.to_path_buf());
-    let state = || guarded.paths().state.as_deref();
-    let claimed = || state().and_then(|at| state::claim(at, &event.identity));
-    let answer = decided(&guarded, event);
-    let refused = !matches!(answer, Answer::Decided(Decision::Allow, _));
-    let mut claim = refused.then(claimed).flatten();
-    let (decision, reason) = answer.decision(claim.as_ref().and(state()));
+    let (decision, reason) = decided(&guarded, event);
     let delivered = event.host.decide(&decision);
-    if !refused && delivered != 0 {
-        claim = claimed();
-    }
-    if let (Some(_), Some(at)) = (&claim, state()) {
+    let refused = !matches!(decision, Decision::Allow);
+    if (refused || delivered != 0)
+        && let Some(at) = guarded.state()
+        && let Some(_claim) = state::claim(at, &event.identity)
+    {
         let named = match refused {
             true => reason,
             false => HOST_REFUSAL,
         };
-        journal::guard(at, event, delivered_as(&decision, delivered), named);
+        journal::guard(at, event, delivered, named);
     }
     delivered
 }
 
-/// What the host delivered: an ask only where it asked, because a host that cannot ask refuses
-/// instead, and a deny otherwise, whatever the exit code carried it. Spec 9.6, 11.4.
-fn delivered_as(decision: &Decision, delivered: u8) -> journal::Delivered {
-    match (decision, delivered) {
-        (Decision::Ask(_), 0) => journal::Delivered::Ask,
-        _ => journal::Delivered::Deny,
-    }
-}
-
-/// What the guard decides about a call before a copy of klin's hooks delivers it: a decision
-/// and the hyphenated reason a journal line names it by, or an edit of `klin.json` the person
-/// may approve, with the file as it is and as the edit leaves it. Spec 9.6, 10.8.2.
-enum Answer {
-    Decided(Decision, &'static str),
-    Approval { current: String, result: String },
-}
-
-impl Answer {
-    /// The decision a copy of klin's hooks delivers. `took` is the state directory when this
-    /// copy holds the call's claim, and `None` when it yields.
-    fn decision(self, took: Option<&Path>) -> (Decision, &'static str) {
-        match self {
-            Answer::Decided(decision, reason) => (decision, reason),
-            Answer::Approval { current, result } => referred(took, &current, &result),
-        }
-    }
-}
-
-/// The deny of a `klin.json` edit the person may approve. The copy of klin's hooks that took
-/// the call records the request and tells the person its code. A copy that yields denies with
-/// the same reason and tells nothing. A request klin cannot record is the refusal of an edit
-/// with no approval. Spec 10.8.2.
-fn referred(took: Option<&Path>, current: &str, result: &str) -> (Decision, &'static str) {
-    match took.map(|at| approval::requested(at, result)) {
-        Some(Some(code)) => (
-            Decision::Refer {
-                reason: ASKED.to_string(),
-                person: approval::message(current, result, &code),
-            },
-            "config-approval",
-        ),
-        Some(None) => (Decision::Deny(REFUSAL.to_string()), "config-write"),
-        None => (Decision::Deny(ASKED.to_string()), "config-approval"),
-    }
-}
-
-/// The answer over the paths an edit call names: a deny for klin's own state, the person's
-/// approval for `klin.json`, and when the call names neither, the decision over its command.
-/// Section 9.4, spec 9.6, 10.8.2.
-fn decided(guarded: &Guarded, event: &Event) -> Answer {
+/// The strictest decision over every path an edit call names, and when none of them decides
+/// anything, the decision over its command, paired with the hyphenated reason a journal line
+/// names it by. Section 9.4, spec 9.6.
+fn decided(guarded: &Guarded, event: &Event) -> (Decision, &'static str) {
     let edits = !READ_TOOLS.contains(&event.tool.as_str());
-    let named: Vec<Which> = match edits {
-        true => event
-            .file_paths
-            .iter()
-            .filter_map(|path| guarded.which(guarded.here(), path))
-            .collect(),
-        false => Vec::new(),
-    };
-    if named.iter().any(|which| matches!(which, Which::State)) {
-        return Answer::Decided(Decision::Deny(STATE_REFUSAL.to_string()), "state-write");
+    let paths = edits.then(|| {
+        strictest(
+            event
+                .file_paths
+                .iter()
+                .flat_map(|path| guarded.denied(guarded.here(), path)),
+        )
+    });
+    match paths {
+        Some((Decision::Allow, _)) | None => command_decision(guarded, &event.command),
+        Some(decided) => decided,
     }
-    if named.is_empty() {
-        let (decision, reason) = command_decision(guarded, &event.command);
-        return Answer::Decided(decision, reason);
-    }
-    guarded.edited(event)
 }
 
 /// The strictest `(decision, reason)` pair over a set, by section 9.4's priority — a deny
@@ -181,7 +113,7 @@ fn strictest(
     let mut asked = None;
     for (decision, reason) in decisions {
         match decision {
-            Decision::Deny(_) | Decision::Refer { .. } => return (decision, reason),
+            Decision::Deny(_) => return (decision, reason),
             Decision::Ask(_) => {
                 asked.get_or_insert((decision, reason));
             }
@@ -191,9 +123,10 @@ fn strictest(
     asked.unwrap_or((Decision::Allow, ""))
 }
 
-/// What klin guards in this tree: the configuration beside the tree root, and the state
-/// directory `state::dir` resolves. Both are found when the first path needs proving and not
-/// before, so a tool call that names none never reaches for git. Section 9.4.
+/// What klin guards in this tree: the state directory `state::dir` resolves. It is found when
+/// the first path needs proving and not before, so a tool call that names none never reaches
+/// for git. `klin.json` is not guarded: the klin skill tells the agent to change it only when
+/// the person asks. Section 9.4, ADR 0074.
 struct Guarded {
     /// The tree the host's event named, for a host that does not run its hooks in it.
     named: Option<PathBuf>,
@@ -201,18 +134,7 @@ struct Guarded {
     root: PathBuf,
     /// Where the guard runs, which is what a relative path in a command names from.
     here: OnceCell<Option<PathBuf>>,
-    paths: OnceCell<Paths>,
-}
-
-struct Paths {
-    config: PathBuf,
-    state: Option<PathBuf>,
-}
-
-/// Which guarded thing a path names.
-enum Which {
-    Config,
-    State,
+    state: OnceCell<Option<PathBuf>>,
 }
 
 impl Guarded {
@@ -221,7 +143,7 @@ impl Guarded {
             named,
             root,
             here: OnceCell::new(),
-            paths: OnceCell::new(),
+            state: OnceCell::new(),
         }
     }
 
@@ -238,91 +160,42 @@ impl Guarded {
             .as_deref()
     }
 
-    fn paths(&self) -> &Paths {
-        self.paths.get_or_init(|| Paths::at(&self.root))
+    /// klin's own state directory, found when the first path needs proving and not before.
+    fn state(&self) -> Option<&Path> {
+        self.state
+            .get_or_init(|| state::dir(&self.root).map(|at| real(&at)))
+            .as_deref()
     }
 
-    /// Which guarded thing a path names from `base`, where a relative path needs a `base` the
-    /// guard can place.
-    fn which(&self, base: Option<&Path>, path: &str) -> Option<Which> {
-        let at = resolved(base, path)?;
-        let paths = self.paths();
-        if at == paths.config {
-            return Some(Which::Config);
-        }
-        let state = paths.state.as_ref()?;
-        at.starts_with(state).then_some(Which::State)
+    /// Whether a path names klin's own state from `base`, where a relative path needs a `base`
+    /// the guard can place.
+    fn guards(&self, base: Option<&Path>, path: &str) -> bool {
+        let Some(at) = resolved(base, path) else {
+            return false;
+        };
+        self.state().is_some_and(|state| at.starts_with(state))
     }
 
-    /// An edit of `klin.json` the person may approve: the call names it once, and klin can
-    /// compute the file the call leaves. The person's approval of that exact file allows it.
-    /// Any other edit of it is denied with no approval. Spec 10.8.2.
-    fn edited(&self, event: &Event) -> Answer {
-        let refused = Answer::Decided(Decision::Deny(REFUSAL.to_string()), "config-write");
-        let mut named = event
-            .rewrites
-            .iter()
-            .filter(|(path, _)| matches!(self.which(self.here(), path), Some(Which::Config)));
-        let (Some((_, rewrite)), None) = (named.next(), named.next()) else {
-            return refused;
-        };
-        let Ok(current) = std::fs::read_to_string(&self.paths().config) else {
-            return refused;
-        };
-        let Some(result) = rewrite.result(&current) else {
-            return refused;
-        };
-        match self.paths().state.as_deref() {
-            Some(at) if approval::allows(at, &result, &event.identity) => {
-                Answer::Decided(Decision::Allow, "")
-            }
-            Some(_) => Answer::Approval { current, result },
-            None => refused,
-        }
-    }
-
-    /// What one path a redirect names is worth: a deny for the one file only a person changes,
-    /// a deny for klin's own record of the turn, and nothing otherwise. Paired with the
-    /// hyphenated reason a journal line names the deny by. Spec 9.6.
+    /// What one path an edit tool or a redirect names is worth: a deny for klin's own record of
+    /// the turn, and nothing otherwise. Paired with the hyphenated reason a journal line names
+    /// the deny by. Spec 9.6.
     fn denied(&self, base: Option<&Path>, path: &str) -> Option<(Decision, &'static str)> {
-        let (why, reason) = match self.which(base, path)? {
-            Which::Config => (REFUSAL, "config-write"),
-            Which::State => (STATE_REFUSAL, "state-write"),
-        };
-        Some((Decision::Deny(why.to_string()), reason))
+        self.guards(base, path)
+            .then(|| (Decision::Deny(STATE_REFUSAL.to_string()), "state-write"))
     }
 
-    /// The guarded path a writer takes as an argument, which klin can prove the command
-    /// writes. `klin.json` changes only through an edit the person approves, so its write is a
-    /// deny. For klin's own record of the turn a person decides whether it goes through.
-    /// Paired with the hyphenated reason a journal line names it by. Spec 9.6, 10.8.2.
-    fn written(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
-        Some(match self.which(base, token)? {
-            Which::Config => (
-                Decision::Deny(format!(
-                    "klin: refused — this writes \"{token}\", the configuration klin guards, and \
-                     no shell command changes it. Fix the code the gate names instead. If the \
-                     person asked for this change, make it with the edit tool, and klin asks the \
-                     person to approve it."
-                )),
-                "config-mention",
-            ),
-            Which::State => (
+    /// klin's own state taken as an argument by a writer. klin can prove the write, and a person
+    /// decides whether it goes through. Paired with the hyphenated reason a journal line names
+    /// the ask by. Spec 9.6.
+    fn asked(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
+        self.guards(base, token).then(|| {
+            (
                 Decision::Ask(format!(
                     "this names \"{token}\", which is klin's own record of the turn."
                 )),
                 "state-mention",
-            ),
+            )
         })
-    }
-}
-
-impl Paths {
-    fn at(root: &Path) -> Paths {
-        Paths {
-            config: real(&root.join(NAME)),
-            state: state::dir(root).map(|at| real(&at)),
-        }
     }
 }
 
@@ -595,7 +468,7 @@ fn segment_decision(
                 written
                     .iter()
                     .filter(|word| !word.contains(PARAMETER))
-                    .flat_map(|word| guarded.written(cwd, word)),
+                    .flat_map(|word| guarded.asked(cwd, word)),
             ),
     )
 }

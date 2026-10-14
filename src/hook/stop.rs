@@ -23,7 +23,7 @@ use crate::sys::error::{Error, ErrorKind, Fault, fault};
 use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
-    hook::{approval, build, handoff, journal, stats, turn},
+    hook::{build, handoff, journal, stats, turn},
     sys::{
         clock, release,
         release::{Audience, News, Route},
@@ -70,10 +70,9 @@ pub fn stop(event: Event, start: &Path, behind: Behind, out: &mut String) -> u8 
 /// `unjudged`, and tells the person once per stamp. Spec 6.6, 10.7, 15.
 fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
     let said = format!(
-        "klin: nothing judged — {problem}. Only a person edits that file, so this stop blocks \
-         nothing."
+        "klin: nothing judged — {problem}. The person decides what that file holds, so this stop \
+         blocks nothing."
     );
-    approval::ended(root);
     let mut log = journal::Stop::begun(Some(event), "invalid".to_string());
     let lock = state::ready(root)
         .ok()
@@ -157,9 +156,6 @@ fn stopped(
     torn_down(project, &mut log);
     let exit = exit_code(code, event.as_ref());
     log.blocked = code == BLOCKED;
-    if !log.blocked {
-        approval::ended(root);
-    }
     let moved = log.advisory.is_some();
     let advised = matches!(leaves, Leaves::Fresh);
     let fresh = fresh.filter(|_| advised);

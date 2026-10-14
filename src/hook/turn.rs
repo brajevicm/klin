@@ -6,7 +6,6 @@ use serde_json::Value;
 
 use crate::config::file::{self, Config};
 use crate::config::key::Section;
-use crate::hook::approval;
 use crate::hook::handoff;
 use crate::hook::host::adapter::{self, Event};
 use crate::hook::journal;
@@ -29,9 +28,6 @@ pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String
         return 0;
     };
     let prompted = event.kind == Some(adapter::Kind::Prompt);
-    if prompted {
-        approval::prompted(&at, &event.prompt);
-    }
     if event.kind == Some(adapter::Kind::Session) {
         tell_release(start, out);
     }

@@ -13,7 +13,7 @@ const A_GUARDED_EDIT: &str = r#"{
   "hook_event_name": "PreToolUse",
   "session_id": "s1",
   "tool_name": "Write",
-  "tool_input": {"file_path": "klin.json"}
+  "tool_input": {"file_path": ".git/klin/turn"}
 }"#;
 
 const AN_ORDINARY_EDIT: &str = r#"{
@@ -44,8 +44,8 @@ const A_CODEX_THIRD_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1",
 /// version. `docs/cursor-compatibility.md` holds the measurements, `docs/HOST_COMPATIBILITY.md`
 /// the support row.
 const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm .git/klin/turn"}}"#;
-const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
-const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;
+const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm .git/klin/turn"}"#;
+const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm .git/klin/turn"}"#;
 const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
 
 fn codex(name: &str, command: &str) -> String {
@@ -158,7 +158,7 @@ fn cursor_events_use_native_permission_decisions() {
         refused.out
     );
 
-    let denied = guard(&[], &cursor("Write", r#"{"file_path":"klin.json"}"#));
+    let denied = guard(&[], &cursor("Write", r#"{"file_path":".git/klin/turn"}"#));
     assert_eq!(denied.code, 2, "{}", denied.out);
     assert!(denied.says(r#""permission":"deny""#), "{}", denied.out);
 
@@ -174,7 +174,7 @@ fn cursor_mcp_events_ignore_the_server_launch_command() {
     let run = guard(&[], A_CURSOR_MCP_CALL);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("permission"), "{}", run.out);
-    assert!(!run.says("klin.json"), "{}", run.out);
+    assert!(!run.says(".git/klin/turn"), "{}", run.out);
 }
 
 /// A Cursor guard in a tree that never wrote `klin.json` prints nothing on an allow, on every
@@ -185,7 +185,7 @@ fn cursor_guard_is_silent_in_a_tree_without_klin_json() {
         cursor("Write", r#"{"file_path":"src/main.rs"}"#),
         A_CURSOR_SHELL_EVENT
             .to_string()
-            .replace("rm klin.json", "ls"),
+            .replace("rm .git/klin/turn", "ls"),
         A_CURSOR_MCP_CALL.to_string(),
     ] {
         let run = guard(&[], &event);
@@ -207,7 +207,7 @@ fn cursor_guard_measures_the_tree_the_event_names() {
         "workspace_roots": [tree.root()],
         "cwd": tree.root(),
         "tool_name": "Write",
-        "tool_input": {"file_path": "klin.json"}
+        "tool_input": {"file_path": ".git/klin/turn"}
     });
 
     let run = feed(elsewhere.root(), harness::AGENT, &event.to_string());
@@ -242,7 +242,7 @@ fn cursor_reads_a_shell_command_off_the_event_itself() {
     let run = guard(&[], A_CURSOR_SHELL_EVENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(r#""permission":"deny""#), "{}", run.out);
-    assert!(run.says("klin.json"), "{}", run.out);
+    assert!(run.says(".git/klin/turn"), "{}", run.out);
 }
 
 /// Cursor 3.21.18 did not submit the `followup_message` of a stop hook that exited 2, and did
@@ -771,15 +771,16 @@ fn a_codex_event_uses_codex_decisions_for_shell_and_mcp_calls() {
 fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     let allowed = codex(
         "apply_patch",
-        "*** Begin Patch\n*** Update File: src/main.rs\n@@\n+mention klin.json here\n*** End Patch",
+        "*** Begin Patch\n*** Update File: src/main.rs\n@@\n+mention .git/klin/turn here\n*** End Patch",
     );
     let run = guard(&[], &allowed);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("permissionDecision"), "{}", run.out);
 
     for headers in [
-        "*** Update File: src/main.rs\n*** Update File: klin.json",
-        "*** Update File: a.json\n*** Move to: klin.json",
+        "*** Update File: src/main.rs\n*** Update File: .git/klin/turn",
+        "*** Update File: a.json\n*** Move to: .git/klin/turn",
+        "  *** Update File: .git/klin/turn",
     ] {
         let denied = codex(
             "apply_patch",

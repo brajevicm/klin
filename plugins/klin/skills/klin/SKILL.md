@@ -1,6 +1,6 @@
 ---
 name: klin
-description: How to answer a klin quality gate — read the failure, fix the site it names, and leave the configuration alone. Use this whenever a klin line appears in a hook, whenever a stop is blocked by a gate or by a build failure, whenever a person asks about klin's gates, findings, radius, base, window or state, and before any work touches klin.json, a hook file or CODEOWNERS. Read it before you try to make a klin failure go away, because most of the fast routes to green are routes klin refuses.
+description: How to answer a klin quality gate — read the failure, fix the site it names, and change the configuration only when the person asks. Use this whenever a klin line appears in a hook, whenever a stop is blocked by a gate or by a build failure, whenever a person asks about klin's gates, findings, radius, base, window or state, and before any work touches klin.json, a hook file or CODEOWNERS. Read it before you try to make a klin failure go away, because most of the fast routes to green are routes klin refuses.
 ---
 
 # klin
@@ -66,10 +66,12 @@ derived the command.
 Each route below makes a gate pass without fixing anything. Every one of them
 is visible in the diff a person reviews.
 
-- Editing `klin.json`. An edit tool that names it is denied, and a shell
-  write that klin can read is denied or put to the person. Any other write
-  still shows in the diff, and the rule is the same. Never add an entry to
-  `accepted`, and never raise a ceiling.
+- Editing `klin.json` on your own. Change it only when the person
+  explicitly asks for that change. Show the person the exact change, and
+  write it only after they say yes. Never add an entry to `accepted` or
+  raise a ceiling to make a gate pass. klin does not refuse the edit, so
+  this rule is yours to keep, and the edit shows in the diff a person
+  reviews.
 - Deleting a failing test. The stop asks once why each deleted test went.
   If it failed because the code is wrong, restore it and fix the code. If
   the removal is intended, say why in your reply, and the stop after that

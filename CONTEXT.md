@@ -16,8 +16,8 @@ is inherited debt.
 _Avoid_: baseline, snapshot, reference
 
 **Accepted**:
-The config list of debt a person approves, in the session or in review. In
-the session the person approves one edit in the chat (ADR 0074).
+The config list of debt a person allows. An agent adds an entry only when the
+person asks for it, and the entry lands in a reviewed commit.
 _Avoid_: allowlist, exemption, suppression
 
 **Finding**:

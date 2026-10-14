@@ -2,11 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::hook::rewrite::{Replacement, Rewrite};
-
-use super::adapter::{
-    Adapter, Decision, Event, flag, input, plugin_named_klin, referred, refused, text,
-};
+use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
 
 /// A field only Claude Code sends. One of them is enough to place the event.
 const FIELDS: &[&str] = &[
@@ -74,16 +70,9 @@ impl Adapter for Claude {
             path if path.is_empty() => input(payload, "notebook_path"),
             path => path,
         };
-        let tool = text(payload.get("tool_name"));
-        let rewrites = match (path.is_empty(), self.asks) {
-            (true, _) => Vec::new(),
-            (false, true) => vec![(path.clone(), rewrite(&tool, payload))],
-            (false, false) => vec![(path.clone(), Rewrite::Unread)],
-        };
         Event {
-            tool,
-            file_paths: rewrites.iter().map(|(path, _)| path.clone()).collect(),
-            rewrites,
+            tool: text(payload.get("tool_name")),
+            file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
             command: input(payload, "command"),
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
@@ -106,45 +95,9 @@ impl Adapter for Claude {
             Decision::Ask(reason) => refused(&format!(
                 "klin: refused — {reason} This host has no question to ask."
             )),
-            Decision::Refer { reason, person } if self.asks => referred(reason, person),
-            Decision::Deny(reason) | Decision::Refer { reason, .. } => refused(reason),
+            Decision::Deny(reason) => refused(reason),
         }
     }
-}
-
-/// What a `Write`, an `Edit` or a `MultiEdit` writes, from the fields Claude Code sends for it.
-/// Spec 10.8.2.
-fn rewrite(tool: &str, payload: &Value) -> Rewrite {
-    let input = payload.get("tool_input");
-    let edits = match tool {
-        "Write" => {
-            return input
-                .and_then(|input| input.get("content"))
-                .and_then(Value::as_str)
-                .map_or(Rewrite::Unread, |text| Rewrite::Whole(text.to_string()));
-        }
-        "Edit" => input.map(std::slice::from_ref),
-        "MultiEdit" => input
-            .and_then(|input| input.get("edits"))
-            .and_then(Value::as_array)
-            .map(Vec::as_slice),
-        _ => None,
-    };
-    edits
-        .and_then(|edits| edits.iter().map(replacement).collect::<Option<Vec<_>>>())
-        .map_or(Rewrite::Unread, Rewrite::Replaced)
-}
-
-fn replacement(edit: &Value) -> Option<Replacement> {
-    let field = |key: &str| edit.get(key).and_then(Value::as_str).map(str::to_string);
-    Some(Replacement {
-        old: field("old_string")?,
-        new: field("new_string")?,
-        all: edit
-            .get("replace_all")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-    })
 }
 
 /// Claude Code lists its enabled plugins under `enabledPlugins` in the settings file.

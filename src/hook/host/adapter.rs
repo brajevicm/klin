@@ -2,8 +2,6 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::hook::rewrite::Rewrite;
-
 /// One line `klin setup` writes for a host event. The adapter owns the event names, the kind
 /// each one is, and what each one filters by, so a fourth host adds a table rather than a branch
 /// in the writer. Spec 10.1, 11.2.
@@ -200,9 +198,6 @@ pub struct Event {
     pub kind: Option<Kind>,
     pub tool: String,
     pub file_paths: Vec<String>,
-    /// What an edit tool writes into each path it names, where the host's payload says so.
-    /// Spec 10.8.2.
-    pub rewrites: Vec<(String, Rewrite)>,
     pub command: String,
     pub blocked_before: bool,
     /// Whether the host says this stop follows a message it submitted by itself, which Cursor
@@ -229,7 +224,6 @@ impl Event {
             kind: None,
             tool: String::new(),
             file_paths: Vec::new(),
-            rewrites: Vec::new(),
             command: String::new(),
             blocked_before: false,
             continued: false,
@@ -247,13 +241,6 @@ pub enum Decision {
     Allow,
     Ask(String),
     Deny(String),
-    /// Deny the call with `reason`, and put `person` in front of the person alone, on a channel
-    /// the agent does not read. A host with no such channel denies with `reason` and drops
-    /// `person`. Spec 10.8.2.
-    Refer {
-        reason: String,
-        person: String,
-    },
 }
 
 pub enum Stop {
@@ -281,22 +268,6 @@ pub(super) fn emit(stop: &Stop) -> u8 {
 pub(super) fn refused(reason: &str) -> u8 {
     eprintln!("{reason}");
     2
-}
-
-/// A deny the agent reads from `permissionDecisionReason`, beside a `systemMessage` the host
-/// shows the person alone. Both ride stdout under exit 0, because a host reads no JSON from a
-/// hook that exits 2. Claude Code and Codex share this shape. Spec 10.8.2.
-pub(super) fn referred(reason: &str, person: &str) -> u8 {
-    let answer = serde_json::json!({
-        "systemMessage": person,
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
-        }
-    });
-    println!("{answer}");
-    0
 }
 
 /// The name a host lists klin's plugin under: klin's own name, or that name and the

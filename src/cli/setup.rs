@@ -31,6 +31,7 @@ const EARLIER_SKILLS: &[u64] = &[
     0x82ce_b777_ce4c_3978,
     0x234d_4187_3cef_7ffb,
     0x51c1_5f02_ab11_3294,
+    0x31e4_417e_d3f1_a853,
 ];
 
 /// The klin commands a host hook runs: the ingress, and the 0.x commands it replaced. An entry

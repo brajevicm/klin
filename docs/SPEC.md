@@ -1142,8 +1142,8 @@ the exit code. A review item never changes the exit code.
 
 An accepted entry that matches nothing is a review item at `klin check`
 and a note at the Stop. It never fails a run and never asks the agent for a
-change. The guard refuses the agent's edits to `klin.json`, so only a person
-can act on it.
+change. An agent changes `klin.json` only when the person asks for the
+change (section 10.8), so the person decides what to do about the entry.
 
 ## 8. Evidence and Comparison
 
@@ -1621,8 +1621,14 @@ them."), a configuration error, the turn-end line or the weekly line.
 
 The guard of B.9.4 carries forward: `deny`, `ask` and `allow`, the proof
 rule, path resolution, shell parsing and the 50 ms budget. The guarded set
-stays this tree's `klin.json` and this tree's state directory. In a tree that
-holds no `klin.json`, the guard answers nothing (section 5.1).
+is this tree's state directory. In a tree that holds no `klin.json`, the
+guard answers nothing (section 5.1).
+
+`klin.json` is not in the guarded set (ADR 0074). Every agent on every host
+may edit it. The klin skill tells the agent to change it only when the person
+explicitly asks for that change, and to write it only after the person
+approves the exact edit. klin does not enforce this rule. The diff a person
+reviews and CI catch a `klin.json` that an agent weakened.
 
 The `deny` list of commands is:
 
@@ -1632,8 +1638,8 @@ The `deny` list of commands is:
   event could refresh a block budget. The host runs the hook lines itself, so
   the guard never sees them.
 
-A deny reason says that a person changes the file in a reviewed commit, or
-names the command a person runs instead. It never names a command that
+A deny reason says what the guarded file holds, or names the command a
+person runs instead. It never names a command that
 accepts debt. The guard's journal line names the matched command.
 
 #### 10.8.1 Write targets the guard proves
@@ -1658,7 +1664,7 @@ find a target.
   `command`, and after a `||` that follows
   a `cd`, a relative path proves nothing. An absolute path stays proven.
 - **Copies.** `cp` and `install` are writers of their destination alone, at
-  the level of B.9.4 as section 10.8.2 amends it. The destination is the last operand, or each
+  the `ask` level of B.9.4. The destination is the last operand, or each
   source's name inside a destination directory that exists or that `-t`
   names. `install -d` writes every operand. An option the guard does not
   know, a letter GNU and BSD spell differently, or an abbreviated long
@@ -1690,83 +1696,6 @@ find a target.
   shell token, so a `$` in it is a character.
 
 `tests/guard.rs` holds the adversarial matrix of #426.
-
-#### 10.8.2 The person approves a `klin.json` edit in the chat
-
-This section amends the `deny` and `ask` lists of B.9.4. ADR 0074 records
-why. An agent may change `klin.json` only with the person's approval of that
-one edit. The person approves in the chat and runs no command.
-
-1. The agent calls an edit tool on `klin.json`. The guard computes the file
-   the call would leave, from the host's payload and the file on disk.
-2. The guard denies the call and records one request in the state directory.
-   The request holds the resulting file, a hash of a random four-letter code,
-   and whether the person approved it. A new request replaces the one before.
-3. The guard tells the person the code and what the edit changes, on a
-   channel only the person reads. The agent's reason says that klin asked the
-   person, and it never holds the code.
-4. The person replies with a prompt that is exactly `approve <code>`. Case
-   and the space around the words do not matter. A prompt that only holds the
-   phrase approves nothing, because a host message such as a task
-   notification wraps it in other text.
-5. The agent makes the same edit again. The guard computes the same file and
-   allows the call once. Every copy of klin's hooks for that one call (9.8)
-   allows it. Any other call, and any edit that leaves another file, is
-   denied and gets a new request.
-
-The approval expires at the end of the turn of the approval prompt: at a Stop
-that does not block, or at the next prompt. A Stop that blocks keeps it,
-because the turn goes on. A request the person has not answered stays until a
-new request replaces it.
-
-What the person reads names each setting the edit adds, removes or changes,
-by its dotted path, such as `escapes: true -> false`. A list changes by the
-entries it gains and loses, so a new `accepted` entry is one line. A key
-that is not a plain word prints as a JSON string, so no key starts a line of
-its own. The summary names every change. It does not yet say whether a
-change loosens or tightens the policy (#575).
-
-The resulting file comes from these payloads:
-
-- Claude Code `Write`: its `content`.
-- Claude Code `Edit` and `MultiEdit`: each `old_string` replaced by its
-  `new_string`, in order. The edit fails, and klin reads nothing, where the
-  old text is empty, missing, equal to the new text, or found more than once
-  without `replace_all`.
-- Codex `apply_patch`: an `*** Add File:` section's `+` lines, or an
-  `*** Update File:` section's chunks, applied as Codex applies them with an
-  exact match. klin finds a `***` marker after it trims the line, as Codex
-  does. A section that deletes or moves the file, a section with no chunk, a
-  marker klin does not know, chunks that overlap, and a chunk whose lines
-  match only when whitespace is ignored are unread.
-
-Any other payload, such as `NotebookEdit`, a Cursor edit or a harness event,
-is denied with the refusal of B.9.4 and no approval. So is an edit on a host
-klin cannot place, which has no channel klin trusts.
-
-Claude Code and Codex get the deny as `permissionDecision: "deny"` with the
-agent's reason, beside a `systemMessage` for the person, on stdout under
-exit 0, because neither host reads JSON from a hook that exits 2.
-
-A shell command that the guard proves writes `klin.json` is a `deny` with no
-approval path, and its reason names the edit tool. `ask` stays for a shell
-write of the state directory. The journal names a request
-`config-approval` (B.11.4).
-
-The state directory is readable by the agent, so a request holds a hash of
-the code and not the code. That hides the code from a reading, not from a
-search, and the exact prompt match is the second layer. CI and CODEOWNERS stay
-the authority (section 16).
-
-Before #576 closes, a person verifies on the real hosts:
-
-- that a PreToolUse `systemMessage` reaches the person and not the model, on
-  Claude Code and on Codex, and that Codex honors the JSON deny;
-- which messages fire the prompt hook (task notifications, subagent reports,
-  cross-session messages, Cursor follow-ups) and how each host wraps them;
-- whether Cursor has any person-only channel.
-
-`tests/approval.rs` holds the CLI tests.
 
 ### 10.9 Harness protocol
 
@@ -6883,27 +6812,23 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 #### B.9.4 The guard's three decisions
 
-The guarded set is this tree's `klin.json` and this tree's own state
-directory. The guard resolves both: the configuration beside the tree root
-`git rev-parse --show-toplevel` names, and the state directory of 7.4. A
-host's hook file, CODEOWNERS, `refs/worktree/klin`, every verification file,
-another project's `klin.json` inside the tree, and another worktree's state
-directory are ordinary files, and an edit to one of them is `allow`. ADR
-0027, ADR 0032 and ADR 0033 record why.
+The guarded set is this tree's own state directory, the state directory of
+7.4. Section 10.8 takes `klin.json` out of the set (ADR 0074). `klin.json`, a
+host's hook file, CODEOWNERS, `refs/worktree/klin`, every verification file
+and another worktree's state directory are ordinary files, and an edit to one
+of them is `allow`. ADR 0027, ADR 0032, ADR 0033 and ADR 0074 record why.
 
 The guard answers only where it can prove that a tool call writes a guarded
 path. Everything else is `allow`, and a write the guard misses costs nothing,
 because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 
-- `deny`: an edit tool whose path is the configuration or reaches inside the
-  state directory, a redirect onto either, and `klin setup`, `klin update`
-  or `klin __agent` in any form. The reason names the file and says a person
-  changes it in a reviewed commit, or says that only a person, or only the
-  host, runs the command. Nothing else denies.
+- `deny`: an edit tool whose path reaches inside the state directory, a
+  redirect into it, and `klin setup`, `klin update` or `klin __agent` in any
+  form. The reason says the file is klin's own record of the turn, or says
+  that only a person, or only the host, runs the command. Nothing else
+  denies.
 - `ask`: a command that writes every argument it takes, with a guarded path
-  among its arguments. Section 10.8.2 makes a proven shell write of the
-  configuration a `deny`, and an edit tool's write of it a request to the
-  person. The writers are `rm`, `rmdir`, `unlink`, `shred`,
+  among its arguments. The writers are `rm`, `rmdir`, `unlink`, `shred`,
   `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
   `install` are not writers here, because each reads its first argument.
   Section 10.8.1 makes each a writer of its destination. The reason quotes
@@ -6932,11 +6857,12 @@ MUST honor single and double quotes (issue #90). A redirect is an unquoted
 redirect. A writer and klin's own name are read by the basename of the
 command word, and each is found behind the same prefixes: an assignment,
 `env`, `npx`, `pnpm`, `bunx`, `time`, `nice` and `sudo`. So a script of the
-tree's own named `rm` is read as `rm`, and `sudo rm klin.json` asks.
+tree's own named `rm` is read as `rm`, and `sudo rm .git/klin/turn` asks.
 
 For Codex CLI, an `apply_patch` call is judged by every path in its `*** Add
 File:`, `*** Delete File:`, `*** Update File:` or `*** Move to:` headers.
-Patch body text is data. A deny for any path wins; otherwise an ask wins over
+The guard finds a header after it trims the line, as Codex does. Patch body
+text is data. A deny for any path wins; otherwise an ask wins over
 allow.
 
 The guard MUST NOT read the configuration. It runs before the config loads.
@@ -7161,12 +7087,12 @@ tells a reader nothing.
   the guard reached. A host with no question to ask refuses instead (9.1), so
   an ask that reached the agent as a refusal is recorded as `"deny"`.
 - `reason`, a hyphenated tag naming why the guard decided as it did:
-  `config-write` and `state-write` for a proven write an edit tool's path or
-  a redirect names, `config-approval` for an edit of the configuration klin
-  put to the person (10.8.2), `config-mention` and `state-mention` for a
-  command that names a guarded path as a writer's argument (ADR 0033), which
-  is a deny for the configuration and an ask for the state directory, and `setup`, `update` and `agent`
-  for one of klin's own subcommands that only a person or the host runs.
+  `state-write` for a proven write an edit tool's path or a redirect names,
+  `state-mention` for a command that only names a guarded path as a writer's
+  argument, which klin cannot prove the way it proves the first (ADR 0033),
+  and `setup`, `update` and `agent` for one of klin's own subcommands that
+  only a person or the host runs. A journal from before ADR 0074 also holds
+  `config-write` and `config-mention`, and `klin report` still reads them.
 
 The `reset` line is what the 0.x reset command wrote. vNext writes none:
 

@@ -66,11 +66,11 @@ fn a_generic_session_and_prompt_open_a_turn() {
 }
 
 #[test]
-fn a_generic_pre_tool_denies_a_proven_configuration_write() {
+fn a_generic_pre_tool_denies_a_proven_state_write() {
     let tree = failing();
     let run = guard(
         &tree,
-        json!({"tool": "write_file", "file_paths": ["klin.json"]}),
+        json!({"tool": "write_file", "file_paths": [".git/klin/turn"]}),
     );
 
     assert_eq!(run.code, 2, "{}", run.out);
@@ -83,7 +83,7 @@ fn a_generic_pre_tool_denies_a_proven_configuration_write() {
 }
 
 fn refuses(reason: &str) -> bool {
-    reason.contains("refused") && reason.contains("klin.json")
+    reason.contains("refused") && reason.contains(".git/klin")
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn a_generic_pre_tool_reads_no_write_out_of_a_tool_name() {
     let tree = failing();
     let run = guard(
         &tree,
-        json!({"tool": "write_klin_json", "arguments": {"path": "klin.json"}}),
+        json!({"tool": "write_klin_state", "arguments": {"path": ".git/klin/turn"}}),
     );
 
     assert_eq!(run.code, 0, "{}", run.out);

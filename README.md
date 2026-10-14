@@ -210,7 +210,7 @@ Set a check to `false` to turn it off.
 
 To keep a finding on purpose, add it to `accepted` with the values from the FAIL output and a reason. klin holds the finding at those values. If it gets worse, the check fails again.
 
-Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
+Your agent edits `klin.json` only when you ask, as its klin skill says.
 
 [Configuration reference →](docs/REFERENCE.md)
 
@@ -227,7 +227,7 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 
 klin has two trust levels:
 
-- **Feedback:** hooks and a local `klin check`. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks it.
+- **Feedback:** hooks and a local `klin check`. klin returns findings to the agent and refuses its edits to `.git/klin`. Nothing outside the agent's environment checks it.
 - **Enforced:** Feedback plus a required `klin check` on a protected branch, from a checkout the agent never touched, with full history and pinned klin and Action versions. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and itself.
 
 The Quick start reaches Feedback. Enforced needs the workflow below and every protection above.

@@ -47,17 +47,14 @@ other file the coding agent can edit through its host.
 
 - klin reads this tree and reports what changed in it.
 - The guard can answer `deny` or `ask` on a tool call the host routes to it.
-- An edit tool call on `klin.json` passes only after the person replies
-  `approve <code>` to a code klin sent to the person alone (SPEC 10.8.2,
-  ADR 0074). The agent can read the state directory and may reach a host
-  transcript, so this is feedback too, and a proven shell write of
-  `klin.json` is always a deny.
-- The guarded set is exactly two things: this tree's `klin.json`, and this
-  tree's own state directory, which is `.git/klin` unless `KLIN_STATE_DIR`
-  names another place. A host's hook file, CODEOWNERS, a check's own
-  configuration and another worktree's state directory are ordinary files, and
-  an edit to one of them is `allow` (SPEC 10.8 and B.9.4, ADR 0027, ADR 0032,
-  ADR 0033).
+- The guarded set is exactly one thing: this tree's own state directory,
+  which is `.git/klin` unless `KLIN_STATE_DIR` names another place.
+  `klin.json`, a host's hook file, CODEOWNERS, a check's own configuration and
+  another worktree's state directory are ordinary files, and an edit to one of
+  them is `allow` (SPEC 10.8 and B.9.4, ADR 0027, ADR 0032, ADR 0033, ADR
+  0074).
+- The klin skill tells the agent to change `klin.json` only when the person
+  explicitly asks for that change. klin does not enforce this.
 - The guard answers only where it can prove that a call writes a guarded path.
   A shell wildcard, an unbalanced quote, `$(`, a backtick, `${`, `<<`, a
   backslash, a `cd` command word, or a path it cannot resolve all end in
@@ -127,11 +124,10 @@ gate that would have named it.
 | Behavior | Local feedback | Independent CI | Needs repository policy |
 | --- | --- | --- | --- |
 | A new complexity, escape, stub or other finding | The stop hook blocks the turn and names it | `klin check` measures the committed tree again | Yes, to make the check required |
-| An agent edit to `klin.json` through a routed edit tool | `deny`, naming the file | The diff is visible, and `klin check` reads the committed config | Yes, review over `klin.json` |
-| An agent edit to `klin.json` through a path the guard cannot prove | May pass, by design (SPEC 10.8) | Same as the row above | Yes |
+| An agent edit to `klin.json` | `allow`; the skill says to edit it only when the person asks (ADR 0074) | The diff is visible, and `klin check` reads the committed config | Yes, review over `klin.json` |
 | An agent removes or disables the local hook | May remove the feedback, and klin does not detect it | Still measures the final tree | Yes |
 | An agent changes the CI workflow | The hook file and the workflow are not guarded | The same change may alter the run that judges it | Yes, CODEOWNERS and protected settings |
-| An agent adds an entry to `accepted` | The guard denies routed edits to `klin.json`, and the skill says not to | `klin check` reads the committed config, so an accepted entry is silent in CI too | Yes, a reviewed commit by a person |
+| An agent adds an entry to `accepted` | The skill says to add one only when the person asks | `klin check` reads the committed config, so an accepted entry is silent in CI too | Yes, a reviewed commit by a person |
 | An accepted entry that matches nothing | A note at the Stop | A review item, annotated on the pull request, that does not fail CI (SPEC 7.6) | Yes, human review |
 | `klin setup`, `klin update` or `klin __agent` from an agent's shell | `deny`, naming the command a person runs | Not applicable | No |
 | A deleted test | The Stop asks about it once | A review item, annotated on the pull request, that does not fail CI (SPEC 9.2) | Yes, human review remains part of this guarantee |

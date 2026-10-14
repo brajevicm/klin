@@ -316,24 +316,18 @@ pub fn prompt_enabled(loaded: &Config) -> bool {
     }
 }
 
-/// What the host delivered for a call the guard refused or questioned. A host that cannot ask
-/// refuses instead (9.1), and 11.4 must count that refusal as the deny it is.
-pub enum Delivered {
-    Ask,
-    Deny,
-}
-
 /// A guard ask or deny: the decision the host delivered, and the hyphenated reason the guard
-/// built it with. An allow appends nothing, because the guard runs on every tool call under its
-/// 50 ms budget and an allow tells a reader nothing. `at` is the state directory the guard
-/// resolved already. Spec 9.6, 11.4.
-pub fn guard(at: &Path, event: &Event, delivered: Delivered, reason: &'static str) {
+/// built it with. `delivered` is the adapter's own exit code, because a host that cannot ask
+/// refuses instead (9.1), and 11.4 must count that refusal as the deny it is. An allow appends
+/// nothing, because the guard runs on every tool call under its 50 ms budget and an allow tells
+/// a reader nothing. `at` is the state directory the guard resolved already. Spec 9.6, 11.4.
+pub fn guard(at: &Path, event: &Event, delivered: u8, reason: &'static str) {
+    let kind = match delivered {
+        0 => "ask",
+        _ => "deny",
+    };
     let Ok(at) = state::prepared(at) else {
         return;
-    };
-    let kind = match delivered {
-        Delivered::Ask => "ask",
-        Delivered::Deny => "deny",
     };
     let mut line = base("guard", session_of(Some(event)));
     line.insert("decision".into(), kind.into());

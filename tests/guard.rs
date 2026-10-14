@@ -57,23 +57,12 @@ fn denied(run: &Run, what: &str) {
     assert!(run.says("refused"), "{what}: {}", run.out);
 }
 
-/// A proven shell write. On the configuration it is a deny with no approval, because only an
-/// edit the person approves changes it. On klin's own state it is an ask, exit 0 with the
-/// decision on stdout. Either reason quotes what matched. Spec 10.8.2.
+/// An ask is exit 0 with the decision on stdout, and its reason quotes what matched.
 #[track_caller]
-fn written(run: &Run, quoted: &str, what: &str) {
-    match quoted.ends_with("klin.json") {
-        true => {
-            denied(run, what);
-            assert!(!run.says(ASK), "{what}: {}", run.out);
-            assert!(run.says(&format!("\"{quoted}\"")), "{what}: {}", run.out);
-        }
-        false => {
-            assert_eq!(run.code, 0, "{what}: {}", run.out);
-            assert!(run.says(ASK), "{what}: {}", run.out);
-            assert!(run.says(&format!(r#"\"{quoted}\""#)), "{what}: {}", run.out);
-        }
-    }
+fn asked(run: &Run, quoted: &str, what: &str) {
+    assert_eq!(run.code, 0, "{what}: {}", run.out);
+    assert!(run.says(ASK), "{what}: {}", run.out);
+    assert!(run.says(&format!(r#"\"{quoted}\""#)), "{what}: {}", run.out);
 }
 
 #[track_caller]
@@ -82,42 +71,50 @@ fn allowed(run: &Run, what: &str) {
     assert!(!run.says(ASK), "{what}: {}", run.out);
 }
 
+/// The configuration is the agent's to edit, by a tool or by the shell. Spec 10.8.
 #[test]
-fn refuses_an_edit_of_the_configuration() {
+fn an_agent_may_edit_the_configuration() {
     let tree = Tree::new();
     for (name, file) in [
         ("Edit", tree.at("klin.json")),
         ("Write", "klin.json".into()),
     ] {
+        let run = edit_in(&tree, name, &file);
+        assert_eq!(run.out, "", "{name} {file}: {}", run.out);
+        allowed(&run, &format!("{name} {file}"));
+    }
+    for command in [
+        "echo '{}' > klin.json",
+        "rm klin.json",
+        "cp a klin.json",
+        "sed -i s/a/b/ klin.json",
+    ] {
+        let run = bash_in(&tree, command);
+        assert_eq!(run.out, "", "{command}: {}", run.out);
+        allowed(&run, command);
+    }
+}
+
+#[test]
+fn refuses_an_edit_of_klins_own_state() {
+    let tree = Tree::new();
+    for (name, file) in [
+        ("Edit", tree.at(".git/klin/turn")),
+        ("Write", ".git/klin/turn".into()),
+    ] {
         denied(&edit_in(&tree, name, &file), &format!("{name} {file}"));
     }
-    let run = tool_in(&tree, "NotebookEdit", "notebook_path", "klin.json");
+    let run = tool_in(&tree, "NotebookEdit", "notebook_path", ".git/klin/turn");
     assert_eq!(run.code, 2, "{}", run.out);
 }
 
-/// The guard resolves the path it is given, so a configuration of another project inside the
-/// tree is an ordinary file. ADR 0033.
 #[test]
-fn allows_an_edit_of_another_projects_configuration() {
-    let tree = Tree::new();
-    for file in [
-        "sub/klin.json",
-        "vendor/a/klin.json",
-        "/elsewhere/klin.json",
-    ] {
-        allowed(&edit_in(&tree, "Write", file), file);
-        let command = format!("rm {file}");
-        allowed(&bash_in(&tree, &command), &command);
-    }
-}
-
-#[test]
-fn refuses_a_redirect_onto_the_configuration() {
+fn refuses_a_redirect_onto_klins_own_state() {
     for command in [
-        "echo '{}' > klin.json",
-        "echo '[]' >>klin.json",
-        "awk '{ print }' notes.txt > klin.json",
-        "echo '{}' > ./klin.json",
+        "echo '{}' > .git/klin/turn",
+        "echo '[]' >>.git/klin/turn",
+        "awk '{ print }' notes.txt > .git/klin/turn",
+        "echo '{}' > ./.git/klin/turn",
     ] {
         denied(&bash(command), command);
     }
@@ -153,9 +150,9 @@ fn the_refusal_of_update_and_the_ingress_names_who_runs_them() {
 
 #[test]
 fn the_refusal_names_what_it_protects() {
-    let run = edit("Edit", "klin.json");
-    assert!(run.says("klin.json"), "{}", run.out);
-    assert!(run.says("reviewed commit"), "{}", run.out);
+    let run = edit("Edit", ".git/klin/turn");
+    assert!(run.says(".git/klin"), "{}", run.out);
+    assert!(run.says("own record of the turn"), "{}", run.out);
     assert!(!run.says("hooks"), "{}", run.out);
     assert!(!run.says("baseline"), "{}", run.out);
 }
@@ -166,24 +163,28 @@ fn the_refusal_names_what_it_protects() {
 fn asks_about_a_command_that_writes_every_argument_it_takes() {
     let tree = Tree::new();
     for command in [
-        "rm klin.json",
-        "rmdir klin.json",
-        "unlink klin.json",
-        "shred klin.json",
-        "mv klin.json klin.json.bak",
-        "truncate -s 0 klin.json",
-        "tee klin.json < /tmp/loose.json",
-        "sed -i '' 's/8/80/' klin.json",
-        "perl -i -pe 's/a/b/' klin.json",
+        "rm .git/klin/turn",
+        "rmdir .git/klin/turn",
+        "unlink .git/klin/turn",
+        "shred .git/klin/turn",
+        "mv .git/klin/turn .git/klin/turn.bak",
+        "truncate -s 0 .git/klin/turn",
+        "tee .git/klin/turn < /tmp/loose.json",
+        "sed -i '' 's/8/80/' .git/klin/turn",
+        "perl -i -pe 's/a/b/' .git/klin/turn",
     ] {
-        written(&bash_in(&tree, command), "klin.json", command);
+        asked(&bash_in(&tree, command), ".git/klin/turn", command);
     }
-    written(
-        &bash_in(&tree, &format!("rm {}", tree.at("klin.json"))),
-        &tree.at("klin.json"),
+    asked(
+        &bash_in(&tree, &format!("rm {}", tree.at(".git/klin/turn"))),
+        &tree.at(".git/klin/turn"),
         "an absolute path",
     );
-    written(&bash_in(&tree, "rm -f ./klin.json"), "./klin.json", "a dot");
+    asked(
+        &bash_in(&tree, "rm -f ./.git/klin/turn"),
+        "./.git/klin/turn",
+        "a dot",
+    );
 }
 
 /// `cp` and `install` read their sources, so a backup of klin's own state through one of them is
@@ -192,36 +193,35 @@ fn asks_about_a_command_that_writes_every_argument_it_takes() {
 fn allows_a_command_that_reads_the_argument_it_is_given() {
     for command in [
         "cp .git/klin/turn /tmp/backup",
-        "cp klin.json ordinary-copy.json",
-        "install -m 644 klin.json /tmp/copy.json",
-        "ed klin.json",
-        "patch -p1 klin.json < fix.diff",
-        "git apply klin.json",
-        "git stash pop klin.json",
-        "git checkout -- klin.json",
-        "git restore --source=HEAD~1 klin.json",
+        "install -m 644 .git/klin/turn /tmp/copy.json",
+        "ed .git/klin/turn",
+        "patch -p1 .git/klin/turn < fix.diff",
+        "git apply .git/klin/turn",
+        "git stash pop .git/klin/turn",
+        "git checkout -- .git/klin/turn",
+        "git restore --source=HEAD~1 .git/klin/turn",
         "find . -delete",
-        "sed -n 2p klin.json",
-        "perl -pe 's/a/b/' klin.json",
+        "sed -n 2p .git/klin/turn",
+        "perl -pe 's/a/b/' .git/klin/turn",
     ] {
         allowed(&bash(command), command);
     }
 }
 
 /// The guard answers only where it can prove a write, so a command that merely names the
-/// configuration is ordinary work. ADR 0033.
+/// state is ordinary work. ADR 0033.
 #[test]
-fn allows_a_command_that_only_names_the_configuration() {
+fn allows_a_command_that_only_names_klins_state() {
     for command in [
-        "echo klin.json",
-        "gh issue create --title 'the klin.json shape' --body 'see klin.json'",
-        "cat klin.json",
-        "cat klin.json > /tmp/copy.json",
-        "grep klin.json src/",
-        "python3 x.py klin.json",
-        "git add klin.json",
-        "git commit klin.json -m 'wip'",
-        "git commit -am 'fix the parser that reads klin.json'",
+        "echo .git/klin/turn",
+        "gh issue create --title 'the .git/klin/turn shape' --body 'see .git/klin/turn'",
+        "cat .git/klin/turn",
+        "cat .git/klin/turn > /tmp/copy.json",
+        "grep .git/klin/turn src/",
+        "python3 x.py .git/klin/turn",
+        "git add .git/klin/turn",
+        "git commit .git/klin/turn -m 'wip'",
+        "git commit -am 'fix the parser that reads .git/klin/turn'",
         "cargo test > /tmp/out.txt",
         "klin doc-size --quiet",
         "klin escapes --write-baseline",
@@ -251,9 +251,9 @@ fn allows_the_plumbing_that_reads_a_stamp() {
 fn allows_a_token_that_holds_a_wildcard() {
     for command in [
         "rm *.json",
-        "rm klin.js*n",
-        "rm ?lin.json",
-        "rm klin.jso[n]",
+        "rm .git/klin/tur*",
+        "rm .git/klin/?urn",
+        "rm .git/klin/tur[n]",
         "rm *",
         "echo '{}' > *",
         "ffmpeg ** out",
@@ -267,20 +267,20 @@ fn allows_a_token_that_holds_a_wildcard() {
 #[test]
 fn allows_a_command_it_cannot_read_in_full() {
     for command in [
-        "cat \"unclosed | rm klin.json",
-        "cat 'unclosed ; rm klin.json",
-        "rm $(echo klin).json",
-        "rm `echo klin.json`",
+        "cat \"unclosed | rm .git/klin/turn",
+        "cat 'unclosed ; rm .git/klin/turn",
+        "rm .git/$(echo klin)/turn",
+        "rm `echo .git/klin/turn`",
         "rm ${CONFIG}",
-        "rm klin.json\\",
-        "cat <<< x > klin.json",
-        "cat <<'EOF' > klin.json\nnever closed",
-        "cd /elsewhere && rm klin.json",
-        "cd sub; rm klin.json",
-        "rm $DIR/../klin.json",
+        "rm .git/klin/turn\\",
+        "cat <<< x > .git/klin/turn",
+        "cat <<'EOF' > .git/klin/turn\nnever closed",
+        "cd /elsewhere && rm .git/klin/turn",
+        "cd sub; rm .git/klin/turn",
+        "rm $DIR/../.git/klin/turn",
         "sh -c \"$CMD\"",
         "eval \"$CMD\"",
-        "sh -c 'rm $(echo klin).json'",
+        "sh -c 'rm .git/$(echo klin)/turn'",
     ] {
         allowed(&bash(command), command);
     }
@@ -309,7 +309,7 @@ fn allows_a_tool_call_that_leaves_the_guarded_files_alone() {
     for (name, file) in [
         ("Edit", "src/klin_of_life.rs"),
         ("Write", "docs/klin.md"),
-        ("Read", "klin.json"),
+        ("Read", ".git/klin/turn"),
     ] {
         allowed(&edit(name, file), &format!("{name} {file}"));
     }
@@ -324,7 +324,7 @@ fn an_event_it_cannot_read_is_allowed_through() {
         "{}",
         r#"{"tool_name": "Bash"}"#,
         r#"{"tool_name": "Bash", "tool_input": {"command": null}}"#,
-        r#"{"tool_input": {"pattern": "klin.json"}}"#,
+        r#"{"tool_input": {"pattern": ".git/klin/turn"}}"#,
     ] {
         let run = guard(&tree, event);
         assert_eq!(run.code, 0, "{event}: {}", run.out);
@@ -340,13 +340,14 @@ fn it_never_reads_the_configuration() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out, "", "{}", run.out);
 
-    let refused = edit_in(&tree, "Edit", "klin.json");
+    let refused = edit_in(&tree, "Edit", ".git/klin/turn");
     assert_eq!(refused.code, 2, "{}", refused.out);
     assert!(refused.says("refused"), "{}", refused.out);
     assert!(!refused.says("could not be read"), "{}", refused.out);
 }
 
-/// klin's own state takes the three decisions the configuration takes. ADR 0032, ADR 0033.
+/// A redirect onto klin's own state is a deny and a proven writer of it an ask. ADR 0032, ADR
+/// 0033.
 #[test]
 fn a_command_that_writes_klins_own_state_is_denied_or_asked_about() {
     let tree = Tree::new();
@@ -359,7 +360,7 @@ fn a_command_that_writes_klins_own_state_is_denied_or_asked_about() {
         ("rm .git/klin/turn", ".git/klin/turn"),
         ("sed -i s/red/green/ .git/klin/turn", ".git/klin/turn"),
     ] {
-        written(&bash_in(&tree, command), named, command);
+        asked(&bash_in(&tree, command), named, command);
     }
 }
 
@@ -403,6 +404,8 @@ fn a_path_that_only_looks_like_klins_state_is_allowed() {
         "vendor/klin/notes.md",
         ".git/COMMIT_EDITMSG",
         ".git/worktrees/second/klin/turn",
+        "sub/.git/klin/turn",
+        "/elsewhere/.git/klin/turn",
     ] {
         allowed(&edit_in(&tree, "Write", file), file);
     }
@@ -433,7 +436,7 @@ fn allows_an_edit_of_everything_the_configuration_is_not() {
 }
 
 /// Outside a git repository the opt-in walk finds no worktree root, so the guard answers
-/// nothing, about the state directory or a configuration. Spec 5.1.
+/// nothing about the state directory. Spec 5.1.
 #[test]
 fn outside_a_repository_it_answers_nothing() {
     let tree = Tree::bare();
@@ -444,7 +447,6 @@ fn outside_a_repository_it_answers_nothing() {
         &edit_in(&tree, "Write", ".git/klin/turn"),
         "a stamp by hand",
     );
-    allowed(&edit_in(&tree, "Write", "klin.json"), "the configuration");
 }
 
 /// klin's own state moves with `KLIN_STATE_DIR`, and the guard answers about where the state
@@ -471,17 +473,19 @@ fn a_relative_path_names_a_file_from_where_the_guard_runs() {
     let tree = Tree::new();
     tree.write("klin.json", "{}\n");
     tree.write("sub/notes.md", "one\n");
-    let event = pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#);
-    let up = pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm ../klin.json"}}"#);
+    let event =
+        pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm .git/klin/turn"}}"#);
+    let up =
+        pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm ../.git/klin/turn"}}"#);
 
     allowed(
         &feed(&tree.path("sub"), harness::AGENT, &event),
-        "another project's configuration one directory down",
+        "another project's state one directory down",
     );
-    written(
+    asked(
         &feed(&tree.path("sub"), harness::AGENT, &up),
-        "../klin.json",
-        "the tree's own configuration from below",
+        "../.git/klin/turn",
+        "the tree's own state from below",
     );
 }
 
@@ -490,9 +494,9 @@ fn a_relative_path_names_a_file_from_where_the_guard_runs() {
 #[test]
 fn allows_a_quoted_angle_bracket_that_is_not_a_redirect() {
     for command in [
-        r#"git commit -m "moved notes > klin.json""#,
-        r#"gh issue create --body "notes > klin.json""#,
-        "echo 'a > klin.json'",
+        r#"git commit -m "moved notes > .git/klin/turn""#,
+        r#"gh issue create --body "notes > .git/klin/turn""#,
+        "echo 'a > .git/klin/turn'",
     ] {
         allowed(&bash(command), command);
     }
@@ -504,12 +508,12 @@ fn allows_a_quoted_angle_bracket_that_is_not_a_redirect() {
 fn asks_about_a_writer_behind_a_prefix() {
     let tree = Tree::new();
     for command in [
-        "sudo rm klin.json",
-        "env rm -f klin.json",
-        "time rm klin.json",
-        "KLIN_STATE_DIR=/tmp/x rm klin.json",
+        "sudo rm .git/klin/turn",
+        "env rm -f .git/klin/turn",
+        "time rm .git/klin/turn",
+        "KLIN_STATE_DIR=/tmp/x rm .git/klin/turn",
     ] {
-        written(&bash_in(&tree, command), "klin.json", command);
+        asked(&bash_in(&tree, command), ".git/klin/turn", command);
     }
 }
 
@@ -519,14 +523,20 @@ fn asks_about_a_writer_behind_a_prefix() {
 fn asks_about_the_destination_of_a_copy() {
     let tree = Tree::new();
     for (command, named) in [
-        ("cp source klin.json", "klin.json"),
-        ("cp -p source ./klin.json", "./klin.json"),
-        ("install source klin.json", "klin.json"),
-        ("install -m 644 /tmp/loose.json klin.json", "klin.json"),
-        ("install -pm644 /tmp/loose.json klin.json", "klin.json"),
-        ("cp --suffix .bak source klin.json", "klin.json"),
-        ("cp /tmp/klin.json .", "./klin.json"),
-        ("cp -t . /tmp/klin.json", "./klin.json"),
+        ("cp source .git/klin/turn", ".git/klin/turn"),
+        ("cp -p source ./.git/klin/turn", "./.git/klin/turn"),
+        ("install source .git/klin/turn", ".git/klin/turn"),
+        (
+            "install -m 644 /tmp/loose.json .git/klin/turn",
+            ".git/klin/turn",
+        ),
+        (
+            "install -pm644 /tmp/loose.json .git/klin/turn",
+            ".git/klin/turn",
+        ),
+        ("cp --suffix .bak source .git/klin/turn", ".git/klin/turn"),
+        ("cp /tmp/turn .git/klin", ".git/klin/turn"),
+        ("cp -t .git/klin /tmp/turn", ".git/klin/turn"),
         (
             "cp --target-directory=.git/klin notes.md",
             ".git/klin/notes.md",
@@ -535,12 +545,12 @@ fn asks_about_the_destination_of_a_copy() {
         ("cp -n source .git/klin/new", ".git/klin/new"),
         ("cp --update source .git/klin/new", ".git/klin/new"),
     ] {
-        written(&bash_in(&tree, command), named, command);
+        asked(&bash_in(&tree, command), named, command);
     }
-    let absolute = format!("cp source {}", tree.at("klin.json"));
-    written(
+    let absolute = format!("cp source {}", tree.at(".git/klin/turn"));
+    asked(
         &bash_in(&tree, &absolute),
-        &tree.at("klin.json"),
+        &tree.at(".git/klin/turn"),
         "an absolute destination",
     );
 }
@@ -550,12 +560,11 @@ fn asks_about_the_destination_of_a_copy() {
 #[test]
 fn allows_a_copy_whose_destination_it_cannot_place() {
     for command in [
-        "install -S .bak source klin.json",
-        "install -T source klin.json",
-        "cp --target=. /tmp/klin.json",
-        "cp -Q source klin.json",
-        "cp -T /tmp/klin.json .",
-        "cp a b klin.json",
+        "install -S .bak source .git/klin/turn",
+        "install -T source .git/klin/turn",
+        "cp --target=.git/klin /tmp/turn",
+        "cp -Q source .git/klin/turn",
+        "cp -T /tmp/klin .git",
     ] {
         allowed(&bash(command), command);
     }
@@ -568,40 +577,50 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
     let tree = Tree::new();
     tree.write("sub/notes.md", "one\n");
     for (command, named) in [
-        ("cd sub && sed -i s/a/b/ ../klin.json", "../klin.json"),
-        ("cd sub\nrm ../klin.json", "../klin.json"),
-        ("cd -P sub && cd .. && rm klin.json", "klin.json"),
-        ("cd sub && make | tee ../klin.json", "../klin.json"),
+        (
+            "cd sub && sed -i s/a/b/ ../.git/klin/turn",
+            "../.git/klin/turn",
+        ),
+        ("cd sub\nrm ../.git/klin/turn", "../.git/klin/turn"),
+        ("cd -P sub && cd .. && rm .git/klin/turn", ".git/klin/turn"),
+        (
+            "cd sub && make | tee ../.git/klin/turn",
+            "../.git/klin/turn",
+        ),
     ] {
-        written(&bash_in(&tree, command), named, command);
+        asked(&bash_in(&tree, command), named, command);
     }
     for command in [
-        "cd sub; echo x > ../klin.json",
-        "cd sub && echo x > ../klin.json",
+        "cd sub; echo x > ../.git/klin/turn",
+        "cd sub && echo x > ../.git/klin/turn",
     ] {
         denied(&bash_in(&tree, command), command);
     }
-    let absolute = format!("cd {} && rm ../klin.json", tree.at("sub"));
-    written(&bash_in(&tree, &absolute), "../klin.json", "an absolute cd");
+    let absolute = format!("cd {} && rm ../.git/klin/turn", tree.at("sub"));
+    asked(
+        &bash_in(&tree, &absolute),
+        "../.git/klin/turn",
+        "an absolute cd",
+    );
     for command in [
-        "cd sub && rm klin.json",
-        "cd \"$DIR\" && rm ../klin.json",
-        "cd $DIR; echo x > ../klin.json",
-        "cd ~ && rm ../klin.json",
-        "cd - && rm ../klin.json",
-        "cd sub || exit 1; rm ../klin.json",
-        "cd sub && make || rm ../klin.json",
-        "cd sub & rm ../klin.json",
-        "echo | cd sub && rm ../klin.json",
-        "(cd sub); rm ../klin.json",
-        "pushd sub && rm ../klin.json",
-        ". ./env.sh && rm klin.json",
-        "f() { cd sub; }; f; rm ../klin.json",
-        "cd missing && rm ../klin.json",
-        "false && cd sub; echo x > ../klin.json",
-        "eval 'cd sub' | echo x > ../klin.json",
-        "eval 'cd sub' & echo x > ../klin.json",
-        "false && eval 'cd sub'; echo x > ../klin.json",
+        "cd sub && rm .git/klin/turn",
+        "cd \"$DIR\" && rm ../.git/klin/turn",
+        "cd $DIR; echo x > ../.git/klin/turn",
+        "cd ~ && rm ../.git/klin/turn",
+        "cd - && rm ../.git/klin/turn",
+        "cd sub || exit 1; rm ../.git/klin/turn",
+        "cd sub && make || rm ../.git/klin/turn",
+        "cd sub & rm ../.git/klin/turn",
+        "echo | cd sub && rm ../.git/klin/turn",
+        "(cd sub); rm ../.git/klin/turn",
+        "pushd sub && rm ../.git/klin/turn",
+        ". ./env.sh && rm .git/klin/turn",
+        "f() { cd sub; }; f; rm ../.git/klin/turn",
+        "cd missing && rm ../.git/klin/turn",
+        "false && cd sub; echo x > ../.git/klin/turn",
+        "eval 'cd sub' | echo x > ../.git/klin/turn",
+        "eval 'cd sub' & echo x > ../.git/klin/turn",
+        "false && eval 'cd sub'; echo x > ../.git/klin/turn",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -613,18 +632,18 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
 fn a_child_shell_keeps_its_cd_to_itself() {
     let tree = Tree::new();
     tree.write("sub/notes.md", "one\n");
-    written(
-        &bash_in(&tree, "sh -c 'cd sub && rm ../klin.json'"),
-        "../klin.json",
+    asked(
+        &bash_in(&tree, "sh -c 'cd sub && rm ../.git/klin/turn'"),
+        "../.git/klin/turn",
         "a cd inside the child",
     );
     allowed(
-        &bash_in(&tree, "sh -c 'cd sub'; rm ../klin.json"),
+        &bash_in(&tree, "sh -c 'cd sub'; rm ../.git/klin/turn"),
         "a cd that stayed in the child",
     );
-    written(
-        &bash_in(&tree, "eval 'cd sub'; rm ../klin.json"),
-        "../klin.json",
+    asked(
+        &bash_in(&tree, "eval 'cd sub'; rm ../.git/klin/turn"),
+        "../.git/klin/turn",
         "eval runs in the same shell",
     );
 }
@@ -634,19 +653,19 @@ fn a_child_shell_keeps_its_cd_to_itself() {
 fn reads_a_literal_nested_command() {
     let tree = Tree::new();
     for command in [
-        "sh -c 'rm klin.json'",
-        "sudo bash -lc 'rm -f klin.json'",
-        "eval 'rm klin.json'",
-        "eval rm klin.json",
-        "sh <<'EOF'\nrm klin.json\nEOF",
-        "bash -s <<EOF\ntrue\nrm klin.json\nEOF",
+        "sh -c 'rm .git/klin/turn'",
+        "sudo bash -lc 'rm -f .git/klin/turn'",
+        "eval 'rm .git/klin/turn'",
+        "eval rm .git/klin/turn",
+        "sh <<'EOF'\nrm .git/klin/turn\nEOF",
+        "bash -s <<EOF\ntrue\nrm .git/klin/turn\nEOF",
     ] {
-        written(&bash_in(&tree, command), "klin.json", command);
+        asked(&bash_in(&tree, command), ".git/klin/turn", command);
     }
     for command in [
-        "bash -c \"echo x > klin.json\"",
-        "eval echo x '>' klin.json",
-        "cat <<'EOF' > klin.json\nnothing to see\nEOF",
+        "bash -c \"echo x > .git/klin/turn\"",
+        "eval echo x '>' .git/klin/turn",
+        "cat <<'EOF' > .git/klin/turn\nnothing to see\nEOF",
     ] {
         denied(&bash_in(&tree, command), command);
     }
@@ -655,13 +674,13 @@ fn reads_a_literal_nested_command() {
         "klin's own command nested",
     );
     for command in [
-        "cat <<'EOF'\nrm klin.json\nEOF",
-        "sh script.sh klin.json",
-        "sh -o errexit -c 'rm klin.json'",
-        "sh -c \"echo y $X > klin.json\"",
-        "eval \"echo y $X > klin.json\"",
-        "bash <<EOF\necho y $X > klin.json\nEOF",
-        "echo 'sh -c \"rm klin.json\"'",
+        "cat <<'EOF'\nrm .git/klin/turn\nEOF",
+        "sh script.sh .git/klin/turn",
+        "sh -o errexit -c 'rm .git/klin/turn'",
+        "sh -c \"echo y $X > .git/klin/turn\"",
+        "eval \"echo y $X > .git/klin/turn\"",
+        "bash <<EOF\necho y $X > .git/klin/turn\nEOF",
+        "echo 'sh -c \"rm .git/klin/turn\"'",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -669,13 +688,13 @@ fn reads_a_literal_nested_command() {
 
 /// A guarded name inside a script, a comment or a quoted argument is text, not a write. ADR 0068.
 #[test]
-fn a_mention_of_the_configuration_is_not_a_write() {
+fn a_mention_of_klins_state_is_not_a_write() {
     for command in [
-        "sed -i 's/a/b/; s/ klin.json /x/' notes.md",
-        "perl -i -pe 's/ klin.json /x/' notes.md",
-        "rm notes.txt # klin.json",
-        "rm \"klin.json backup\"",
-        "echo x > notes.md # > klin.json",
+        "sed -i 's/a/b/; s| .git/klin/turn |x|' notes.md",
+        "perl -i -pe 's| .git/klin/turn |x|' notes.md",
+        "rm notes.txt # .git/klin/turn",
+        "rm \".git/klin backup\"",
+        "echo x > notes.md # > .git/klin/turn",
     ] {
         allowed(&bash(command), command);
     }
@@ -687,12 +706,12 @@ fn a_quoted_path_with_spaces_resolves_as_one_path() {
     let tree = Tree::new();
     tree.write("my dir/notes.md", "one\n");
     denied(
-        &bash_in(&tree, "echo x > \"my dir/../klin.json\""),
+        &bash_in(&tree, "echo x > \"my dir/../.git/klin/turn\""),
         "a quoted redirect target",
     );
-    written(
-        &bash_in(&tree, "cd 'my dir' && cp ../notes.md ../klin.json"),
-        "../klin.json",
+    asked(
+        &bash_in(&tree, "cd 'my dir' && cp ../notes.md ../.git/klin/turn"),
+        "../.git/klin/turn",
         "a quoted cd",
     );
 }
@@ -708,7 +727,7 @@ fn allows_ordinary_source_writes() {
         "install -m 644 src/main.rs /tmp/main.rs",
         "cd src && rm main.rs",
         "sh -c 'cp src/main.rs src/b.rs'",
-        "cp klin.json src/",
+        "cp .git/klin/turn src/",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -723,7 +742,7 @@ fn an_edit_path_holding_a_dollar_still_resolves() {
         &edit_in(
             &tree,
             "Write",
-            &format!("{}/$x/../klin.json", tree.root().display()),
+            &format!("{}/$x/../.git/klin/turn", tree.root().display()),
         ),
         "a literal dollar directory",
     );
@@ -733,13 +752,15 @@ fn an_edit_path_holding_a_dollar_still_resolves() {
 /// there yet is a proven write. ADR 0068.
 #[test]
 fn a_copy_that_may_keep_the_destination_proves_only_a_new_one() {
+    let tree = Tree::new();
+    tree.write(".git/klin/turn", "x\n");
     for command in [
-        "cp -n source klin.json",
-        "cp --no-clobber source klin.json",
-        "cp -u source klin.json",
-        "cp --update source klin.json",
+        "cp -n source .git/klin/turn",
+        "cp --no-clobber source .git/klin/turn",
+        "cp -u source .git/klin/turn",
+        "cp --update source .git/klin/turn",
     ] {
-        allowed(&bash(command), command);
+        allowed(&bash_in(&tree, command), command);
     }
 }
 
@@ -748,12 +769,12 @@ fn a_copy_that_may_keep_the_destination_proves_only_a_new_one() {
 #[test]
 fn reads_nested_text_to_a_bounded_depth() {
     let tree = Tree::new();
-    written(
-        &bash_in(&tree, "eval eval eval rm klin.json"),
-        "klin.json",
+    asked(
+        &bash_in(&tree, "eval eval eval rm .git/klin/turn"),
+        ".git/klin/turn",
         "three nested evals",
     );
-    let chain = format!("{}rm klin.json", "eval ".repeat(20_000));
+    let chain = format!("{}rm .git/klin/turn", "eval ".repeat(20_000));
     allowed(&bash_in(&tree, &chain), "a chain of twenty thousand evals");
 }
 
@@ -762,7 +783,7 @@ fn reads_nested_text_to_a_bounded_depth() {
 #[test]
 fn a_copy_of_directory_contents_proves_only_its_destination() {
     let tree = Tree::new();
-    tree.write("staging/klin.json", "{}\n");
+    tree.write("staging/.git/klin/turn", "{}\n");
     for command in [
         "cp -a staging/. .",
         "cp -R staging/ .",
@@ -774,7 +795,7 @@ fn a_copy_of_directory_contents_proves_only_its_destination() {
         ("cp -a staging/. .git/klin", ".git/klin"),
         ("cp -R -t .git/klin/backup staging/", ".git/klin/backup"),
     ] {
-        written(&bash_in(&tree, command), named, command);
+        asked(&bash_in(&tree, command), named, command);
     }
 }
 
@@ -783,7 +804,7 @@ fn a_copy_of_directory_contents_proves_only_its_destination() {
 fn a_copy_with_parents_writes_the_source_path_under_the_destination() {
     let tree = Tree::new();
     tree.write("staging/.git/klin/turn", "x\n");
-    written(
+    asked(
         &bash_in(&tree, "cd staging && cp --parents .git/klin/turn .."),
         "../.git/klin/turn",
         "a state path rebuilt under the root",
@@ -794,19 +815,20 @@ fn a_copy_with_parents_writes_the_source_path_under_the_destination() {
 #[test]
 fn the_overwrite_options_of_a_copy_settle_in_order() {
     let tree = Tree::new();
+    tree.write(".git/klin/turn", "x\n");
     for command in [
-        "cp --update=all source klin.json",
-        "cp -n -i source klin.json",
-        "cp --no-clobber --interactive source klin.json",
+        "cp --update=all source .git/klin/turn",
+        "cp -n -i source .git/klin/turn",
+        "cp --no-clobber --interactive source .git/klin/turn",
     ] {
-        written(&bash_in(&tree, command), "klin.json", command);
+        asked(&bash_in(&tree, command), ".git/klin/turn", command);
     }
     for command in [
-        "cp --update=none source klin.json",
-        "cp --update=older source klin.json",
-        "cp -i -n source klin.json",
-        "cp -n -f source klin.json",
-        "cp --update=sometimes source klin.json",
+        "cp --update=none source .git/klin/turn",
+        "cp --update=older source .git/klin/turn",
+        "cp -i -n source .git/klin/turn",
+        "cp -n -f source .git/klin/turn",
+        "cp --update=sometimes source .git/klin/turn",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -820,12 +842,12 @@ fn a_cd_through_a_link_comes_back_the_way_it_went() {
     tree.write("inner/deep/notes.md", "one\n");
     std::os::unix::fs::symlink(tree.path("inner/deep"), tree.path("link")).unwrap();
     denied(
-        &bash_in(&tree, "cd link && cd .. && echo x > klin.json"),
+        &bash_in(&tree, "cd link && cd .. && echo x > .git/klin/turn"),
         "a logical cd back out of a link",
     );
     for command in [
-        "cd -P link && cd .. && echo x > klin.json",
-        "cd link && echo x > ../klin.json",
+        "cd -P link && cd .. && echo x > .git/klin/turn",
+        "cd link && echo x > ../.git/klin/turn",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -837,9 +859,9 @@ fn a_sourced_script_leaves_the_directory_unproven() {
     let tree = Tree::new();
     tree.write("sub/notes.md", "one\n");
     for command in [
-        "builtin source ./enter-sub.sh; echo x > klin.json",
-        "builtin . ./enter-sub.sh; echo x > klin.json",
-        "command source ./enter-sub.sh; echo x > klin.json",
+        "builtin source ./enter-sub.sh; echo x > .git/klin/turn",
+        "builtin . ./enter-sub.sh; echo x > .git/klin/turn",
+        "command source ./enter-sub.sh; echo x > .git/klin/turn",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -849,10 +871,13 @@ fn a_sourced_script_leaves_the_directory_unproven() {
 #[test]
 fn an_absolute_cd_places_the_directory_again() {
     let tree = Tree::new();
-    let command = format!("cd \"$DIR\"; cd {} && rm klin.json", tree.root().display());
-    written(
+    let command = format!(
+        "cd \"$DIR\"; cd {} && rm .git/klin/turn",
+        tree.root().display()
+    );
+    asked(
         &bash_in(&tree, &command),
-        "klin.json",
+        ".git/klin/turn",
         "an absolute cd after a lost one",
     );
 }

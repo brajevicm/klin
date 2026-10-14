@@ -36,11 +36,11 @@ to a CLI test once a shipped language reaches it.
 
 ## The rules klin enforces on itself
 
-Edit `klin.json` only when the person asks for that change, and only through
-the approval klin asks the person for (`docs/SPEC.md` 10.8.2). Never edit it
-or the hooks on your own to make a gate pass, and never add an `accepted`
-entry the person did not ask for. That list records debt a person approved,
-in the session or in review. A gate that fails names code to fix.
+Edit `klin.json` only when the person explicitly asks for that change, and
+show them the change before you write it. Never edit it or the hooks on your
+own to make a gate pass, and never add an `accepted` entry the person did not
+ask for. That list records debt a person accepted. A gate that fails names
+code to fix.
 
 ## Agent skills
 

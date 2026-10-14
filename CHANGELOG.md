@@ -5,6 +5,14 @@ Each release adds a section here before the release PR. The section opens with
 table. Write it under `## Unreleased`; the release PR renames that heading to
 the version, so add the heading again after each release.
 
+## Unreleased
+
+### What changes for you
+
+- Your agent can edit `klin.json` again. The guard no longer refuses it, and
+  the klin skill tells the agent to change it only when you ask, and to show
+  you the change first. klin's own state under `.git/klin` stays guarded.
+
 ## 0.5.4
 
 ### What changes for you

@@ -84,7 +84,3 @@ fresh stamp and the next stop judges the whole branch, so deleting a stamp
 widens the window instead of closing it. The state directory and the ref
 stay in the guarded set, so a shell command that would write to them is
 `ask`. `docs/SPEC.md` 6.2 and 9.4 carry the rule.
-
-Amended 2026-10-14. ADR 0074 makes a proven shell write of `klin.json` a
-`deny`, and an edit tool's write of it a request the person approves in the
-chat. The `ask` class stays for a shell write of the state directory.
