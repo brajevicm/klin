@@ -87,7 +87,7 @@ pub fn run(event: &Event, root: &Path) -> u8 {
     let answer = decided(&guarded, event);
     let refused = !matches!(answer, Answer::Decided(Decision::Allow, _));
     let mut claim = refused.then(claimed).flatten();
-    let (decision, reason) = answer.decision(state(), claim.is_some());
+    let (decision, reason) = answer.decision(claim.as_ref().and(state()));
     let delivered = event.host.decide(&decision);
     if !refused && delivered != 0 {
         claim = claimed();
@@ -104,10 +104,10 @@ pub fn run(event: &Event, root: &Path) -> u8 {
 
 /// What the host delivered: an ask only where it asked, because a host that cannot ask refuses
 /// instead, and a deny otherwise, whatever the exit code carried it. Spec 9.6, 11.4.
-fn delivered_as(decision: &Decision, delivered: u8) -> &'static str {
+fn delivered_as(decision: &Decision, delivered: u8) -> journal::Delivered {
     match (decision, delivered) {
-        (Decision::Ask(_), 0) => "ask",
-        _ => "deny",
+        (Decision::Ask(_), 0) => journal::Delivered::Ask,
+        _ => journal::Delivered::Deny,
     }
 }
 
@@ -120,11 +120,12 @@ enum Answer {
 }
 
 impl Answer {
-    /// The decision a copy of klin's hooks delivers, `took` when it holds the call's claim.
-    fn decision(self, at: Option<&Path>, took: bool) -> (Decision, &'static str) {
+    /// The decision a copy of klin's hooks delivers. `took` is the state directory when this
+    /// copy holds the call's claim, and `None` when it yields.
+    fn decision(self, took: Option<&Path>) -> (Decision, &'static str) {
         match self {
             Answer::Decided(decision, reason) => (decision, reason),
-            Answer::Approval { current, result } => referred(at, took, &current, &result),
+            Answer::Approval { current, result } => referred(took, &current, &result),
         }
     }
 }
@@ -133,24 +134,16 @@ impl Answer {
 /// the call records the request and tells the person its code. A copy that yields denies with
 /// the same reason and tells nothing. A request klin cannot record is the refusal of an edit
 /// with no approval. Spec 10.8.2.
-fn referred(
-    at: Option<&Path>,
-    took: bool,
-    current: &str,
-    result: &str,
-) -> (Decision, &'static str) {
-    let code = took
-        .then(|| at.and_then(|at| approval::requested(at, result)))
-        .flatten();
-    match code {
-        Some(code) => (
+fn referred(took: Option<&Path>, current: &str, result: &str) -> (Decision, &'static str) {
+    match took.map(|at| approval::requested(at, result)) {
+        Some(Some(code)) => (
             Decision::Refer {
                 reason: ASKED.to_string(),
                 person: approval::message(current, result, &code),
             },
             "config-approval",
         ),
-        None if took => (Decision::Deny(REFUSAL.to_string()), "config-write"),
+        Some(None) => (Decision::Deny(REFUSAL.to_string()), "config-write"),
         None => (Decision::Deny(ASKED.to_string()), "config-approval"),
     }
 }

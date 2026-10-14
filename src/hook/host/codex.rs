@@ -12,11 +12,6 @@ use super::adapter::{
 /// `permission_mode` is not it: both hosts send that one.
 const TURN: &str = "turn_id";
 const PATCH: &str = "apply_patch";
-const ADD: &str = "*** Add File: ";
-const UPDATE: &str = "*** Update File: ";
-const MOVE: &str = "*** Move to: ";
-/// The headers of the patch language that name a file. The text below them is data.
-const HEADERS: &[&str] = &[ADD, "*** Delete File: ", UPDATE, MOVE];
 const END_OF_FILE: &str = "*** End of File";
 const END_OF_PATCH: &str = "*** End Patch";
 
@@ -147,28 +142,55 @@ fn patch_rewrites(patch: &str) -> Vec<(String, Rewrite)> {
             }
             continue;
         };
-        if header == MOVE
+        if header == Header::Move
             && let Some((_, moved)) = sections.last_mut()
         {
             *moved = Rewrite::Unread;
         }
-        let rewrite = match header {
-            ADD => Rewrite::Whole(String::new()),
-            UPDATE => Rewrite::Patched(Vec::new()),
-            _ => Rewrite::Unread,
-        };
         if !path.is_empty() {
-            sections.push((path.to_string(), rewrite));
+            sections.push((path.to_string(), header.opened()));
         }
     }
     sections
 }
 
+/// A header of the patch language that names a file. The text below it is data.
+#[derive(Clone, Copy, PartialEq)]
+enum Header {
+    Add,
+    Delete,
+    Update,
+    Move,
+}
+
+impl Header {
+    const ALL: [Header; 4] = [Header::Add, Header::Delete, Header::Update, Header::Move];
+
+    fn prefix(self) -> &'static str {
+        match self {
+            Header::Add => "*** Add File: ",
+            Header::Delete => "*** Delete File: ",
+            Header::Update => "*** Update File: ",
+            Header::Move => "*** Move to: ",
+        }
+    }
+
+    /// What the section under this header writes, before klin reads its body. klin cannot
+    /// read a file that is deleted or moved.
+    fn opened(self) -> Rewrite {
+        match self {
+            Header::Add => Rewrite::Whole(String::new()),
+            Header::Update => Rewrite::Patched(Vec::new()),
+            Header::Delete | Header::Move => Rewrite::Unread,
+        }
+    }
+}
+
 /// The header a line is, after Codex's trim, and the path it names.
-fn header(line: &str) -> Option<(&'static str, &str)> {
-    HEADERS.iter().find_map(|header| {
-        let path = line.trim().strip_prefix(header)?;
-        Some((*header, path.trim()))
+fn header(line: &str) -> Option<(Header, &str)> {
+    Header::ALL.into_iter().find_map(|header| {
+        let path = line.trim().strip_prefix(header.prefix())?;
+        Some((header, path.trim()))
     })
 }
 

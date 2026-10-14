@@ -19,13 +19,19 @@ const PHRASE: &str = "approve";
 const ALPHABET: &[u8] = b"23456789ABCDEFGHJKMNPQRSTVWXYZ";
 const LENGTH: usize = 4;
 
-/// The file the edit leaves, the hash of its code, whether the person approved it, and the
-/// identity of the tool call that used it. Every copy of klin's hooks for that one call passes.
+/// The file the edit leaves, the hash of its code, and how far the person's answer went.
 struct Request {
     result: String,
     code: u64,
-    approved: bool,
-    used: Option<String>,
+    status: Status,
+}
+
+/// A request waits for the person, then holds their approval, then is spent by one tool call.
+/// Every copy of klin's hooks for that one call passes.
+enum Status {
+    Pending,
+    Approved,
+    Used(String),
 }
 
 /// A fresh request for the edit that leaves `result`, in place of any request before it, and
@@ -35,8 +41,7 @@ pub fn requested(at: &Path, result: &str) -> Option<String> {
     let request = Request {
         result: result.to_string(),
         code: state::hash(code.as_bytes()),
-        approved: false,
-        used: None,
+        status: Status::Pending,
     };
     write(at, &request).then_some(code)
 }
@@ -47,13 +52,14 @@ pub fn allows(at: &Path, result: &str, identity: &str) -> bool {
     let Some(mut request) = read(at) else {
         return false;
     };
-    if !request.approved || request.result != result {
+    if request.result != result {
         return false;
     }
-    match &request.used {
-        Some(used) => !identity.is_empty() && used == identity,
-        None => {
-            request.used = Some(identity.to_string());
+    match &request.status {
+        Status::Pending => false,
+        Status::Used(used) => !identity.is_empty() && used == identity,
+        Status::Approved => {
+            request.status = Status::Used(identity.to_string());
             write(at, &request)
         }
     }
@@ -66,10 +72,10 @@ pub fn prompted(at: &Path, prompt: &str) {
     let Some(mut request) = read(at) else {
         return;
     };
-    if request.approved {
+    if request.approved() {
         cleared(at);
     } else if approves(prompt, request.code) {
-        request.approved = true;
+        request.status = Status::Approved;
         write(at, &request);
     }
 }
@@ -78,7 +84,7 @@ pub fn prompted(at: &Path, prompt: &str) {
 /// stays.
 pub fn ended(root: &Path) {
     if let Some(at) = state::dir(root)
-        && read(&at).is_some_and(|request| request.approved)
+        && read(&at).is_some_and(|request| request.approved())
     {
         cleared(&at);
     }
@@ -194,14 +200,30 @@ fn without<'a>(from: &'a [Value], other: &[Value]) -> Vec<&'a Value> {
         .collect()
 }
 
+impl Status {
+    /// The status a request file holds as its `approved` flag and its `used` identity.
+    fn held(approved: bool, used: Option<&str>) -> Status {
+        match (approved, used) {
+            (false, _) => Status::Pending,
+            (true, None) => Status::Approved,
+            (true, Some(used)) => Status::Used(used.to_string()),
+        }
+    }
+}
+
+impl Request {
+    fn approved(&self) -> bool {
+        !matches!(self.status, Status::Pending)
+    }
+}
+
 fn read(at: &Path) -> Option<Request> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;
     Some(Request {
         result: held["result"].as_str()?.to_string(),
         code: held["code"].as_u64()?,
-        approved: held["approved"].as_bool()?,
-        used: held["used"].as_str().map(str::to_string),
+        status: Status::held(held["approved"].as_bool()?, held["used"].as_str()),
     })
 }
 
@@ -209,9 +231,9 @@ fn write(at: &Path, request: &Request) -> bool {
     let mut held = serde_json::json!({
         "result": request.result,
         "code": request.code,
-        "approved": request.approved,
+        "approved": request.approved(),
     });
-    if let Some(used) = &request.used {
+    if let Status::Used(used) = &request.status {
         held["used"] = used.as_str().into();
     }
     atomic_write(AtomicWrite {
