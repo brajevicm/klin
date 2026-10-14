@@ -508,7 +508,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "a hardcoded sk-proj- key",
-        &[Rule("secrets", Any, Missed)],
+        &[Rule("secrets", Has("secret"), Caught)],
         ROUTE_FILE,
         "",
     ),

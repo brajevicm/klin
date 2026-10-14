@@ -7,5 +7,6 @@ pub mod inventory;
 pub mod lockfile;
 pub mod markers;
 pub mod sarif;
+pub mod secrets;
 pub mod structural;
 pub mod stubs;
