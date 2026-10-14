@@ -4551,13 +4551,17 @@ linear in the file for each pattern, and the quoted-span lookup is a binary
 search. Known limit: a reworded marker, or a marker deleted while another is
 added in the same file, holds the count.
 The TypeScript and JavaScript table also keys a `placeholder comment` this
-way: a `//` comment, a `/*` comment up to its `*/`, or a line that starts
-with `*` and holds no quote before the phrase, that says "in a real implementation", "simplified version", "replace
+way: a `//` comment, or a `/*` comment up to its `*/` over any number of
+lines, that says "in a real implementation", "simplified version", "replace
 with actual" or "mock data", in any case. "for now" is not a phrase, because
-#362 measured it as noise (#581). Pinned by
+#362 measured it as noise (#581). A row keyed this way marks the line where
+its match ends, so a phrase on a later line of a block comment names that
+line. Known limit: a quote that closes on a later line holds no span, so a
+`//` or `/*` inside a template literal over several lines starts a comment
+here, as it does for a comment marker. Pinned by
 `a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not`,
 `a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder`,
-`a_phrase_after_a_closed_comment_or_in_a_multiplied_string_is_not_a_placeholder` and
+`a_phrase_outside_a_comment_on_a_line_that_starts_with_a_star_is_not_a_placeholder` and
 `a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails` in
 `tests/stubs.rs`.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,

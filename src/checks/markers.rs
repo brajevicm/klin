@@ -143,7 +143,8 @@ struct Pattern {
     remedy: String,
     /// Whether `skip_test_idioms` leaves a match of this row out inside test code.
     test_idiom: bool,
-    /// Whether this row's matches in one file are one site, keyed by the row.
+    /// Whether this row's matches in one file are one site, keyed by the row, each marked on the
+    /// line where it ends.
     keyed_by_row: bool,
     /// Whether this row is in the ride-along tier of spec 9.6.
     rides_along: bool,
@@ -640,8 +641,12 @@ fn tally(
             unquoted(&pattern.regex, text, &past.literals).filter(|found| set.stands(past, found));
         let (mut scanned, mut line) = (0, 1);
         for found in stands {
-            line += text[scanned..found.start()].matches('\n').count() as u64;
-            scanned = found.start();
+            let at = match pattern.keyed_by_row {
+                true => found.end(),
+                false => found.start(),
+            };
+            line += text[scanned..at].matches('\n').count() as u64;
+            scanned = at;
             if pattern.test_idiom
                 && (past.test_file
                     || past

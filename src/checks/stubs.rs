@@ -26,7 +26,7 @@ const MARKER: &str = "comment marker";
 /// The row of comments that say the code beside them stands in for real code. ADR 0064.
 const PLACEHOLDER: &str = "placeholder comment";
 const PHRASES: &str = concat!(
-    r#"(?://[^\n]*|/\*(?:[^*\n]|\*+[^*/\n])*|^[ \t]*\*[^\n"'`]*)"#,
+    r"(?://[^\n]*|/\*(?:[^*]|\*+[^*/])*?)",
     r"(?i:\b(?:in a real implementation|simplified version|replace with actual|mock data)\b)",
 );
 const PLACEHOLDER_NOTE: &str = "write the real code the comment says is missing, or record the \

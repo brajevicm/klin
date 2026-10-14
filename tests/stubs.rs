@@ -683,12 +683,13 @@ fn a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder() {
 }
 
 #[test]
-fn a_phrase_after_a_closed_comment_or_in_a_multiplied_string_is_not_a_placeholder() {
+fn a_phrase_outside_a_comment_on_a_line_that_starts_with_a_star_is_not_a_placeholder() {
     let tree = tree();
     tree.write(
         "src/label.ts",
         "/* Initial documentation */ const label = \"mock data\";\n\
-         const chars = 4\n  * \"mock data\".length;\n",
+         const chars = 4\n  * \"mock data\".length;\n\
+         const documentation = `\n * mock data\n`;\n",
     );
 
     let run = tree.run(&["check", "stubs"]);
