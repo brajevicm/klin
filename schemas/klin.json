@@ -471,7 +471,7 @@
               "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             },
             "skip_test_idioms": {
-              "description": "whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files. Source: pinned only. Default: `true`.",
+              "description": "whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error`, `as unknown as` and empty error handlers in TypeScript and JavaScript test files. Source: pinned only. Default: `true`.",
               "type": "boolean"
             }
           },

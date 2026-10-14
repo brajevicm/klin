@@ -490,7 +490,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "a .catch(() => {})",
-        &[Rule("escapes", Any, Missed)],
+        &[Rule("escapes", Is("escape", "empty handler"), Caught)],
         STATS_FILE,
         ".catch(() => {})",
     ),
@@ -502,7 +502,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "an as unknown as T",
-        &[Rule("escapes", Any, Missed)],
+        &[Rule("escapes", Is("escape", "double cast"), Caught)],
         STATS_FILE,
         "as unknown as",
     ),
@@ -514,7 +514,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "mock data with \"In a real implementation\"",
-        &[Rule("stubs", Any, Missed)],
+        &[Rule("stubs", Is("stub", "placeholder comment"), Caught)],
         DASHBOARD_FILE,
         "",
     ),

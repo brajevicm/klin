@@ -92,6 +92,9 @@ pub struct Kind {
     /// The rows whose matches in one file are one site, keyed by the row and not by a line,
     /// because a comment is not a declaration. Spec 8.2.1, ADR 0064.
     pub keyed_by_row: &'static [&'static str],
+    /// The rows in the ride-along tier of spec 9.6, which the evaluator reads from a finding's
+    /// values and a site reads when two tiers share its line.
+    pub ride_along: &'static [&'static str],
     pub evaluator: Evaluator<'static>,
 }
 
@@ -100,7 +103,8 @@ pub struct Kind {
 pub const SKIP_TEST_IDIOMS: Key = Key {
     name: "skip_test_idioms",
     holds: "whether the test idioms inside test code are left out: `unwrap` and `expect` in \
-            Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files",
+            Rust tests, `@ts-expect-error`, `as unknown as` and empty error handlers in \
+            TypeScript and JavaScript test files",
     required: false,
     rule: None,
     default: "`true`",
@@ -141,9 +145,20 @@ struct Pattern {
     test_idiom: bool,
     /// Whether this row's matches in one file are one site, keyed by the row.
     keyed_by_row: bool,
+    /// Whether this row is in the ride-along tier of spec 9.6.
+    rides_along: bool,
 }
 
 impl Pattern {
+    /// The offset whose line names a match: where it ends for a row that keys its site, so a
+    /// comment over several lines names the line of its phrase, and where it starts otherwise.
+    fn marked_at(&self, found: &regex::Match) -> usize {
+        match self.keyed_by_row {
+            true => found.end(),
+            false => found.start(),
+        }
+    }
+
     /// One match on a line, at the site of that line's text, or at the site of this row with
     /// the line marked where the row keys the site.
     fn record(
@@ -153,11 +168,16 @@ impl Pattern {
         line: u64,
         body: &str,
     ) {
+        let row = Matched {
+            name: &self.name,
+            remedy: &self.remedy,
+            rides_along: self.rides_along,
+        };
         if !self.keyed_by_row {
-            record(seen, rel, line, body, &self.name, &self.remedy);
+            record(seen, rel, line, body, row);
             return;
         }
-        record(seen, rel, line, &self.name, &self.name, &self.remedy)
+        record(seen, rel, line, &self.name, row)
             .marks
             .push((line, body.to_string()));
     }
@@ -236,8 +256,7 @@ struct Read {
 
 struct Tally {
     line: u64,
-    name: String,
-    remedy: String,
+    label: Label,
     count: u64,
     /// The line and trimmed text of each match, for a site keyed by its row.
     marks: Vec<(u64, String)>,
@@ -431,6 +450,7 @@ fn compiled(
         .map(|(name, regex, remedy)| {
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
+                    rides_along: kind.ride_along.contains(&name.as_str()),
                     test_idiom: idioms.contains(&name.as_str()),
                     keyed_by_row: kind.keyed_by_row.contains(&name.as_str()),
                     name: name.clone(),
@@ -564,7 +584,7 @@ impl Walk {
             self.skipped += tally(set, rel, &text, &past, &mut self.seen);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
-                shapes(rel, &text, &mut self.seen, &mut self.unparsed)?;
+                shapes(kind, rel, &text, &mut self.seen, &mut self.unparsed)?;
             }
         }
         Ok(())
@@ -581,13 +601,19 @@ fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {
 
 /// The body shapes of one file's functions, which only a parser sees, recorded as sites. #114.
 fn shapes(
+    kind: &Kind,
     rel: &str,
     text: &str,
     seen: &mut BTreeMap<(String, String), Tally>,
     unparsed: &mut Vec<Unparsed>,
 ) -> Result<(), Error> {
     for stub in syntax::convention::stubs(rel, text, unparsed)? {
-        record(seen, rel, stub.line, &stub.text, stub.name, stub.remedy);
+        let row = Matched {
+            name: stub.name,
+            remedy: stub.remedy,
+            rides_along: kind.ride_along.contains(&stub.name),
+        };
+        record(seen, rel, stub.line, &stub.text, row);
     }
     Ok(())
 }
@@ -619,17 +645,13 @@ fn tally(
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
     for pattern in &set.patterns {
-        let stands = pattern
-            .regex
-            .find_iter(text)
-            .filter(|found| set.stands(past, found));
+        let stands =
+            unquoted(&pattern.regex, text, &past.literals).filter(|found| set.stands(past, found));
         let (mut scanned, mut line) = (0, 1);
         for found in stands {
-            if quoted(past, found.range()) {
-                continue;
-            }
-            line += text[scanned..found.start()].matches('\n').count() as u64;
-            scanned = found.start();
+            let at = pattern.marked_at(&found);
+            line += text[scanned..at].matches('\n').count() as u64;
+            scanned = at;
             if pattern.test_idiom
                 && (past.test_file
                     || past
@@ -647,12 +669,38 @@ fn tally(
     skipped
 }
 
-/// Whether one quoted span holds the whole match. A match that only starts in one, such as the
-/// `//` of a URL in a string ahead of a real comment marker, is a site. The spans come in order
-/// and never overlap, so only the last one to start at or before the match can hold it.
-fn quoted(past: &Skipped, at: std::ops::Range<usize>) -> bool {
-    let started = past.literals.partition_point(|(from, _)| *from <= at.start);
-    started > 0 && at.end <= past.literals[started - 1].1
+/// The matches that start outside every quoted span. A match that starts inside one, such as
+/// the `//` of a URL in a string, is no site, and the search starts again after that span, so a
+/// real comment marker later on the line is still a site. The spans come in order and never
+/// overlap, so only the last one to start at or before the match can hold its start.
+fn unquoted<'t>(
+    regex: &'t Regex,
+    text: &'t str,
+    literals: &'t [(usize, usize)],
+) -> impl Iterator<Item = regex::Match<'t>> {
+    let mut from = Some(0);
+    std::iter::from_fn(move || {
+        while let Some(found) = from.and_then(|at| regex.find_at(text, at)) {
+            let started = literals.partition_point(|(open, _)| *open <= found.start());
+            if let Some(close) = started
+                .checked_sub(1)
+                .map(|span| literals[span].1)
+                .filter(|close| found.start() <= *close)
+            {
+                from = Some(close + 1);
+                continue;
+            }
+            from = match found.is_empty() {
+                false => Some(found.end()),
+                true => text[found.end()..]
+                    .chars()
+                    .next()
+                    .map(|next| found.end() + next.len_utf8()),
+            };
+            return Some(found);
+        }
+        None
+    })
 }
 
 fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {
@@ -664,10 +712,10 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Findi
                 marks.insert((file.clone(), text.clone()), tally.marks);
             }
             let mut values = Values::new();
-            values.insert(kind.label.into(), tally.name.into());
+            values.insert(kind.label.into(), tally.label.name.into());
             values.insert("count".into(), tally.count.into());
-            if !tally.remedy.is_empty() {
-                values.insert(ratchet::REMEDY.into(), tally.remedy.into());
+            if !tally.label.remedy.is_empty() {
+                values.insert(ratchet::REMEDY.into(), tally.label.remedy.into());
             }
             Finding {
                 file,
@@ -682,23 +730,54 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Findi
     (out, marks)
 }
 
+/// The row that matched one line, as a site records it.
+struct Matched<'a> {
+    name: &'a str,
+    remedy: &'a str,
+    rides_along: bool,
+}
+
+/// The row a site is labelled by: its name, its remedy and its tier.
+struct Label {
+    name: String,
+    remedy: String,
+    rides_along: bool,
+}
+
+impl Matched<'_> {
+    fn owned(&self) -> Label {
+        Label {
+            name: self.name.to_string(),
+            remedy: self.remedy.to_string(),
+            rides_along: self.rides_along,
+        }
+    }
+}
+
+/// One match at its site. A site takes the label, remedy and line of the first row that matched
+/// it, except that a blocking row takes them from a ride-along row, so a line that holds a kind
+/// of each tier blocks. Spec 8.2.1, 9.6.
 fn record<'a>(
     seen: &'a mut BTreeMap<(String, String), Tally>,
     file: &str,
     line: u64,
     text: &str,
-    name: &str,
-    remedy: &str,
+    row: Matched,
 ) -> &'a mut Tally {
-    seen.entry((file.to_string(), text.to_string()))
-        .and_modify(|tally| tally.count += 1)
-        .or_insert(Tally {
+    let tally = seen
+        .entry((file.to_string(), text.to_string()))
+        .or_insert_with(|| Tally {
             line,
-            name: name.to_string(),
-            remedy: remedy.to_string(),
-            count: 1,
+            label: row.owned(),
+            count: 0,
             marks: Vec::new(),
-        })
+        });
+    tally.count += 1;
+    if tally.label.rides_along && !row.rides_along {
+        tally.line = line;
+        tally.label = row.owned();
+    }
+    tally
 }
 
 /// The quoted spans of this text, so a match that starts inside one is not a site. A quote that

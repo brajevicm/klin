@@ -17,6 +17,16 @@ const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, markers::SKIP_TEST_IDIOMS];
 
 const LABEL: &str = "escape";
 
+const DOUBLE_CAST: &str = "double cast";
+const DOUBLE_CAST_FIX: &str =
+    "give the value the type it has: check its shape, or narrow it with a type guard";
+const EMPTY_HANDLER: &str = "empty handler";
+const BIOME_IGNORE: &str = "biome-ignore";
+const ANALYZER_FIX: &str = "fix what the analyzer reports instead of silencing it";
+
+/// The rows in the ride-along tier of ADR 0073, by their replay N on #572. Spec 9.6.
+const RIDE_ALONG: &[&str] = &[BIOME_IGNORE];
+
 const SHARED_REMEDY: &str = "Swallowing an error in place of the escape is not a fix. Accepting \
                              a new escape is a policy decision for a person, in the config, in a \
                              reviewed commit.";
@@ -127,9 +137,41 @@ const LANGUAGES: &[Language] = &[
                 r"^[ \t]*f(?:it|describe)\(|\b(?:it|test|describe)\.only\(",
                 "",
             ),
+            (DOUBLE_CAST, r"\bas\s+unknown\s+as\b", DOUBLE_CAST_FIX),
+            (
+                "any generic argument",
+                concat!(
+                    r",\s*any(?:\s*\[\s*\])*\s*[,>|&]",
+                    r"|<\s*any(?:\s*\[\s*\])*\s*[,|&]",
+                    r"|<\s*any(?:\s*\[\s*\])+\s*>",
+                ),
+                "name the type the argument holds, or take `unknown` and narrow it",
+            ),
+            (
+                BIOME_IGNORE,
+                r"biome-ignore",
+                "fix what the Biome rule reports instead of ignoring it",
+            ),
+            (
+                "eslint config",
+                r"/\*\s*eslint\s+[\w@/-]+\s*:",
+                "fix what the ESLint rule reports instead of reconfiguring it in the file",
+            ),
+            ("NOSONAR", r"\bNOSONAR\b", ANALYZER_FIX),
+            ("codescene disable", r"@codescene\(\s*disable", ANALYZER_FIX),
+            (
+                EMPTY_HANDLER,
+                concat!(
+                    r"\}[ \t]*catch\s*(?:\(\s*[^)\s][^)]*\))?\s*\{\s*\}",
+                    r"|\.catch\(\s*(?:(?:async\s+)?(?:\([^)]*\)(?:\s*:\s*[^=(){};]+?)?|\w+)\s*=>",
+                    r"|(?:async\s+)?function\s*\w*\s*\([^)]*\)(?:\s*:\s*[^=(){};]+?)?)",
+                    r"\s*\{\s*\}\s*,?\s*\)",
+                ),
+                "handle the error, or say in a comment inside the handler why ignoring it is right",
+            ),
         ],
         test_idioms: Some(TestIdioms {
-            rows: &["ts-expect-error"],
+            rows: &["ts-expect-error", DOUBLE_CAST, EMPTY_HANDLER],
             code: TestCode::Files,
         }),
     },
@@ -154,6 +196,7 @@ pub const KIND: Kind = Kind {
     reads_shapes: false,
     reads_cfg_attr: true,
     keyed_by_row: &[],
+    ride_along: RIDE_ALONG,
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "escape site(s)",
@@ -162,7 +205,7 @@ pub const KIND: Kind = Kind {
         ceiling: None,
         format_metrics: show,
         nested: None,
-        rides_along: ratchet::every_row_blocks,
+        rides_along,
     },
 };
 
@@ -175,6 +218,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         "every escape row needs a remedy of its kind"
     );
     markers::gate(&KIND, at, out)
+}
+
+fn rides_along(values: &Values) -> bool {
+    values
+        .get(LABEL)
+        .and_then(Value::as_str)
+        .is_some_and(|name| RIDE_ALONG.contains(&name))
 }
 
 fn show(values: &Values) -> String {
