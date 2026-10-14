@@ -4008,10 +4008,12 @@ Candidates, in order:
      another branch that already holds HEAD is a note, and klin infers the
      branch, because such a base hides commits of the branch.
    - Otherwise klin infers it from the fork point. The branch's own copies
-     are `<remote>/<name>` on every remote: the first segment after
-     `refs/remotes/` is the remote and the rest is the whole branch name, so
-     `origin/team/child` is no copy of `child`. They and every `<remote>/HEAD`
-     are left out. The fork point is the first parent of the oldest commit on HEAD's
+     are `<remote>/<name>` on every remote. The remotes are the ones `git
+     remote` lists, whose names may hold a slash, and the first segment of
+     each remote-tracking ref, for a ref whose remote is no longer
+     configured. So `upstream/fork/child` is a copy of `child` where
+     `upstream/fork` is a remote, and `origin/team/child` is not. The copies
+     and every `<remote>/HEAD` are left out. The fork point is the first parent of the oldest commit on HEAD's
      first-parent chain that no other remote-tracking branch holds. A merge
      into the branch therefore never moves it. Where another branch holds
      HEAD itself, a base at HEAD would hide every commit of the branch, so
@@ -4047,7 +4049,8 @@ person's override of the inference, and it never outranks candidates 1 and
 `a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base`,
 `a_branch_base_key_that_already_holds_head_is_refused`,
 `a_branch_base_key_that_names_a_copy_behind_head_is_refused`,
-`a_parent_whose_name_ends_in_the_branch_name_is_still_its_base` and
+`a_parent_whose_name_ends_in_the_branch_name_is_still_its_base`,
+`a_copy_on_a_remote_whose_name_holds_a_slash_is_not_its_base` and
 `a_fallback_default_name_past_the_remote_head_is_an_ordinary_branch`, and
 `tests/advisory.rs` pins the Stop in
 `a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory`,

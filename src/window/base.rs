@@ -982,12 +982,16 @@ fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
         .iter()
         .filter_map(|branch| remote_reference(branch))
         .find(|reference| resolve(root, reference).is_some());
-    if default_ref.as_deref() == Some(format!("{REMOTES}origin/{name}").as_str()) {
+    let copies = Copies::of(&repo, &name);
+    if default_ref
+        .as_deref()
+        .is_some_and(|reference| copies.holds(reference))
+    {
         return Resolved::default();
     }
     let key = format!("branch.{name}.klin-base");
     let mut notes = Vec::new();
-    match keyed(&repo, &name, &key) {
+    match keyed(&repo, &copies, &key) {
         Some(Ok(stacked)) => {
             return Resolved {
                 stacked: Some(stacked),
@@ -997,7 +1001,7 @@ fn stacked_on(root: &Path, defaults: &[String]) -> Resolved {
         Some(Err(note)) => notes.push(note),
         None => {}
     }
-    let stacked = inferred(&repo, &name, default_ref.as_deref()).unwrap_or_else(|holders| {
+    let stacked = inferred(&repo, &copies, default_ref.as_deref()).unwrap_or_else(|holders| {
         notes.push(ambiguous(&key, &holders));
         None
     });
@@ -1013,7 +1017,7 @@ fn branch_name(repo: &Repo) -> Option<String> {
 /// The branch the key names, `None` when the key is not set, and the note for a key that names
 /// no branch, this branch itself or one of its remote copies however far behind, or a branch that
 /// already holds HEAD, because such a base hides commits of the branch.
-fn keyed(repo: &Repo, name: &str, key: &str) -> Option<Result<Stacked, String>> {
+fn keyed(repo: &Repo, copies: &Copies, key: &str) -> Option<Result<Stacked, String>> {
     let named = repo.text(&["config", "--get", key])?;
     let named = named.trim();
     let Some(reference) = full_name(repo, named) else {
@@ -1021,7 +1025,7 @@ fn keyed(repo: &Repo, name: &str, key: &str) -> Option<Result<Stacked, String>> 
             "{key} names {named}, which does not resolve, so klin infers the base"
         )));
     };
-    if reference == format!("refs/heads/{name}") || own_copy(&reference, name) {
+    if copies.holds(&reference) {
         return Some(Err(format!(
             "{key} names {named}, which is this branch or a copy of it and would hide its \
              commits, so klin infers the base. Name the branch this one was cut from"
@@ -1044,10 +1048,10 @@ fn keyed(repo: &Repo, name: &str, key: &str) -> Option<Result<Stacked, String>> 
 /// branch holds it, or no branch does, there is none, and where several do, they are the error.
 fn inferred(
     repo: &Repo,
-    name: &str,
+    copies: &Copies,
     default_ref: Option<&str>,
 ) -> Result<Option<Stacked>, Vec<String>> {
-    let Some(holders) = holding_the_fork_point(repo, name) else {
+    let Some(holders) = holding_the_fork_point(repo, copies) else {
         return Ok(None);
     };
     if holders
@@ -1085,10 +1089,63 @@ fn remote_name(reference: &str) -> &str {
     reference.strip_prefix(REMOTES).unwrap_or(reference)
 }
 
-/// The remote branches other than this branch's own copies, `<remote>/<name>`, that hold the
-/// fork point. Spec 6.5.
-fn holding_the_fork_point(repo: &Repo, name: &str) -> Option<Vec<String>> {
-    let fork = fork_point(repo, name)?;
+/// This branch and its copies on every remote, `refs/heads/<name>` and `<remote>/<name>`, and
+/// every `<remote>/HEAD`. The remotes are the configured ones, whose names may hold a slash, and
+/// the first segment of each remote-tracking ref, for a ref whose remote is no longer
+/// configured. So `upstream/fork/child` is a copy of `child` where `upstream/fork` is a remote,
+/// and `origin/team/child` is not. Spec 6.5.
+struct Copies {
+    own: Vec<String>,
+    left_out: Vec<String>,
+    remote_refs: bool,
+}
+
+impl Copies {
+    fn of(repo: &Repo, name: &str) -> Copies {
+        let refs = repo
+            .text(&["for-each-ref", "--format=%(refname)", REMOTES])
+            .unwrap_or_default();
+        let configured = repo.text(&["remote"]).unwrap_or_default();
+        let mut remotes: Vec<&str> = configured
+            .lines()
+            .chain(refs.lines().filter_map(|reference| {
+                let (remote, _) = reference.strip_prefix(REMOTES)?.split_once('/')?;
+                Some(remote)
+            }))
+            .collect();
+        remotes.sort_unstable();
+        remotes.dedup();
+        let at = |branch: &str| -> Vec<String> {
+            remotes
+                .iter()
+                .map(|remote| format!("{REMOTES}{remote}/{branch}"))
+                .collect()
+        };
+        let own: Vec<String> = std::iter::once(format!("refs/heads/{name}"))
+            .chain(at(name))
+            .collect();
+        let left_out = own[1..].iter().cloned().chain(at("HEAD")).collect();
+        Copies {
+            own,
+            left_out,
+            remote_refs: !refs.trim().is_empty(),
+        }
+    }
+
+    /// Whether a ref is this branch or one of its copies.
+    fn holds(&self, reference: &str) -> bool {
+        self.own.iter().any(|own| own == reference)
+    }
+
+    /// Whether a remote-tracking ref is left out of the fork point: a copy or a `<remote>/HEAD`.
+    fn leaves_out(&self, reference: &str) -> bool {
+        self.left_out.iter().any(|left| left == reference)
+    }
+}
+
+/// The remote branches other than this branch's own copies that hold the fork point. Spec 6.5.
+fn holding_the_fork_point(repo: &Repo, copies: &Copies) -> Option<Vec<String>> {
+    let fork = fork_point(repo, copies)?;
     let holders = repo.text(&[
         "for-each-ref",
         "--contains",
@@ -1099,34 +1156,23 @@ fn holding_the_fork_point(repo: &Repo, name: &str) -> Option<Vec<String>> {
     Some(
         holders
             .lines()
-            .filter(|held| !own_copy(held, name) && !own_copy(held, "HEAD"))
+            .filter(|held| !copies.leaves_out(held))
             .map(str::to_string)
             .collect(),
     )
-}
-
-/// Whether a remote-tracking ref is `<remote>/<name>`: the first segment after `refs/remotes/`
-/// is the remote, and the rest is the whole branch name, so `origin/team/child` is no copy of
-/// `child`.
-fn own_copy(reference: &str, name: &str) -> bool {
-    reference
-        .strip_prefix(REMOTES)
-        .and_then(|remote| remote.split_once('/'))
-        .is_some_and(|(_, branch)| branch == name)
 }
 
 /// The first parent of the oldest commit on HEAD's first-parent chain that no remote branch
 /// other than this branch's own copies holds. Where one holds HEAD itself there is none, because
 /// a base at HEAD would hide every commit of the branch, and with no remote branch there is none
 /// and no history is walked.
-fn fork_point(repo: &Repo, name: &str) -> Option<String> {
-    let remotes = repo.text(&["for-each-ref", "--format=%(refname)", REMOTES])?;
-    if remotes.trim().is_empty() {
+fn fork_point(repo: &Repo, copies: &Copies) -> Option<String> {
+    if !copies.remote_refs {
         return None;
     }
-    let excluded: Vec<String> = remotes
-        .lines()
-        .filter(|reference| own_copy(reference, name) || own_copy(reference, "HEAD"))
+    let excluded: Vec<String> = copies
+        .left_out
+        .iter()
         .filter_map(|reference| reference.strip_prefix(REMOTES))
         .map(|copy| format!("--exclude={copy}"))
         .collect();

@@ -688,3 +688,35 @@ fn a_parent_whose_name_ends_in_the_branch_name_is_still_its_base() {
         run.out
     );
 }
+
+/// A remote's name may hold a slash, so `upstream/fork/child` is a copy of `child` where
+/// `upstream/fork` is a remote: neither its inference nor its key may make the copy the base and
+/// hide the escape the copy holds. Spec 6.5.
+#[test]
+fn a_copy_on_a_remote_whose_name_holds_a_slash_is_not_its_base() {
+    let tree = stacked();
+    tree.git(&[
+        "remote",
+        "add",
+        "upstream/fork",
+        "https://example.invalid/fork.git",
+    ]);
+    tree.write("src/mine.rs", text::ONE);
+    tree.commit("pushed work with an escape");
+    tree.git(&["update-ref", "refs/remotes/upstream/fork/child", "HEAD"]);
+    tree.write("src/next.rs", CLEAN);
+    tree.commit("unpushed clean work");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("origin/parent (inferred)"), "{}", run.out);
+
+    tree.git(&["config", "branch.child.klin-base", "upstream/fork/child"]);
+    let keyed = tree.run(&["check"]);
+    assert_eq!(keyed.code, 1, "{}", keyed.out);
+    assert!(
+        keyed.says("names upstream/fork/child, which is this branch or a copy of it"),
+        "{}",
+        keyed.out
+    );
+}
