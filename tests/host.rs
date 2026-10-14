@@ -792,6 +792,36 @@ fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     }
 }
 
+/// A patch that deletes `klin.json` or moves it away switches klin off, so Codex, which cannot
+/// ask, refuses it. An update of it, or a move onto it, keeps klin on and passes. ADR 0074.
+#[test]
+fn a_codex_patch_that_deletes_or_moves_the_configuration_away_is_refused() {
+    for headers in [
+        "*** Delete File: klin.json",
+        "*** Update File: klin.json\n*** Move to: old.json",
+    ] {
+        let patch = codex(
+            "apply_patch",
+            &format!("*** Begin Patch\n{headers}\n*** End Patch"),
+        );
+        let run = guard(&[], &patch);
+        assert_eq!(run.code, 2, "{headers}: {}", run.out);
+        assert!(run.says("deletes or moves"), "{headers}: {}", run.out);
+    }
+    for headers in [
+        "*** Update File: klin.json\n@@\n-{}\n+{ \"escapes\": false }",
+        "*** Update File: new.json\n*** Move to: klin.json",
+    ] {
+        let patch = codex(
+            "apply_patch",
+            &format!("*** Begin Patch\n{headers}\n*** End Patch"),
+        );
+        let run = guard(&[], &patch);
+        assert_eq!(run.code, 0, "{headers}: {}", run.out);
+        assert!(!run.says("refused"), "{headers}: {}", run.out);
+    }
+}
+
 /// A malformed event says nothing about the turn, so the guard allows and the stop is not
 /// blocked. The ingress names the event it could not read on stderr alone. Spec 10.10.
 #[test]

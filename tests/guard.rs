@@ -107,9 +107,14 @@ fn asks_before_a_command_deletes_or_moves_the_configuration() {
         ("shred -u klin.json", "klin.json"),
         ("truncate -s 0 klin.json", "klin.json"),
         ("mv klin.json old.json", "klin.json"),
+        ("mv -f klin.json old/", "klin.json"),
+        ("mv -t old klin.json", "klin.json"),
         ("sudo rm klin.json", "klin.json"),
     ] {
         asked(&bash_in(&tree, command), quoted, command);
+    }
+    for command in ["mv new.json klin.json", "mv -f new.json klin.json"] {
+        allowed(&bash_in(&tree, command), command);
     }
     tree.write("sub/klin.json", "{}\n");
     allowed(&bash_in(&tree, "rm sub/klin.json"), "rm sub/klin.json");

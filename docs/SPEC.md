@@ -1633,8 +1633,11 @@ check` judge under the `klin.json` in the tree, so only a person who reads
 its diff catches a `klin.json` that an agent weakened.
 
 `klin.json` is also the opt-in file. A proven `rm`, `rmdir`, `unlink`,
-`shred`, `mv` or `truncate` of the `klin.json` at the tree root is `ask`,
-with the reason `config-mention`, because without it klin answers nothing.
+`shred` or `truncate` of the `klin.json` at the tree root, an `mv` that moves
+it away, and a Codex patch that deletes it or moves it away are `ask`, with
+the reason `config-mention`, because without it klin answers nothing. An `mv`
+or a patch that moves another file onto it keeps klin on and is `allow`. The
+copy reader of 10.8.1 finds the sources of `mv`.
 
 The `deny` list of commands is:
 

@@ -1,6 +1,6 @@
-//! The files `cp` and `install` write: their destination, never their sources. An option the
-//! reader does not know leaves the destination unproven, so it gives up rather than guess.
-//! ADR 0068.
+//! The files `cp` and `install` write: their destination, never their sources. And the files
+//! `mv` moves away: its sources, never its destination. An option the reader does not know
+//! leaves the operands unproven, so it gives up rather than guess. ADR 0068, ADR 0074.
 
 use std::fs::Metadata;
 use std::path::Path;
@@ -75,6 +75,25 @@ pub const INSTALL: Spec = Spec {
     directories: Some('d'),
 };
 
+pub const MV: Spec = Spec {
+    flags: "bfinTuvZ",
+    valued: "St",
+    long: &[
+        "backup",
+        "force",
+        "interactive",
+        "no-clobber",
+        "strip-trailing-slashes",
+        "update",
+        "no-target-directory",
+        "verbose",
+        "context",
+        "debug",
+    ],
+    long_valued: &["suffix", "target-directory"],
+    directories: None,
+};
+
 impl Spec {
     /// A long option's name and value, and `None` for one the command does not take, which
     /// includes an abbreviation.
@@ -119,6 +138,17 @@ pub fn destinations(
         written.retain(|path| look(path).is_none());
     }
     written
+}
+
+/// The operands the command moves away from: every operand under `-t`, and all but the last
+/// otherwise.
+pub fn sources(spec: &Spec, args: &[String]) -> Vec<String> {
+    Operands::of(spec, args).map_or_else(Vec::new, |read| {
+        read.sources()
+            .iter()
+            .map(|source| source.to_string())
+            .collect()
+    })
 }
 
 fn named(read: &Operands, is_dir: impl Fn(&str) -> bool) -> Vec<String> {
@@ -188,15 +218,18 @@ impl<'a> Operands<'a> {
         self.into.or_else(|| self.operands.last().copied())
     }
 
-    fn contents(&self) -> bool {
-        let sources = match self.into {
+    fn sources(&self) -> &[&'a str] {
+        match self.into {
             Some(_) => &self.operands[..],
             None => self
                 .operands
                 .split_last()
                 .map_or(&[][..], |(_, sources)| sources),
-        };
-        sources.iter().any(|source| {
+        }
+    }
+
+    fn contents(&self) -> bool {
+        self.sources().iter().any(|source| {
             matches!(*source, "." | "..")
                 || source.ends_with('/')
                 || source.ends_with("/.")

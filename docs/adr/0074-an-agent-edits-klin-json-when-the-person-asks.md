@@ -15,9 +15,10 @@ shell write of it with `allow`, on every host. klin's own state directory
 stays guarded as before.
 
 One exception stays. `klin.json` is also the opt-in file, and without it klin
-answers nothing. So a proven `rm`, `rmdir`, `unlink`, `shred`, `mv` or
-`truncate` of the `klin.json` at the tree root is still `ask`: a person
-decides whether klin goes off.
+answers nothing. So a proven `rm`, `rmdir`, `unlink`, `shred` or
+`truncate` of the `klin.json` at the tree root, an `mv` that moves it away,
+and a Codex patch that deletes it or moves it away are still `ask`: a person
+decides whether klin goes off. Moving another file onto it is `allow`.
 
 The rule moves into the klin skill, which every host's plugin carries. The
 agent changes `klin.json` only when the person explicitly asks for that

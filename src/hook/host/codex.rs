@@ -9,12 +9,9 @@ use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, r
 const TURN: &str = "turn_id";
 const PATCH: &str = "apply_patch";
 /// The headers of the patch language that name a file. The text below them is data.
-const HEADERS: &[&str] = &[
-    "*** Add File: ",
-    "*** Delete File: ",
-    "*** Update File: ",
-    "*** Move to: ",
-];
+const HEADERS: &[&str] = &["*** Add File: ", DELETE, "*** Update File: ", MOVE];
+const DELETE: &str = "*** Delete File: ";
+const MOVE: &str = "*** Move to: ";
 
 /// The file Codex lists its enabled plugins in, beside the hook file. Each plugin is a table
 /// named `[plugins."name@marketplace"]`, on by default and off under `enabled = false`.
@@ -67,13 +64,14 @@ impl Adapter for Codex {
     fn event(&'static self, payload: &Value) -> Event {
         let tool = text(payload.get("tool_name"));
         let command = input(payload, "command");
-        let (file_paths, command) = match tool == PATCH {
+        let ((file_paths, removed), command) = match tool == PATCH {
             true => (patch_paths(&command), String::new()),
-            false => (Vec::new(), command),
+            false => (Default::default(), command),
         };
         Event {
             tool,
             file_paths,
+            removed,
             command,
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
@@ -129,14 +127,26 @@ fn disabled(line: &str) -> bool {
     key.trim() == "enabled" && value.trim().starts_with("false")
 }
 
-/// Codex finds a header after it trims the line, so klin does too.
-fn patch_paths(patch: &str) -> Vec<String> {
-    patch
-        .lines()
-        .map(str::trim)
-        .filter_map(|line| HEADERS.iter().find_map(|header| line.strip_prefix(header)))
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(str::to_string)
-        .collect()
+/// Every path a patch's headers name, and the paths it deletes or moves away: a `*** Delete
+/// File:` path, and the `*** Update File:` path a `*** Move to:` follows. Codex finds a header
+/// after it trims the line, so klin does too.
+fn patch_paths(patch: &str) -> (Vec<String>, Vec<String>) {
+    let mut paths: Vec<String> = Vec::new();
+    let mut removed = Vec::new();
+    for line in patch.lines().map(str::trim) {
+        let Some((header, path)) = HEADERS
+            .iter()
+            .find_map(|header| Some((*header, line.strip_prefix(header)?.trim())))
+        else {
+            continue;
+        };
+        match header {
+            _ if path.is_empty() => continue,
+            DELETE => removed.push(path.to_string()),
+            MOVE => removed.extend(paths.last().cloned()),
+            _ => {}
+        }
+        paths.push(path.to_string());
+    }
+    (paths, removed)
 }

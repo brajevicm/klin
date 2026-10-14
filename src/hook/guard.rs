@@ -59,8 +59,9 @@ const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
 /// switches klin off for the session, so a proven delete or move of it is put to the person.
 /// ADR 0074.
 const NAME: &str = "klin.json";
-/// The writers that delete, move or empty a file.
-const REMOVERS: &[&str] = &["rm", "rmdir", "unlink", "shred", "mv", "truncate"];
+/// The writers that delete or empty a file. `mv` moves its sources away, which the copy reader
+/// finds.
+const REMOVERS: &[&str] = &["rm", "rmdir", "unlink", "shred", "truncate"];
 /// The commands that write every argument they take, so a guarded path among the arguments is a
 /// write under any reading. `cp` and `install` write their destination alone, which the copy
 /// reader finds. ADR 0033, ADR 0068.
@@ -100,7 +101,13 @@ fn decided(guarded: &Guarded, event: &Event) -> (Decision, &'static str) {
             event
                 .file_paths
                 .iter()
-                .flat_map(|path| guarded.denied(guarded.here(), path)),
+                .flat_map(|path| guarded.denied(guarded.here(), path))
+                .chain(
+                    event
+                        .removed
+                        .iter()
+                        .flat_map(|path| guarded.removed(guarded.here(), path)),
+                ),
         )
     });
     match paths {
@@ -521,10 +528,11 @@ fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
 }
 
 /// The files a command deletes, moves or empties. ADR 0074.
-fn removed_by(words: &[String]) -> &[String] {
+fn removed_by(words: &[String]) -> Vec<String> {
     match command(words) {
-        Some((command, args)) if REMOVERS.contains(&command) => args,
-        _ => &[],
+        Some(("mv", args)) => copy::sources(&copy::MV, args),
+        Some((command, args)) if REMOVERS.contains(&command) => args.to_vec(),
+        _ => Vec::new(),
     }
 }
 

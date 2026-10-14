@@ -55,7 +55,7 @@ other file the coding agent can edit through its host.
   0074).
 - The klin skill tells the agent to change `klin.json` only when the person
   explicitly asks for that change. klin does not enforce this. A proven delete
-  or move of `klin.json`, which switches klin off, is `ask`.
+  of `klin.json`, or a move of it away, switches klin off and is `ask`.
 - The guard answers only where it can prove that a call writes a guarded path.
   A shell wildcard, an unbalanced quote, `$(`, a backtick, `${`, `<<`, a
   backslash, a `cd` command word, or a path it cannot resolve all end in
