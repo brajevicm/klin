@@ -776,11 +776,18 @@ fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     let run = guard(&[], &allowed);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("permissionDecision"), "{}", run.out);
+    let context = codex(
+        "apply_patch",
+        "*** Begin Patch\n*** Update File: docs/example.md\n@@\n *** Update File: .git/klin/turn\n*** End Patch",
+    );
+    let run = guard(&[], &context);
+    assert_eq!(run.code, 0, "{}", run.out);
 
     for headers in [
         "*** Update File: src/main.rs\n*** Update File: .git/klin/turn",
         "*** Update File: a.json\n*** Move to: .git/klin/turn",
         "  *** Update File: .git/klin/turn",
+        "*** Add File: a.md\n+one\n  *** Update File: .git/klin/turn",
     ] {
         let denied = codex(
             "apply_patch",
@@ -810,6 +817,8 @@ fn a_codex_patch_that_deletes_or_moves_the_configuration_away_is_refused() {
     }
     for headers in [
         "*** Update File: klin.json\n@@\n-{}\n+{ \"escapes\": false }",
+        "*** Update File: docs/example.md\n@@\n *** Delete File: klin.json\n+one",
+        "*** Update File: docs/a.md\n*** Move to: docs/b.md\n@@\n *** Delete File: klin.json",
         "*** Update File: new.json\n*** Move to: klin.json",
     ] {
         let patch = codex(

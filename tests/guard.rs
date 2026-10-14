@@ -109,6 +109,8 @@ fn asks_before_a_command_deletes_or_moves_the_configuration() {
         ("mv klin.json old.json", "klin.json"),
         ("mv -f klin.json old/", "klin.json"),
         ("mv -t old klin.json", "klin.json"),
+        ("mv -h klin.json old.json", "klin.json"),
+        ("mv --no-copy klin.json old.json", "klin.json"),
         ("sudo rm klin.json", "klin.json"),
     ] {
         asked(&bash_in(&tree, command), quoted, command);
@@ -118,6 +120,27 @@ fn asks_before_a_command_deletes_or_moves_the_configuration() {
     }
     tree.write("sub/klin.json", "{}\n");
     allowed(&bash_in(&tree, "rm sub/klin.json"), "rm sub/klin.json");
+}
+
+/// `rm` and `mv` act on a link itself. Removing a link to `klin.json` leaves klin on, and
+/// removing a `klin.json` that is a link turns it off. ADR 0074.
+#[test]
+fn a_link_to_the_configuration_is_its_own_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    std::os::unix::fs::symlink(tree.path("klin.json"), tree.path("alias.json")).unwrap();
+    for command in ["rm alias.json", "mv alias.json backup.json"] {
+        allowed(&bash_in(&tree, command), command);
+    }
+
+    let linked = Tree::new();
+    linked.write("real.json", "{}\n");
+    std::os::unix::fs::symlink(linked.path("real.json"), linked.path("klin.json")).unwrap();
+    asked(
+        &bash_in(&linked, "rm klin.json"),
+        "klin.json",
+        "rm a linked klin.json",
+    );
 }
 
 #[test]

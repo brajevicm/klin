@@ -214,8 +214,8 @@ impl Guarded {
     /// The opt-in file taken as an argument by a command that deletes or moves it. Without the
     /// file klin answers nothing, so a person decides. Spec 10.8, ADR 0074.
     fn removed(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
-        let at = resolved(base, token)?;
-        (at == real(&self.root.join(NAME))).then(|| {
+        let at = entry(base, token)?;
+        (at == entry(Some(&self.root), NAME)?).then(|| {
             (
                 Decision::Ask(format!(
                     "this deletes or moves \"{token}\", the file that turns klin on."
@@ -233,6 +233,16 @@ fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
         return None;
     }
     Some(real(&plain(&joined(base, token)?)))
+}
+
+/// The directory entry a token names from `base`: its parent resolved, the name itself kept,
+/// because `rm` and `mv` act on a link and never on what it points to.
+fn entry(base: Option<&Path>, token: &str) -> Option<PathBuf> {
+    if token.is_empty() || token.contains(WILDCARDS) {
+        return None;
+    }
+    let at = plain(&joined(base, token)?);
+    Some(real(at.parent()?).join(at.file_name()?))
 }
 
 /// The path a token names from `base`, and `None` for a relative one with no `base`.

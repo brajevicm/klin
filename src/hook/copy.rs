@@ -1,6 +1,7 @@
 //! The files `cp` and `install` write: their destination, never their sources. And the files
 //! `mv` moves away: its sources, never its destination. An option the reader does not know
-//! leaves the operands unproven, so it gives up rather than guess. ADR 0068, ADR 0074.
+//! leaves the operands unproven: it gives a destination up rather than guess, and takes every
+//! word as a source. ADR 0068, ADR 0074.
 
 use std::fs::Metadata;
 use std::path::Path;
@@ -141,14 +142,17 @@ pub fn destinations(
 }
 
 /// The operands the command moves away from: every operand under `-t`, and all but the last
-/// otherwise.
+/// otherwise. An option the reader does not know leaves the sources unproven, so every word
+/// may be one: a move away is never let through on a guess.
 pub fn sources(spec: &Spec, args: &[String]) -> Vec<String> {
-    Operands::of(spec, args).map_or_else(Vec::new, |read| {
-        read.sources()
+    match Operands::of(spec, args) {
+        Some(read) => read
+            .sources()
             .iter()
             .map(|source| source.to_string())
-            .collect()
-    })
+            .collect(),
+        None => args.to_vec(),
+    }
 }
 
 fn named(read: &Operands, is_dir: impl Fn(&str) -> bool) -> Vec<String> {

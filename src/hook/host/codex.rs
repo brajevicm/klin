@@ -9,9 +9,10 @@ use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, r
 const TURN: &str = "turn_id";
 const PATCH: &str = "apply_patch";
 /// The headers of the patch language that name a file. The text below them is data.
-const HEADERS: &[&str] = &["*** Add File: ", DELETE, "*** Update File: ", MOVE];
+const HEADERS: &[&str] = &["*** Add File: ", DELETE, UPDATE, MOVE];
 const DELETE: &str = "*** Delete File: ";
 const MOVE: &str = "*** Move to: ";
+const UPDATE: &str = "*** Update File: ";
 
 /// The file Codex lists its enabled plugins in, beside the hook file. Each plugin is a table
 /// named `[plugins."name@marketplace"]`, on by default and off under `enabled = false`.
@@ -129,17 +130,24 @@ fn disabled(line: &str) -> bool {
 
 /// Every path a patch's headers name, and the paths it deletes or moves away: a `*** Delete
 /// File:` path, and the `*** Update File:` path a `*** Move to:` follows. Codex finds a header
-/// after it trims the line, so klin does too.
+/// after it trims the line, so klin does too, except inside an update hunk, where Codex keeps a
+/// line that starts with a space as context.
 fn patch_paths(patch: &str) -> (Vec<String>, Vec<String>) {
     let mut paths: Vec<String> = Vec::new();
     let mut removed = Vec::new();
-    for line in patch.lines().map(str::trim) {
+    let mut updating = false;
+    for line in patch.lines() {
+        if updating && line.starts_with(' ') {
+            continue;
+        }
+        let line = line.trim();
         let Some((header, path)) = HEADERS
             .iter()
             .find_map(|header| Some((*header, line.strip_prefix(header)?.trim())))
         else {
             continue;
         };
+        updating = matches!(header, UPDATE | MOVE);
         match header {
             _ if path.is_empty() => continue,
             DELETE => removed.push(path.to_string()),
