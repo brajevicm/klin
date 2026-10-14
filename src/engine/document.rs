@@ -1019,7 +1019,8 @@ impl CheckDocument {
             records,
             ms,
         } = ran;
-        let (told, shown) = shown(args, (gate, project), told, failed);
+        let ((told, shown), recorded) = clock::timed(|| shown(args, (gate, project), told, failed));
+        let ms = ms + recorded;
         let axes = axes_of(code, &shown);
         self.axes = self.axes.and(axes);
         let told = self.held_back(args, &gate.name, axes, told);
