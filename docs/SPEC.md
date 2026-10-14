@@ -672,10 +672,12 @@ the merge-base of HEAD with the default branch, HEAD's symbolic ref (an
 in-progress rebase counts as its `head-name` branch), and the position of
 HEAD's reflog. On a stacked branch it also records the ref of the branch it
 is stacked on (candidate 3 of B.6.3), resolved when the stamp is taken, and
-in this section that branch stands in for the default branch while its ref
-resolves. So a merge of that branch is incoming commits, and a later Stop
-reads its ref from the git directory's files with no git process. A Stop is
-advisory when, since the stamp was taken, one of these happened:
+the merge-base of HEAD with it. Rules 1 and 3 apply to that merge-base as to
+the default branch's, while its ref resolves, so a merge of either branch is
+incoming commits. A later Stop reads the ref from the git directory's files,
+and each merge-base has its own cache, so a Stop where nothing moved starts
+no git process. A Stop is advisory when, since the stamp was taken, one of
+these happened:
 
 1. **Incoming commits.** The default-branch merge-base moved forward, so
    the recorded one is an ancestor of it, and HEAD's
@@ -812,8 +814,8 @@ changes:
   it reads no schema 1 line. A Stop line can carry the verdict `advisory`
   (section 13.1).
 - The stamp also records the default-branch merge-base, the ref of the
-  branch a stacked branch is stacked on, HEAD's symbolic ref and HEAD's
-  reflog position (section 6.6).
+  branch a stacked branch is stacked on and the merge-base with it, HEAD's
+  symbolic ref and HEAD's reflog position (section 6.6).
 - vNext adds no readiness record and no readiness drift check.
 - `klin cache clean` does not exist. The cache stays safe to delete by hand.
   `klin status` prints the state directory and the cache path.
@@ -2867,8 +2869,11 @@ ticket that implements the area MUST measure them:
    (candidate 3 of B.6.3). A teammate's branch cut from this branch holds
    some of its commits, so the inferred base is too new and this branch's
    earlier commits do not read as new. `branch.<name>.klin-base` names the
-   right branch. A merge of a third branch, neither the default branch nor
-   the one the branch is stacked on, does not move the recorded merge-base.
+   right branch. A stacked branch that merges the default branch is judged
+   against the branch it is stacked on, so the default branch's commits read
+   as new at `klin check` until that branch holds them. A merge of a third
+   branch, neither the default branch nor the one the branch is stacked on,
+   moves no recorded merge-base.
 4. **Cross-file findings.** A finding in a file the agent changed that an
    earlier commit of the branch caused, without incoming commits.
 5. **Reflog dependence.** Rule 1 of section 6.6 reads HEAD's reflog. A
@@ -3994,17 +3999,24 @@ Candidates, in order:
 3. The merge-base of HEAD with the branch HEAD's branch `<name>` is stacked
    on, only when neither candidate above is present. Kind `branch`.
    - `git config branch.<name>.klin-base REF` names it, when REF resolves to a
-     ref. The window says `(branch.<name>.klin-base)`. A REF that does not
-     resolve is a note, and klin infers the branch.
-   - Otherwise klin infers it from the fork point: the newest first-parent
-     ancestor of HEAD that a remote-tracking branch holds, leaving out
-     `origin/<name>` and every `*/HEAD`. When exactly one such branch holds
-     the fork point and the default branch does not, it is the base, and the
-     window says `(inferred)`. When the default branch holds it, the default
-     branch is the base. When two or more other branches hold it, a note
-     names them and the key, and the default branch is the base.
-   - A detached HEAD, and a branch whose `origin/<name>` is the default branch,
-     are stacked on nothing.
+     local or remote-tracking branch. The window says
+     `(branch.<name>.klin-base)`. A REF that names no branch, such as a tag,
+     is a note, and klin infers the branch.
+   - Otherwise klin infers it from the fork point. The branch's own copies
+     are `<remote>/<name>` on every remote, and every `*/HEAD` is left out
+     too. The fork point is the first parent of the oldest commit on HEAD's
+     first-parent chain that no other remote-tracking branch holds. A merge
+     into the branch therefore never moves it. Where another branch holds
+     HEAD itself, a base at HEAD would hide every commit of the branch, so
+     klin infers nothing and the default branch is the base.
+     When exactly one other branch holds the fork point and the default
+     branch does not, it is the base, and the window says `(inferred)`. When
+     the default branch holds it, the default branch is the base. When two
+     or more other branches hold it, a note names them and the key, and the
+     default branch is the base.
+   - A detached HEAD, a branch whose `origin/<name>` is the default branch,
+     and a repository with no remote-tracking branch are stacked on nothing,
+     and klin walks no history for them.
 4. The merge-base of HEAD with the default branch, trying the remote HEAD
    symbolic ref, then `origin/main`, `origin/master`, `main`, `master`. Kind
    `branch`.
@@ -4017,10 +4029,15 @@ person's override of the inference, and it never outranks candidates 1 and
 `the_branch_base_key_overrides_the_inferred_base`,
 `a_branch_base_key_that_does_not_resolve_falls_back_to_the_inferred_base`,
 `a_fork_point_two_remote_branches_hold_is_judged_against_the_default_branch`,
-`the_pull_request_target_wins_over_the_branch_base` and
-`a_branch_that_tracks_the_default_branch_is_judged_against_it`, and
+`the_pull_request_target_wins_over_the_branch_base`,
+`a_branch_that_tracks_the_default_branch_is_judged_against_it`,
+`a_stacked_branch_that_merged_the_default_branch_stays_stacked`,
+`a_branch_cut_from_the_default_branch_that_merged_a_teammates_branch_is_not_stacked`,
+`a_copy_of_the_branch_on_another_remote_is_not_its_base` and
+`a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base`, and
 `tests/advisory.rs` pins the Stop in
-`a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory`.
+`a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory` and
+`a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory`.
 
 #### B.6.5 Materialization
 

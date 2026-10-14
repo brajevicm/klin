@@ -513,3 +513,86 @@ fn a_branch_that_tracks_the_default_branch_is_judged_against_it() {
     assert!(run.says("the merge-base with origin/main"), "{}", run.out);
     assert!(!run.says("inferred"), "{}", run.out);
 }
+
+fn merged(tree: &Tree, branch: &str) {
+    tree.git(&[
+        "-c",
+        "user.name=klin",
+        "-c",
+        "user.email=klin@example.com",
+        "merge",
+        "-q",
+        "--no-edit",
+        branch,
+    ]);
+}
+
+/// A merge brings in a branch tip that is not the fork point: the fork point stays on the
+/// first-parent chain. Spec 6.5.
+#[test]
+fn a_stacked_branch_that_merged_the_default_branch_stays_stacked() {
+    let tree = stacked();
+    tree.git(&["checkout", "-q", "main"]);
+    tree.write("src/later.rs", CLEAN);
+    tree.commit("later work on the default branch");
+    tree.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    tree.git(&["checkout", "-q", "child"]);
+    merged(&tree, "origin/main");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the merge-base with origin/parent (inferred)"),
+        "{}",
+        run.out
+    );
+}
+
+/// The merged branch's work still reads as new, as it does on any branch cut from the default
+/// branch. Spec 6.5, 18.7.
+#[test]
+fn a_branch_cut_from_the_default_branch_that_merged_a_teammates_branch_is_not_stacked() {
+    let tree = stacked();
+    tree.git(&["checkout", "-q", "-b", "mine", "main"]);
+    tree.write("src/mine.rs", CLEAN);
+    tree.commit("my work");
+    merged(&tree, "origin/parent");
+    tree.write("src/after.rs", CLEAN);
+    tree.commit("more of my work");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("the merge-base with origin/main"), "{}", run.out);
+    assert!(!run.says("inferred"), "{}", run.out);
+}
+
+#[test]
+fn a_copy_of_the_branch_on_another_remote_is_not_its_base() {
+    let tree = stacked();
+    tree.git(&["update-ref", "refs/remotes/fork/child", "HEAD"]);
+    tree.write("src/unpushed.rs", CLEAN);
+    tree.commit("work the fork does not hold");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the merge-base with origin/parent (inferred)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_branch_base_key_that_names_a_tag_falls_back_to_the_inferred_base() {
+    let tree = stacked();
+    tree.git(&["tag", "v1", "main"]);
+    tree.git(&["config", "branch.child.klin-base", "v1"]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("branch.child.klin-base names v1, which does not resolve"),
+        "{}",
+        run.out
+    );
+}

@@ -1027,39 +1027,57 @@ fn inferred(
     }
 }
 
-/// The remote branches other than `origin/<name>` that hold the fork point: the newest
-/// first-parent ancestor of HEAD that one of them holds. Spec 6.5.
+/// The remote branches other than this branch's own copies, `<remote>/<name>`, that hold the
+/// fork point. Spec 6.5.
 fn holding_the_fork_point(repo: &Repo, name: &str) -> Option<Vec<String>> {
-    let own = format!("{REMOTES}origin/{name}");
-    let exclude = format!("--exclude=origin/{name}");
+    let fork = fork_point(repo, name)?;
+    let holders = repo.text(&[
+        "for-each-ref",
+        "--contains",
+        &fork,
+        "--format=%(refname)",
+        REMOTES,
+    ])?;
+    let own = |held: &str| {
+        held.strip_prefix(REMOTES)
+            .and_then(|remote| remote.split_once('/'))
+            .is_some_and(|(_, branch)| branch == name || branch == "HEAD")
+    };
+    Some(
+        holders
+            .lines()
+            .filter(|held| !own(held))
+            .map(str::to_string)
+            .collect(),
+    )
+}
+
+/// The first parent of the oldest commit on HEAD's first-parent chain that no remote branch
+/// other than this branch's own copies holds. Where one holds HEAD itself there is none, because
+/// a base at HEAD would hide every commit of the branch, and with no remote branch there is none
+/// and no history is walked.
+fn fork_point(repo: &Repo, name: &str) -> Option<String> {
+    let any = repo.text(&["for-each-ref", "--count=1", "--format=%(refname)", REMOTES])?;
+    if any.trim().is_empty() {
+        return None;
+    }
+    let exclude = format!("--exclude=*/{name}");
     let walked = repo.text(&[
         "rev-list",
         "--first-parent",
-        "--boundary",
+        "--parents",
         "HEAD",
         "--not",
         &exclude,
         "--exclude=*/HEAD",
         "--remotes",
     ])?;
-    let fork = walked.lines().find_map(|line| line.strip_prefix('-'))?;
-    let holders = repo.text(&[
-        "for-each-ref",
-        "--contains",
-        fork,
-        "--format=%(refname)",
-        REMOTES,
-    ])?;
-    Some(
-        holders
-            .lines()
-            .filter(|held| !held.ends_with("/HEAD") && *held != own)
-            .map(str::to_string)
-            .collect(),
-    )
+    let oldest = walked.lines().last()?;
+    oldest.split_whitespace().nth(1).map(str::to_string)
 }
 
-/// The full ref a branch name resolves to, and `None` for a name that is not a branch.
+/// The full ref of the branch a name resolves to, local or remote-tracking, and `None` for a
+/// name that is not a branch, such as a tag.
 fn full_name(repo: &Repo, named: &str) -> Option<String> {
     let found = repo.text(&[
         "rev-parse",
@@ -1069,7 +1087,7 @@ fn full_name(repo: &Repo, named: &str) -> Option<String> {
         named,
     ])?;
     let found = found.trim();
-    (found.starts_with("refs/")).then(|| found.to_string())
+    (found.starts_with("refs/heads/") || found.starts_with(REMOTES)).then(|| found.to_string())
 }
 
 fn pushed_from() -> Option<String> {

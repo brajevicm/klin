@@ -157,13 +157,14 @@ pub struct Stamp {
     pub history: History,
 }
 
-/// The merge-base with the branch this one is based on, the ref of that branch where it is not
-/// the default branch, HEAD's symbolic ref (`HEAD` when detached) and the position of HEAD's
+/// The default-branch merge-base, the ref of the branch a stacked branch is stacked on and the
+/// merge-base with it, HEAD's symbolic ref (`HEAD` when detached) and the position of HEAD's
 /// reflog. A field the stamp never recorded is `None`. Spec 6.6.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct History {
     pub merge_base: Option<String>,
-    pub base: Option<String>,
+    pub stacked: Option<String>,
+    pub stacked_merge_base: Option<String>,
     pub head_ref: Option<String>,
     pub reflog_position: Option<ReflogPosition>,
 }
@@ -179,8 +180,11 @@ impl History {
         History {
             merge_base: here
                 .pair()
-                .and_then(|(head, default)| merge_base(root, at, head, default)),
-            base: here.base.clone(),
+                .and_then(|(head, default)| merge_base(root, at, MERGE_BASE, head, default)),
+            stacked: here.stacked.as_ref().map(|(name, _)| name.clone()),
+            stacked_merge_base: here.stacked_pair().and_then(|(head, stacked)| {
+                merge_base(root, at, STACKED_MERGE_BASE, head, stacked)
+            }),
             head_ref: here.head_ref.clone(),
             reflog_position: here
                 .reflog
@@ -191,19 +195,18 @@ impl History {
     }
 }
 
-/// HEAD, its symbolic ref, the base branch and HEAD's reflog as this event finds them, read
-/// from the git directory's files. The base branch is the stacked branch a stamp recorded while
-/// its ref resolves, and otherwise the default branch, candidate 4 of B.6.3 among
-/// remote-tracking refs alone. Spec 6.6.
+/// HEAD, its symbolic ref, the default branch, the branch a stamp recorded as stacked on, and
+/// HEAD's reflog as this event finds them, read from the git directory's files. The default
+/// branch is candidate 4 of B.6.3 among remote-tracking refs alone. Spec 6.6.
 #[derive(Default)]
 pub struct Here {
     pub head: Option<String>,
     /// HEAD's symbolic ref, the branch an in-progress rebase works on, or `HEAD` when detached.
     pub head_ref: Option<String>,
-    /// The base branch's ref and the commit it names.
+    /// The default branch's ref and the commit it names.
     pub default: Option<(String, String)>,
-    /// The stacked branch's ref, when it resolved and stands in for the default branch.
-    pub base: Option<String>,
+    /// The stacked-on branch's ref and the commit it names, while that ref resolves.
+    pub stacked: Option<(String, String)>,
     /// Whether any `refs/remotes/*` ref exists.
     pub remotes: bool,
     /// The message of each entry of HEAD's reflog, oldest first, and `None` without a reflog.
@@ -211,14 +214,14 @@ pub struct Here {
 }
 
 impl Here {
-    pub fn read(root: &Path, base: Option<&str>) -> Here {
+    pub fn read(root: &Path, stacked: Option<&str>) -> Here {
         let Some(dir) = Repo::at(root).rev_parse_path("--absolute-git-dir") else {
             return Here::default();
         };
         let common = std::fs::read_to_string(dir.join("commondir"))
             .map_or_else(|_| dir.clone(), |common| dir.join(common.trim()));
         if common.join("reftable").is_dir() {
-            return Here::through_git(root, &dir, base);
+            return Here::through_git(root, &dir, stacked);
         }
         let refs = Refs {
             packed: std::fs::read_to_string(common.join("packed-refs")).unwrap_or_default(),
@@ -226,15 +229,12 @@ impl Here {
             common,
         };
         let head_ref = rebasing(&refs.dir).or_else(|| refs.symbolic("HEAD"));
-        let stacked = base.and_then(|name| Some((name.to_string(), refs.resolve(name)?)));
         Here {
             head: refs.resolve("HEAD"),
             head_ref: Some(head_ref.unwrap_or_else(|| "HEAD".to_string())),
-            default: stacked.clone().or_else(|| {
-                default_candidates(refs.symbolic("refs/remotes/origin/HEAD"))
-                    .find_map(|name| Some((name.clone(), refs.resolve(&name)?)))
-            }),
-            base: stacked.map(|(name, _)| name),
+            default: default_candidates(refs.symbolic("refs/remotes/origin/HEAD"))
+                .find_map(|name| Some((name.clone(), refs.resolve(&name)?))),
+            stacked: stacked.and_then(|name| Some((name.to_string(), refs.resolve(name)?))),
             remotes: refs.packed.contains(" refs/remotes/")
                 || any_file(&refs.common.join("refs/remotes")),
             reflog: std::fs::read_to_string(refs.dir.join("logs/HEAD"))
@@ -254,9 +254,8 @@ impl Here {
 
     /// The same facts from git itself, for a repository that keeps its refs in a reftable.
     // ponytail: one git process per fact; one `for-each-ref` call if reftable Stops grow slow.
-    fn through_git(root: &Path, dir: &Path, base: Option<&str>) -> Here {
+    fn through_git(root: &Path, dir: &Path, stacked: Option<&str>) -> Here {
         let repo = Repo::at(root);
-        let stacked = base.and_then(|name| Some((name.to_string(), resolve(root, name)?)));
         let symbolic = |name: &str| {
             repo.text(&["symbolic-ref", "-q", name])
                 .map(|found| found.trim().to_string())
@@ -269,11 +268,9 @@ impl Here {
                     .or_else(|| symbolic("HEAD"))
                     .unwrap_or_else(|| "HEAD".to_string()),
             ),
-            default: stacked.clone().or_else(|| {
-                default_candidates(symbolic("refs/remotes/origin/HEAD"))
-                    .find_map(|name| Some((name.clone(), resolve(root, &name)?)))
-            }),
-            base: stacked.map(|(name, _)| name),
+            default: default_candidates(symbolic("refs/remotes/origin/HEAD"))
+                .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
+            stacked: stacked.and_then(|name| Some((name.to_string(), resolve(root, name)?))),
             remotes: repo
                 .text(&["for-each-ref", "--count=1", "refs/remotes"])
                 .is_some_and(|found| !found.trim().is_empty()),
@@ -284,9 +281,14 @@ impl Here {
         }
     }
 
-    /// HEAD and the base branch's commit, the pair the merge-base cache is keyed by.
+    /// HEAD and the default branch's commit, the pair the merge-base cache is keyed by.
     pub fn pair(&self) -> Option<(&str, &str)> {
         Some((self.head.as_deref()?, self.default.as_ref()?.1.as_str()))
+    }
+
+    /// HEAD and the stacked-on branch's commit, the pair its own merge-base cache is keyed by.
+    pub fn stacked_pair(&self) -> Option<(&str, &str)> {
+        Some((self.head.as_deref()?, self.stacked.as_ref()?.1.as_str()))
     }
 
     /// The reflog messages after the position a stamp recorded, and `None` where either side
@@ -368,10 +370,16 @@ fn any_file(dir: &Path) -> bool {
         })
 }
 
-/// The merge-base of HEAD with the default branch, kept under the pair of commits it was
-/// computed for, so git computes it only when one of them moved. Spec 6.6.
-pub fn merge_base(root: &Path, at: &Path, head: &str, default: &str) -> Option<String> {
-    let file = at.join(MERGE_BASE);
+/// The merge-base of HEAD with a branch, kept in the `cache` file under the pair of commits it
+/// was computed for, so git computes it only when one of them moved. Spec 6.6.
+pub fn merge_base(
+    root: &Path,
+    at: &Path,
+    cache: &str,
+    head: &str,
+    default: &str,
+) -> Option<String> {
+    let file = at.join(cache);
     if let Some(cached) = Cached::read(&file).filter(|cached| cached.keys(head, default)) {
         return Some(cached.merge_base);
     }
@@ -388,8 +396,12 @@ pub fn merge_base(root: &Path, at: &Path, head: &str, default: &str) -> Option<S
     Some(cached.merge_base)
 }
 
-/// Where the merge-base cache lives in the state directory.
-const MERGE_BASE: &str = "merge-base";
+/// Where the default branch's merge-base cache lives in the state directory.
+pub const MERGE_BASE: &str = "merge-base";
+
+/// Where the stacked-on branch's merge-base cache lives, apart from the default branch's, so a
+/// Stop where nothing moved finds both cached.
+pub const STACKED_MERGE_BASE: &str = "merge-base-stacked";
 
 /// The merge-base cache: one merge-base and the pair of commits it was computed for.
 struct Cached {
@@ -491,7 +503,8 @@ pub fn read(at: &Path) -> Option<Stamp> {
         told: strings(&held, "told"),
         history: History {
             merge_base: text("merge_base"),
-            base: text("base"),
+            stacked: text("stacked"),
+            stacked_merge_base: text("stacked_merge_base"),
             head_ref: text("head_ref"),
             reflog_position: held
                 .get("reflog_position")
@@ -531,7 +544,11 @@ pub fn recorded(stamp: &Stamp) -> Value {
             "merge_base",
             stamp.history.merge_base.clone().map(Value::from),
         ),
-        ("base", stamp.history.base.clone().map(Value::from)),
+        ("stacked", stamp.history.stacked.clone().map(Value::from)),
+        (
+            "stacked_merge_base",
+            stamp.history.stacked_merge_base.clone().map(Value::from),
+        ),
         ("head_ref", stamp.history.head_ref.clone().map(Value::from)),
         (
             "reflog_position",

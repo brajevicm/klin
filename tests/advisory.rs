@@ -257,7 +257,7 @@ fn a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory() {
     tree.git(&["add", "-A"]);
     tree.git(&["commit", "-q", "-m", "the child branch"]);
     prompt(tree);
-    assert_eq!(tree.field("base"), "refs/remotes/origin/parent");
+    assert_eq!(tree.field("stacked"), "refs/remotes/origin/parent");
     tree.git(&["checkout", "-q", "parent"]);
     tree.write("src/theirs.rs", text::ONE);
     tree.git(&["add", "-A"]);
@@ -265,6 +265,26 @@ fn a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory() {
     tree.git(&["push", "-q", "origin", "parent"]);
     tree.git(&["checkout", "-q", "child"]);
     tree.git(&["merge", "-q", "--no-edit", "origin/parent"]);
+
+    assert_advisory(tree, "incoming-commits");
+}
+
+#[test]
+fn a_merge_of_the_default_branch_into_a_stacked_branch_makes_the_stop_advisory() {
+    let remote = Remote::unstamped(CONFIG);
+    let tree = &remote.tree;
+    tree.git(&["checkout", "-q", "-b", "parent", "main"]);
+    tree.write("src/parent.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the parent branch"]);
+    tree.git(&["push", "-q", "origin", "parent"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/child.rs", CLEAN);
+    tree.git(&["add", "-A"]);
+    tree.git(&["commit", "-q", "-m", "the child branch"]);
+    prompt(tree);
+    remote.incoming();
+    tree.git(&["pull", "-q", "--no-rebase", "--no-edit", "origin", "main"]);
 
     assert_advisory(tree, "incoming-commits");
 }
