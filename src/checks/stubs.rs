@@ -100,6 +100,7 @@ pub const KIND: Kind = Kind {
     reads_shapes: true,
     reads_cfg_attr: false,
     keyed_by_row: &[MARKER, PLACEHOLDER],
+    ride_along: &[],
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "stub site(s)",

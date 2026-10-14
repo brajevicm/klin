@@ -92,6 +92,9 @@ pub struct Kind {
     /// The rows whose matches in one file are one site, keyed by the row and not by a line,
     /// because a comment is not a declaration. Spec 8.2.1, ADR 0064.
     pub keyed_by_row: &'static [&'static str],
+    /// The rows in the ride-along tier of spec 9.6, which the evaluator reads from a finding's
+    /// values and a site reads when two tiers share its line.
+    pub ride_along: &'static [&'static str],
     pub evaluator: Evaluator<'static>,
 }
 
@@ -244,9 +247,7 @@ struct Read {
 
 struct Tally {
     line: u64,
-    name: String,
-    remedy: String,
-    rides_along: bool,
+    label: Label,
     count: u64,
     /// The line and trimmed text of each match, for a site keyed by its row.
     marks: Vec<(u64, String)>,
@@ -440,7 +441,7 @@ fn compiled(
         .map(|(name, regex, remedy)| {
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
-                    rides_along: row_rides_along(kind, &name),
+                    rides_along: kind.ride_along.contains(&name.as_str()),
                     test_idiom: idioms.contains(&name.as_str()),
                     keyed_by_row: kind.keyed_by_row.contains(&name.as_str()),
                     name: name.clone(),
@@ -456,14 +457,6 @@ fn compiled(
                 })
         })
         .collect()
-}
-
-/// Whether a row is in the ride-along tier, as the kind's evaluator names it from the values of
-/// a site that row labels. Spec 9.6.
-fn row_rides_along(kind: &Kind, name: &str) -> bool {
-    let mut values = Values::new();
-    values.insert(kind.label.into(), name.into());
-    (kind.evaluator.rides_along)(&values)
 }
 
 /// Whether this run leaves the test idioms of test code out. A section whose languages name no
@@ -582,7 +575,7 @@ impl Walk {
             self.skipped += tally(set, rel, &text, &past, &mut self.seen);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
-                shapes(rel, &text, &mut self.seen, &mut self.unparsed)?;
+                shapes(kind, rel, &text, &mut self.seen, &mut self.unparsed)?;
             }
         }
         Ok(())
@@ -599,6 +592,7 @@ fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {
 
 /// The body shapes of one file's functions, which only a parser sees, recorded as sites. #114.
 fn shapes(
+    kind: &Kind,
     rel: &str,
     text: &str,
     seen: &mut BTreeMap<(String, String), Tally>,
@@ -608,7 +602,7 @@ fn shapes(
         let row = Matched {
             name: stub.name,
             remedy: stub.remedy,
-            rides_along: false,
+            rides_along: kind.ride_along.contains(&stub.name),
         };
         record(seen, rel, stub.line, &stub.text, row);
     }
@@ -687,10 +681,10 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Findi
                 marks.insert((file.clone(), text.clone()), tally.marks);
             }
             let mut values = Values::new();
-            values.insert(kind.label.into(), tally.name.into());
+            values.insert(kind.label.into(), tally.label.name.into());
             values.insert("count".into(), tally.count.into());
-            if !tally.remedy.is_empty() {
-                values.insert("remedy".into(), tally.remedy.into());
+            if !tally.label.remedy.is_empty() {
+                values.insert("remedy".into(), tally.label.remedy.into());
             }
             Finding {
                 file,
@@ -712,6 +706,23 @@ struct Matched<'a> {
     rides_along: bool,
 }
 
+/// The row a site is labelled by: its name, its remedy and its tier.
+struct Label {
+    name: String,
+    remedy: String,
+    rides_along: bool,
+}
+
+impl Matched<'_> {
+    fn owned(&self) -> Label {
+        Label {
+            name: self.name.to_string(),
+            remedy: self.remedy.to_string(),
+            rides_along: self.rides_along,
+        }
+    }
+}
+
 /// One match at its site. A site takes the label, remedy and line of the first row that matched
 /// it, except that a blocking row takes them from a ride-along row, so a line that holds a kind
 /// of each tier blocks. Spec 8.2.1, 9.6.
@@ -724,20 +735,16 @@ fn record<'a>(
 ) -> &'a mut Tally {
     let tally = seen
         .entry((file.to_string(), text.to_string()))
-        .or_insert(Tally {
+        .or_insert_with(|| Tally {
             line,
-            name: row.name.to_string(),
-            remedy: row.remedy.to_string(),
-            rides_along: row.rides_along,
+            label: row.owned(),
             count: 0,
             marks: Vec::new(),
         });
     tally.count += 1;
-    if tally.rides_along && !row.rides_along {
+    if tally.label.rides_along && !row.rides_along {
         tally.line = line;
-        tally.name = row.name.to_string();
-        tally.remedy = row.remedy.to_string();
-        tally.rides_along = false;
+        tally.label = row.owned();
     }
     tally
 }
