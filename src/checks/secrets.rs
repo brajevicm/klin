@@ -32,30 +32,72 @@ pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
 const LABEL: &str = "secret";
 
-/// Each vendor's token: the name a report gives it, its prefix, and the rest at its usual length.
-const VENDORS: &[(&str, &str, &str)] = &[
-    ("OpenAI project key", "sk-proj-", r"[A-Za-z0-9_-]{40,}"),
-    (
-        "Anthropic key",
-        "sk-ant-",
-        r"[a-z]+[0-9]{2}-[A-Za-z0-9_-]{80,}",
-    ),
-    ("Stripe live key", "sk_live_", r"[A-Za-z0-9]{24,}"),
-    ("GitHub token", "ghp_", r"[A-Za-z0-9]{36}\b"),
-    (
-        "GitHub fine-grained token",
-        "github_pat_",
-        r"[A-Za-z0-9_]{82}\b",
-    ),
-    ("AWS access key", "AKIA", r"[A-Z0-9]{16}\b"),
-    (
-        "Slack token",
-        "xox",
-        r"[abposr]-[0-9]{8,}-[A-Za-z0-9-]{20,}",
-    ),
-    ("Google API key", "AIza", r"[A-Za-z0-9_-]{35}"),
-    ("GitLab token", "glpat-", r"[A-Za-z0-9_-]{20,}"),
+/// One vendor's token: the name a report gives it, its prefix, and the rest at its usual length.
+struct Vendor {
+    name: &'static str,
+    prefix: &'static str,
+    rest: &'static str,
+}
+
+const VENDORS: &[Vendor] = &[
+    Vendor {
+        name: "OpenAI project key",
+        prefix: "sk-proj-",
+        rest: r"[A-Za-z0-9_-]{40,}",
+    },
+    Vendor {
+        name: "Anthropic key",
+        prefix: "sk-ant-",
+        rest: r"[a-z]+[0-9]{2}-[A-Za-z0-9_-]{80,}",
+    },
+    Vendor {
+        name: "Stripe live key",
+        prefix: "sk_live_",
+        rest: r"[A-Za-z0-9]{24,}",
+    },
+    Vendor {
+        name: "GitHub token",
+        prefix: "ghp_",
+        rest: r"[A-Za-z0-9]{36}\b",
+    },
+    Vendor {
+        name: "GitHub fine-grained token",
+        prefix: "github_pat_",
+        rest: r"[A-Za-z0-9_]{82}\b",
+    },
+    Vendor {
+        name: "AWS access key",
+        prefix: "AKIA",
+        rest: r"[A-Z0-9]{16}\b",
+    },
+    Vendor {
+        name: "Slack token",
+        prefix: "xox",
+        rest: r"[abposr]-[0-9]{8,}-[A-Za-z0-9-]{20,}",
+    },
+    Vendor {
+        name: "Google API key",
+        prefix: "AIza",
+        rest: r"[A-Za-z0-9_-]{35}",
+    },
+    Vendor {
+        name: "GitLab token",
+        prefix: "glpat-",
+        rest: r"[A-Za-z0-9_-]{20,}",
+    },
 ];
+
+/// A token's prefix and a hash of the whole token, which holds no part of the key after the
+/// prefix. It is the text of a site, so no output names more of the key than this.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Fingerprint(String);
+
+impl Fingerprint {
+    fn of(vendor: &Vendor, key: &str) -> Fingerprint {
+        let hash = ratchet::site_id(SECTION, vendor.name, key);
+        Fingerprint(format!("{}...{hash}", vendor.prefix))
+    }
+}
 
 /// The words a documented example or a test token holds, which no live key does.
 const PLACEHOLDERS: &[&str] = &["test", "xxx", "example"];
@@ -65,7 +107,7 @@ const PLACEHOLDERS: &[&str] = &["test", "xxx", "example"];
 fn token() -> Result<Regex, Error> {
     let vendors: Vec<String> = VENDORS
         .iter()
-        .map(|(_, prefix, rest)| format!("({}{rest})", regex::escape(prefix)))
+        .map(|vendor| format!("({}{})", regex::escape(vendor.prefix), vendor.rest))
         .collect();
     Regex::new(&format!(r"\b(?:{})", vendors.join("|"))).map_err(|why| {
         Error(format!(
@@ -74,7 +116,7 @@ fn token() -> Result<Regex, Error> {
     })
 }
 
-pub const EVALUATOR: Evaluator = Evaluator {
+const EVALUATOR: Evaluator = Evaluator {
     metrics: &["count"],
     unit: "secret(s)",
     condition: "where the code holds a live credential",
@@ -192,7 +234,7 @@ fn findings(
     let found = selected(scope, tree)?;
     let changed: Option<BTreeSet<&str>> =
         changes.map(|all| all.iter().map(|change| change.path.as_str()).collect());
-    let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
+    let mut seen: BTreeMap<(String, Fingerprint), Tally> = BTreeMap::new();
     let mut measured = Vec::new();
     let mut work = ContentCost::default();
     for file in &found.kept {
@@ -209,9 +251,9 @@ fn findings(
     }
     let findings = seen
         .into_iter()
-        .map(|((file, text), tally)| {
+        .map(|((file, Fingerprint(text)), tally)| {
             let mut values = Values::new();
-            values.insert(LABEL.into(), tally.vendor.into());
+            values.insert(LABEL.into(), tally.vendor.name.into());
             values.insert("count".into(), tally.count.into());
             Finding {
                 file,
@@ -242,13 +284,13 @@ fn findings(
 /// One token's site in one file: the vendor, the line of its first match, and how many times
 /// the file holds it.
 struct Tally {
-    vendor: &'static str,
+    vendor: &'static Vendor,
     line: u64,
     count: u64,
 }
 
 /// Each live-shaped token in one file, at the site of its fingerprint.
-fn tally(token: &Regex, rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
+fn tally(token: &Regex, rel: &str, text: &str, seen: &mut BTreeMap<(String, Fingerprint), Tally>) {
     for found in token.captures_iter(text) {
         let Some((at, key)) = found
             .iter()
@@ -261,12 +303,8 @@ fn tally(token: &Regex, rel: &str, text: &str, seen: &mut BTreeMap<(String, Stri
         if placeholder(key.as_str()) || text[key.end()..].starts_with("...") {
             continue;
         }
-        let (vendor, prefix, _) = VENDORS[at];
-        let print = format!(
-            "{prefix}...{}",
-            ratchet::site_id(SECTION, vendor, key.as_str())
-        );
-        seen.entry((rel.to_string(), print))
+        let vendor = &VENDORS[at];
+        seen.entry((rel.to_string(), Fingerprint::of(vendor, key.as_str())))
             .and_modify(|tally| tally.count += 1)
             .or_insert_with(|| Tally {
                 vendor,
