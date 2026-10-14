@@ -1567,17 +1567,46 @@ Per evidence kind:
   on host integration is addressed to a person, such as "ask a person to run
   `klin setup`".
 
-The Stop text is a bounded repair queue. When it leaves out sites, it says
-how many and that `klin report` lists them. Repeated evidence that a family
-identifies safely is shown once.
+The Stop text is a bounded repair queue. A gate lists at most 20 new sites.
+When it leaves out new sites, it says how many and that `klin check
+--changed` lists every one. Repeated evidence that a family identifies safely is shown
+once.
+
+The Stop text leaves out provenance that does not change the repair:
+
+- a new site does not say that nothing matched it;
+- no `derived:` line prints above a gate's row;
+- no `window:` line and no `changed:` line prints.
+
+A worsened site still names the base site or the accepted entry it matched,
+because that says why the site counts as worse. `klin check` prints every
+site with what it matched, and its `derived:`, `window:` and `changed:`
+lines. The JSON document keeps all of it.
+
+Each kind of `escapes` site gets its own repair direction: a cast to `any`
+gets one about types, and an `unwrap()` gets one about errors. A worsened
+site gets the remedy of its kind too. A row that names its own remedy prints
+it on each of its sites and adds none to the gate's remedy. In the JSON
+document, the remedy of each finding starts with its row's own remedy, as a
+sentence, and then gives the gate's remedy, unless the gate's remedy already
+holds the row's. A remedy that
+names another gate prints only when that gate failed in the same run. The
+`reachability` remedy names a `public-api` break only then. Pinned by
+`the_stop_text_leaves_out_the_provenance_klin_check_prints`,
+`the_stop_text_names_the_base_site_a_worsened_finding_matched`,
+`the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest`,
+`each_escape_kind_gets_its_own_remedy`,
+`a_worsened_escape_site_gets_the_remedy_of_its_kind`,
+`a_focused_test_and_a_skipped_test_each_get_their_own_remedy`,
+`the_remedy_of_a_site_leads_the_remedy_of_its_finding` and
+`the_remedy_names_public_api_only_when_public_api_failed`.
 
 The Stop keeps these 0.x shapes, with vNext command names:
 
 - a block opens with one lead line that says how many gates failed, what to
   do, and which gate block of two the Stop spends;
 - the Stop prints only the gates that did not pass, each with its own
-  `derived:` and `pinned:` lines, and a gate that passed with a note it
-  tells;
+  `pinned:` lines, and a gate that passed with a note it tells;
 - a Stop that spends no gate block says why klin does not block again, and
   that the window stays open until the finding is fixed or a person accepts
   it;
@@ -4383,7 +4412,9 @@ the line patterns and #114 the body shapes, which the function walk reads.
 The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
-`@Disabled`, `t.Skip` and `XCTSkip`, are already there.
+`@Disabled`, `t.Skip` and `XCTSkip`, are already there. `.only` is a
+`focused test` with `fit(` and `fdescribe(`, because its repair removes the
+focus, not a skip.
 
 For the same reason a Rust `#[cfg_attr(P, ignore)]` or
 `#[cfg_attr(P, ignore = "...")]` is a skipped test only where `P` is always
@@ -4979,10 +5010,10 @@ and is neither unreached nor unsupported. A file that leaves the tree is
 member that loses its last external reference is `worsened`, and one
 unreached in both trees is one NOTE. The remedy names the first proven
 reached sibling of the family in path order, and none when every sibling is
-unreached or reached only through a shared name. The remedy also names the
-conflict with a public-api break over what an unreached member held, on
-every unreached finding because a check reads no other gate's findings, and
-keeps the two decisions apart. The task decides the public contract: it is
+unreached or reached only through a shared name. Where `public-api` failed in
+the same run, the remedy of every unreached finding also names the conflict
+with a public-api break over what an unreached member held, and keeps the two
+decisions apart (10.6). The task decides the public contract: it is
 restored where the task keeps it, and the break is left for a person to
 accept where the task removes it. Whether the implementation is still needed
 decides the file: it is kept and wired in, or deleted only if unused. A
@@ -6540,7 +6571,8 @@ Every check MUST:
 - print, per failure, the site it matched in `before` or the accepted entry it
   matched, and the value on each side, with the ceiling in force beside them,
   so an agent fixes the right thing and a person can dispute a wrong match. A
-  `new` finding says that nothing matched. A check that prints a held site
+  `new` finding says that nothing matched, except in the Stop text (10.6).
+  A check that prints a held site
   says the value the base holds it at, for the same reason. Section 11.1
   fixes those line shapes.
 - print one `OK:` line with what it judged on success, plus any `NOTE:`
@@ -7070,7 +7102,7 @@ runner and on its own by the gate's subcommand, because 8.6 asks for the same
 output from both. `FAIL:` for a failure with its remedy under it. `NOTE:` for
 a note. One `window:` line first. One `derived:` or `pinned:` line per value
 a gate used, above that gate's row, and the hook's build lines above every
-row.
+row. The Stop text prints no `window:` and no `derived:` line (10.6).
 
 Every `OK:` line ends in the gate's coverage, as `(N file(s) found, N
 measured, N not measured, N excluded, N unreadable)` when the check has
@@ -7089,7 +7121,8 @@ Every failure line ends in what the ratchet judged it against: `— matched the
 base site at FILE:LINE`, `— matched the accepted entry for FILE`, or `—
 nothing matched` for a `new` finding, with `, ceiling C` after it wherever
 the gate has a ceiling of its own. So an agent fixes the site the ratchet
-compared, and a person can dispute a wrong match.
+compared, and a person can dispute a wrong match. The Stop text leaves out
+`nothing matched` and keeps `— ceiling C` (10.6).
 
 #### B.11.4 The journal record
 

@@ -16,7 +16,7 @@ use crate::config::key::{self, Key};
 use crate::config::scope::{self, Scope, under_or_at};
 use crate::contract;
 use crate::contract::check::{
-    Context, HeldAtBase, Line, Listed, Located, Measured, Sink, Unresolvable,
+    Context, HeldAtBase, Line, Listed, Located, Measured, Plain, Sink, Unresolvable,
 };
 use crate::contract::coverage;
 use crate::contract::holes;
@@ -35,7 +35,7 @@ use crate::sys::error::Error;
 use crate::sys::record::Values;
 use crate::window::base;
 
-use super::app;
+use super::{app, public_api};
 
 pub const SECTION: &str = "reachability";
 
@@ -46,11 +46,13 @@ const LABEL: &str = "file";
 /// The fewest members a family may be derived from. Spec 5.4.
 const MEMBERS: usize = 3;
 const REMEDY: &str = "Wire this file into the application through a real source reference, or \
-                      delete it if the implementation is unused. If a public-api break names what \
-                      an unreached file held, decide the two separately: restore the public \
-                      contract where the task keeps it, or leave the break for a person to accept \
-                      where the task removes it, and keep and wire the implementation if it is \
-                      still needed, and delete it only if it is unused.";
+                      delete it if the implementation is unused.";
+/// The remedy an unreached file adds where `public-api` failed in the same run. Spec 10.6.
+const CONFLICT: &str = "If a public-api break names what an unreached file held, decide the two \
+                        separately: restore the public contract where the task keeps it, or \
+                        leave the break for a person to accept where the task removes it, and \
+                        keep and wire the implementation if it is still needed, and delete it \
+                        only if it is unused.";
 const UNUSED_REMEDY: &str = "Import the export where the application needs it, or drop the \
                              `export` where nothing else imports it.";
 
@@ -179,6 +181,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         Line::new(measured, said),
         out,
     );
+    out.tell(Plain::Beside {
+        gate: public_api::NAME,
+        key: UNREACHED,
+        remedy: CONFLICT,
+    });
     coverage_result(at, (&before, &after), out);
     app_holes(at, (&before.apps, &after.apps), out);
     base_note(&held_before, &before.apps, project, out);

@@ -5,7 +5,7 @@ use crate::config::key::Key;
 use crate::config::scope;
 use crate::contract::check::{Context, Sink};
 use crate::contract::project::Project;
-use crate::contract::ratchet::{Evaluator, Remedy};
+use crate::contract::ratchet::{self, Evaluator, Remedy};
 use crate::syntax::LanguageId;
 use crate::sys::error::Error;
 use crate::sys::record::Values;
@@ -26,6 +26,10 @@ const ANALYZER_FIX: &str = "fix what the analyzer reports instead of silencing i
 
 /// The rows in the ride-along tier of ADR 0073, by their replay N on #572. Spec 9.6.
 const RIDE_ALONG: &[&str] = &[BIOME_IGNORE];
+
+const SHARED_REMEDY: &str = "Swallowing an error in place of the escape is not a fix. Accepting \
+                             a new escape is a policy decision for a person, in the config, in a \
+                             reviewed commit.";
 
 const LANGUAGES: &[Language] = &[
     Language {
@@ -125,10 +129,14 @@ const LANGUAGES: &[Language] = &[
             ("non-null assertion", r"[\w)\]]!\.", ""),
             (
                 "skipped test",
-                r"\b(?:it|test|describe)\.(?:skip|only)\(|\bx(?:it|test|describe)\(",
+                r"\b(?:it|test|describe)\.skip\(|\bx(?:it|test|describe)\(",
                 "",
             ),
-            ("focused test", r"^[ \t]*f(?:it|describe)\(", ""),
+            (
+                "focused test",
+                r"^[ \t]*f(?:it|describe)\(|\b(?:it|test|describe)\.only\(",
+                "",
+            ),
             (DOUBLE_CAST, r"\bas\s+unknown\s+as\b", DOUBLE_CAST_FIX),
             (
                 "any generic argument",
@@ -193,12 +201,7 @@ pub const KIND: Kind = Kind {
         metrics: &["count"],
         unit: "escape site(s)",
         condition: "where the code opts out of a check",
-        fix_advice: Remedy::Fixed(
-            "Fix what the escape hides: handle the error instead of unwrapping it, \
-             address the lint instead of allowing it. Remove the skip, or fix what made the test fail. \
-             Swallowing an error in place of the escape is not a fix. Accepting a new escape is a policy \
-             decision for a person, in the config, in a reviewed commit.",
-        ),
+        fix_advice: Remedy::ByValues(remedy),
         ceiling: None,
         format_metrics: show,
         nested: None,
@@ -207,6 +210,13 @@ pub const KIND: Kind = Kind {
 };
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    debug_assert!(
+        LANGUAGES
+            .iter()
+            .flat_map(|language| language.patterns)
+            .all(|(row, _, own)| !own.is_empty() || kind_remedy(row).is_some()),
+        "every escape row needs a remedy of its kind"
+    );
     markers::gate(&KIND, at, out)
 }
 
@@ -219,4 +229,50 @@ fn rides_along(values: &Values) -> bool {
 
 fn show(values: &Values) -> String {
     markers::show(LABEL, values)
+}
+
+/// One remedy per kind of escape that failed, in the order each first failed, then what every
+/// escape shares. A site whose row names its own remedy already shows it on its line. Spec 10.6.
+fn remedy(failed: &[&Values]) -> String {
+    let mut said: Vec<&str> = Vec::new();
+    let kinds = failed
+        .iter()
+        .filter(|values| !values.contains_key(ratchet::REMEDY))
+        .filter_map(|values| {
+            values
+                .get(LABEL)
+                .and_then(Value::as_str)
+                .and_then(kind_remedy)
+        });
+    for kind in kinds {
+        if !said.contains(&kind) {
+            said.push(kind);
+        }
+    }
+    said.push(SHARED_REMEDY);
+    said.join(" ")
+}
+
+/// The remedy of one row of `LANGUAGES`, and nothing for a name no row holds. The gate asserts
+/// that every row without its own remedy has one.
+fn kind_remedy(row: &str) -> Option<&'static str> {
+    Some(match row {
+        "unwrap" | "expect" | "force try" | "bare except" | "errors ignored" => {
+            "Handle the error instead of unwrapping or ignoring it."
+        }
+        "any" | "non-null assertion" | "not-null assertion" | "force unwrap" | "force cast"
+        | "type ignore" | "ts-ignore" | "ts-expect-error" | "unchecked Sendable" => {
+            "Give the value its real type, or narrow it with a check the type checker sees, \
+             instead of asserting a type or silencing the type error."
+        }
+        "nolint" | "suppress warnings" | "suppress" | "noqa" | "allow" | "eslint-disable"
+        | "rubocop:disable" | "shellcheck disable" | "swiftlint:disable" => {
+            "Address the lint instead of allowing it."
+        }
+        "skipped test" | "expected failure" => "Remove the skip, or fix what made the test fail.",
+        "focused test" => "Remove the focus, so that every test runs.",
+        "no cover" => "Cover the code with a test instead of excluding it from coverage.",
+        "unsafe" => "Use a safe API in place of the unsafe block.",
+        _ => return None,
+    })
 }

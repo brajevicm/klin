@@ -582,6 +582,13 @@ pub struct Note {
 pub enum Plain {
     Note(Note),
     Remedy(String),
+    /// A remedy for the failures whose values hold `key`, which applies only where `gate` failed
+    /// in the same run. The run tells it once every gate ran, or drops it. Spec 10.6.
+    Beside {
+        gate: &'static str,
+        key: &'static str,
+        remedy: &'static str,
+    },
     PathMissing(String),
     Error(String),
 }

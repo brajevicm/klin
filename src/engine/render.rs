@@ -22,27 +22,37 @@ use crate::contract::holes::{self, Unmeasured};
 /// How many rows a listed block prints before it says how many more there are.
 const SHOWN: usize = 20;
 
+/// How a gate's new sites print: every one with what it matched, as `klin check` prints them,
+/// or the first `SHOWN` of them with no word that nothing matched, as the Stop prints them.
+/// Spec 10.6.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Detail {
+    Whole,
+    Capped,
+}
+
 /// The report text `klin check` prints of one gate's result.
 pub fn text(told: &[Told]) -> String {
-    rendered(told, true)
+    rendered(told, true, Detail::Whole)
 }
 
 /// The report text the Stop hook prints of one gate's result. A gate that passed prints only what
-/// it tells beside its success, so the agent reads what it must act on. Spec 9.5.
+/// it tells beside its success, so the agent reads what it must act on, and a gate that failed
+/// lists its first new sites without saying that nothing matched them. Spec 9.5, 10.6.
 pub fn stop(told: &[Told], passed: bool) -> String {
-    rendered(told, !passed)
+    rendered(told, !passed, Detail::Capped)
 }
 
-fn rendered(told: &[Told], with_ok: bool) -> String {
+fn rendered(told: &[Told], with_ok: bool, detail: Detail) -> String {
     let mut out = String::new();
     for item in told {
-        one(item, with_ok, &mut out);
+        one(item, (with_ok, detail), &mut out);
     }
     out
 }
 
 /// One item, where `with_ok` says whether its `OK:` lines print.
-fn one(told: &Told, with_ok: bool, out: &mut String) {
+fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
     match told {
         Told::Judged { line, held } if with_ok => judged(line, *held, out),
         Told::Document {
@@ -51,6 +61,7 @@ fn one(told: &Told, with_ok: bool, out: &mut String) {
             ceiling,
             standing,
         } => document((name, *words, ceiling), standing, with_ok, out),
+        Told::Ratchet(said) => ratchet(said, detail, out),
         other => said(other, out),
     }
 }
@@ -61,9 +72,8 @@ fn said(told: &Told, out: &mut String) {
         Told::Plain(said) => plain(said, out),
         Told::Hole(hole) => holed(hole, out),
         Told::Listed(listed) => sites(listed, out),
-        Told::Ratchet(said) => ratchet(said, out),
         Told::Incomplete(hole) => incomplete(hole, out),
-        Told::Judged { .. } | Told::Document { .. } | Told::Provenance(_) => (),
+        Told::Judged { .. } | Told::Document { .. } | Told::Ratchet(_) | Told::Provenance(_) => (),
     }
 }
 
@@ -71,6 +81,7 @@ fn plain(said: &Plain, out: &mut String) {
     let _ = match said {
         Plain::Note(note) => writeln!(out, "NOTE: {}", note.text),
         Plain::Remedy(text) => writeln!(out, "{text}"),
+        Plain::Beside { .. } => Ok(()),
         Plain::PathMissing(named) => writeln!(
             out,
             "FAIL: {named} — correct the path, or take it out of \"in\"."
@@ -184,7 +195,8 @@ fn sites(listed: &Listed, out: &mut String) {
     }
 }
 
-fn ratchet(said: &Ratchet, out: &mut String) {
+/// A gate's ratchet failures, its new sites in `detail`. Spec 10.6.
+fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
     match said {
         Ratchet::New {
             unit,
@@ -192,27 +204,11 @@ fn ratchet(said: &Ratchet, out: &mut String) {
             held,
             failed,
         } => {
-            let _ = writeln!(
-                out,
+            let heading = format!(
                 "FAIL: {} new {unit} {condition}, beyond the {held} the base holds:",
                 failed.len()
             );
-            for (lead, inside) in grouped(failed) {
-                for (indent, at) in
-                    std::iter::once(("", lead)).chain(inside.into_iter().map(|at| ("  ", at)))
-                {
-                    let finding = &failed[at];
-                    let _ = writeln!(
-                        out,
-                        "  {indent}{}:{}  {}  {}{}",
-                        finding.file,
-                        finding.line,
-                        finding.shown,
-                        clip(&finding.text),
-                        against(finding)
-                    );
-                }
-            }
+            new_sites(&heading, failed, detail, out);
         }
         Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
         Ratchet::RidesAlong {
@@ -234,6 +230,36 @@ fn ratchet(said: &Ratchet, out: &mut String) {
             &unmatched.iter().map(unmatched_row).collect::<Vec<_>>(),
         ),
     }
+}
+
+/// The new sites under their heading in `detail`, and where it caps them, the command that lists
+/// the rest. Spec 10.6.
+fn new_sites(heading: &str, failed: &[Failed], detail: Detail, out: &mut String) {
+    let rows: Vec<String> = grouped(failed)
+        .into_iter()
+        .flat_map(|(lead, inside)| {
+            std::iter::once(("", lead)).chain(inside.into_iter().map(|at| ("  ", at)))
+        })
+        .map(|(indent, at)| {
+            let finding = &failed[at];
+            format!(
+                "{indent}{}:{}  {}  {}{}",
+                finding.file,
+                finding.line,
+                finding.shown,
+                clip(&finding.text),
+                against(finding, detail)
+            )
+        })
+        .collect();
+    if detail == Detail::Whole {
+        return block(out, heading, rows.into_iter());
+    }
+    let rest = match rows.len() > SHOWN {
+        true => " — klin check --changed lists every site",
+        false => "",
+    };
+    let _ = writeln!(out, "{}{rest}", capped(heading, &rows));
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside
@@ -297,7 +323,7 @@ fn worse(unit: &str, failed: &[Failed], out: &mut String) {
             finding.line,
             finding.shown,
             clip(&finding.text),
-            against(finding)
+            against(finding, Detail::Whole)
         );
     }
 }
@@ -532,20 +558,31 @@ fn document(
     }
 }
 
-/// What one failure was judged against, and the ceiling in force beside it. Spec 8.6.
-fn against(finding: &Failed) -> String {
+/// What one failure was judged against, and the ceiling in force beside it. A capped new failure
+/// leaves out that nothing matched it. Spec 8.6, 10.6.
+fn against(finding: &Failed, detail: Detail) -> String {
     let matched = match &finding.matched {
-        Matched::Nothing => "nothing matched".to_string(),
-        Matched::Accepted(entry) => format!("matched the accepted entry for {}", entry.file),
-        Matched::Base(entry) => format!(
+        Matched::Nothing if detail == Detail::Capped => None,
+        Matched::Nothing => Some("nothing matched".to_string()),
+        Matched::Accepted(entry) => Some(format!("matched the accepted entry for {}", entry.file)),
+        Matched::Base(entry) => Some(format!(
             "matched the base site at {}:{}",
             entry.file,
             entry.line.unwrap_or(0)
-        ),
+        )),
     };
-    match &finding.ceiling {
-        Some(ceiling) => format!("  — {matched}, ceiling {ceiling}"),
-        None => format!("  — {matched}"),
+    let said: Vec<String> = matched
+        .into_iter()
+        .chain(
+            finding
+                .ceiling
+                .iter()
+                .map(|ceiling| format!("ceiling {ceiling}")),
+        )
+        .collect();
+    match said.is_empty() {
+        true => String::new(),
+        false => format!("  — {}", said.join(", ")),
     }
 }
 
@@ -638,6 +675,17 @@ pub fn provenance(told: &[Told]) -> Vec<String> {
     told.iter()
         .filter_map(|item| match item {
             Told::Provenance(said) => Some(provenance_line(said)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The `pinned:` lines of the values a person pinned, which the Stop prints above a gate's row
+/// in place of every provenance line. Spec 10.6.
+pub fn pinned(told: &[Told]) -> Vec<String> {
+    told.iter()
+        .filter_map(|item| match item {
+            Told::Provenance(said @ Provenance::Pinned { .. }) => Some(provenance_line(said)),
             _ => None,
         })
         .collect()
