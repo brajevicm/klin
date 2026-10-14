@@ -720,3 +720,41 @@ fn a_copy_on_a_remote_whose_name_holds_a_slash_is_not_its_base() {
         keyed.out
     );
 }
+
+/// With `origin` and `upstream/fork` configured and no `upstream`, `upstream/fork/child` belongs
+/// to `upstream/fork` and names `child`, so it is another branch for a local `fork/child` cut
+/// from it. Spec 6.5.
+#[test]
+fn a_parent_on_a_remote_whose_name_holds_a_slash_is_its_base() {
+    let tree = tree();
+    tree.repository();
+    tree.git(&[
+        "remote",
+        "add",
+        "origin",
+        "https://example.invalid/origin.git",
+    ]);
+    tree.git(&[
+        "remote",
+        "add",
+        "upstream/fork",
+        "https://example.invalid/fork.git",
+    ]);
+    tree.commit("the default branch");
+    tree.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "parent"]);
+    tree.write("src/theirs.rs", text::ONE);
+    tree.commit("the fork's branch work");
+    tree.git(&["update-ref", "refs/remotes/upstream/fork/child", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "fork/child"]);
+    tree.write("src/work.rs", CLEAN);
+    tree.commit("the local branch's work");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the merge-base with upstream/fork/child (inferred)"),
+        "{}",
+        run.out
+    );
+}

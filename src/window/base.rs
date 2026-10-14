@@ -1090,10 +1090,11 @@ fn remote_name(reference: &str) -> &str {
 }
 
 /// This branch and its copies on every remote, `refs/heads/<name>` and `<remote>/<name>`, and
-/// every `<remote>/HEAD`. The remotes are the configured ones, whose names may hold a slash, and
-/// the first segment of each remote-tracking ref, for a ref whose remote is no longer
-/// configured. So `upstream/fork/child` is a copy of `child` where `upstream/fork` is a remote,
-/// and `origin/team/child` is not. Spec 6.5.
+/// every `<remote>/HEAD`, among the remote-tracking refs that exist. Each ref belongs to the
+/// longest configured remote its path starts with, whose name may hold a slash, and only a ref no
+/// configured remote matches falls back to its first segment, for a remote no longer configured.
+/// So with `upstream/fork` configured, `upstream/fork/child` is a copy of `child` and no copy of
+/// `fork/child`, and `origin/team/child` is no copy of `child`. Spec 6.5.
 struct Copies {
     own: Vec<String>,
     left_out: Vec<String>,
@@ -1106,25 +1107,23 @@ impl Copies {
             .text(&["for-each-ref", "--format=%(refname)", REMOTES])
             .unwrap_or_default();
         let configured = repo.text(&["remote"]).unwrap_or_default();
-        let mut remotes: Vec<&str> = configured
+        let configured: Vec<&str> = configured.lines().collect();
+        let left_out: Vec<String> = refs
             .lines()
-            .chain(refs.lines().filter_map(|reference| {
-                let (remote, _) = reference.strip_prefix(REMOTES)?.split_once('/')?;
-                Some(remote)
-            }))
+            .filter(|reference| {
+                branch_of(reference, &configured)
+                    .is_some_and(|branch| branch == name || branch == "HEAD")
+            })
+            .map(str::to_string)
             .collect();
-        remotes.sort_unstable();
-        remotes.dedup();
-        let at = |branch: &str| -> Vec<String> {
-            remotes
-                .iter()
-                .map(|remote| format!("{REMOTES}{remote}/{branch}"))
-                .collect()
-        };
-        let own: Vec<String> = std::iter::once(format!("refs/heads/{name}"))
-            .chain(at(name))
+        let own = std::iter::once(format!("refs/heads/{name}"))
+            .chain(
+                left_out
+                    .iter()
+                    .filter(|reference| branch_of(reference, &configured) == Some(name))
+                    .cloned(),
+            )
             .collect();
-        let left_out = own[1..].iter().cloned().chain(at("HEAD")).collect();
         Copies {
             own,
             left_out,
@@ -1140,6 +1139,23 @@ impl Copies {
     /// Whether a remote-tracking ref is left out of the fork point: a copy or a `<remote>/HEAD`.
     fn leaves_out(&self, reference: &str) -> bool {
         self.left_out.iter().any(|left| left == reference)
+    }
+}
+
+/// The branch a remote-tracking ref names: its path after the longest configured remote that
+/// prefixes it, or after its first segment where no configured remote does.
+fn branch_of<'a>(reference: &'a str, configured: &[&str]) -> Option<&'a str> {
+    let path = reference.strip_prefix(REMOTES)?;
+    let owner = configured
+        .iter()
+        .filter(|remote| {
+            path.strip_prefix(**remote)
+                .is_some_and(|rest| rest.starts_with('/'))
+        })
+        .max_by_key(|remote| remote.len());
+    match owner {
+        Some(remote) => Some(&path[remote.len() + 1..]),
+        None => path.split_once('/').map(|(_, branch)| branch),
     }
 }
 
