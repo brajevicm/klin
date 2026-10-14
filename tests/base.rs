@@ -386,3 +386,130 @@ fn a_merge_base_a_shallow_clone_cannot_compute_names_fetch_depth() {
     );
     assert!(run.says("fetch-depth: 0"), "{}", run.out);
 }
+
+/// `child` cut from `parent`, which holds an escape that `main` does not, with both remote
+/// branches fetched. Spec 6.5.
+fn stacked() -> Tree {
+    let tree = tree();
+    tree.repository();
+    tree.commit("the default branch");
+    tree.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "parent"]);
+    tree.write("src/theirs.rs", text::ONE);
+    tree.commit("the parent branch's work");
+    tree.git(&["update-ref", "refs/remotes/origin/parent", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "child"]);
+    tree.write("src/work.rs", CLEAN);
+    tree.commit("the child branch's work");
+    tree
+}
+
+#[test]
+fn a_branch_stacked_on_another_remote_branch_is_judged_against_it() {
+    let tree = stacked();
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the merge-base with origin/parent (inferred)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_branch_base_key_overrides_the_inferred_base() {
+    let tree = stacked();
+    tree.git(&["config", "branch.child.klin-base", "origin/main"]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("the merge-base with origin/main (branch.child.klin-base)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_branch_base_key_that_does_not_resolve_falls_back_to_the_inferred_base() {
+    let tree = stacked();
+    tree.git(&["config", "branch.child.klin-base", "gone"]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("branch.child.klin-base names gone, which does not resolve"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("origin/parent (inferred)"), "{}", run.out);
+}
+
+#[test]
+fn a_fork_point_two_remote_branches_hold_is_judged_against_the_default_branch() {
+    let tree = stacked();
+    tree.git(&[
+        "update-ref",
+        "refs/remotes/origin/twin",
+        "refs/remotes/origin/parent",
+    ]);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("the merge-base with origin/main"), "{}", run.out);
+    assert!(
+        run.says("origin/parent, origin/twin all hold"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_pull_request_target_wins_over_the_branch_base() {
+    let tree = stacked();
+    tree.git(&["config", "branch.child.klin-base", "origin/parent"]);
+
+    let run = tree.run_with(&[("GITHUB_BASE_REF", "main")], &["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("the tip of main, the pull request target"),
+        "{}",
+        run.out
+    );
+}
+
+/// A branch cut from the default branch tracks it, and the default branch's last merge holds a
+/// branch that is still on the remote. The default branch is the base. Spec 6.5.
+#[test]
+fn a_branch_that_tracks_the_default_branch_is_judged_against_it() {
+    let tree = stacked();
+    tree.git(&["checkout", "-q", "main"]);
+    tree.git(&[
+        "-c",
+        "user.name=klin",
+        "-c",
+        "user.email=klin@example.com",
+        "merge",
+        "-q",
+        "--no-ff",
+        "--no-edit",
+        "parent",
+    ]);
+    tree.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    tree.git(&["checkout", "-q", "-b", "tracking", "origin/main"]);
+    tree.git(&[
+        "config",
+        "remote.origin.fetch",
+        "+refs/heads/*:refs/remotes/origin/*",
+    ]);
+    tree.git(&["config", "branch.tracking.remote", "origin"]);
+    tree.git(&["config", "branch.tracking.merge", "refs/heads/main"]);
+    tree.write("src/next.rs", CLEAN);
+    tree.commit("work on the default branch");
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("the merge-base with origin/main"), "{}", run.out);
+    assert!(!run.says("inferred"), "{}", run.out);
+}

@@ -706,8 +706,8 @@ pub fn choose(root: &Path) -> Result<Window, Error> {
         .text(&["rev-parse", "--is-shallow-repository"])
         .is_some_and(|said| said.trim() == "true");
     let mut tried: Vec<String> = Vec::new();
-    let mut notes = Vec::new();
-    for candidate in candidates(root) {
+    let (candidates, mut notes) = candidates(root);
+    for candidate in candidates {
         tried.push(candidate.named.clone());
         let found = candidate
             .references
@@ -879,8 +879,9 @@ fn remote_reference(branch: &str) -> Option<String> {
         .map(|remote| format!("refs/remotes/origin/{remote}"))
 }
 
-fn candidates(root: &Path) -> Vec<Candidate> {
+fn candidates(root: &Path) -> (Vec<Candidate>, Vec<String>) {
     let mut out = Vec::new();
+    let mut notes = Vec::new();
     if let Some(target) = environment("GITHUB_BASE_REF") {
         out.push(Candidate {
             references: vec![
@@ -902,20 +903,173 @@ fn candidates(root: &Path) -> Vec<Candidate> {
             absent: Absent::Rewritten,
         });
     }
-    for branch in default_branches(root) {
-        let (reference, source) = match remote_reference(&branch) {
-            Some(remote) => (remote, Source::Remote),
-            None => (branch.clone(), Source::Local),
-        };
-        out.push(Candidate {
-            references: vec![(format!("{reference}...HEAD"), source)],
-            how: format!("the merge-base with {branch}"),
-            named: branch,
-            kind: Kind::Branch,
-            absent: Absent::Unrelated(reference),
-        });
+    let defaults = default_branches(root);
+    if out.is_empty() {
+        out.extend(stacked_on(root, &defaults, &mut notes).map(Stacked::candidate));
     }
-    out
+    out.extend(defaults.into_iter().map(merge_base_with));
+    (out, notes)
+}
+
+/// The merge-base with one of the default branch's names.
+fn merge_base_with(branch: String) -> Candidate {
+    let (reference, source) = match remote_reference(&branch) {
+        Some(remote) => (remote, Source::Remote),
+        None => (branch.clone(), Source::Local),
+    };
+    Candidate {
+        references: vec![(format!("{reference}...HEAD"), source)],
+        how: format!("the merge-base with {branch}"),
+        named: branch,
+        kind: Kind::Branch,
+        absent: Absent::Unrelated(reference),
+    }
+}
+
+const REMOTES: &str = "refs/remotes/";
+
+/// The branch this one is stacked on, by its full ref, and `None` where the default branch is
+/// the base. The turn stamp records it, so a Stop tracks the same branch. Spec 6.5, 6.6.
+pub fn stacked(root: &Path) -> Option<String> {
+    stacked_on(root, &default_branches(root), &mut Vec::new()).map(|stacked| stacked.reference)
+}
+
+/// The branch a stacked branch was cut from, and how klin learned it. Spec 6.5.
+struct Stacked {
+    reference: String,
+    named: String,
+    how: String,
+}
+
+impl Stacked {
+    fn candidate(self) -> Candidate {
+        let source = match self.reference.starts_with(REMOTES) {
+            true => Source::Remote,
+            false => Source::Local,
+        };
+        Candidate {
+            references: vec![(format!("{}...HEAD", self.reference), source)],
+            how: format!("the merge-base with {} ({})", self.named, self.how),
+            named: self.named,
+            kind: Kind::Branch,
+            absent: Absent::Unrelated(self.reference),
+        }
+    }
+}
+
+/// The branch `branch.<name>.klin-base` names, or else the one inferred from the fork point. A
+/// branch on the default branch, or with no name, is stacked on nothing. Spec 6.5.
+fn stacked_on(root: &Path, defaults: &[String], notes: &mut Vec<String>) -> Option<Stacked> {
+    let repo = Repo::at(root);
+    let head = repo.text(&["symbolic-ref", "-q", "HEAD"])?;
+    let name = head.trim().strip_prefix("refs/heads/")?;
+    let defaults: Vec<String> = defaults
+        .iter()
+        .filter_map(|branch| remote_reference(branch))
+        .collect();
+    if defaults.contains(&format!("{REMOTES}origin/{name}")) {
+        return None;
+    }
+    let key = format!("branch.{name}.klin-base");
+    keyed(&repo, &key, notes).or_else(|| inferred(&repo, name, &defaults, &key, notes))
+}
+
+/// The branch the key names, and a note when it names nothing that resolves.
+fn keyed(repo: &Repo, key: &str, notes: &mut Vec<String>) -> Option<Stacked> {
+    let named = repo.text(&["config", "--get", key])?;
+    let named = named.trim();
+    let Some(reference) = full_name(repo, named) else {
+        notes.push(format!(
+            "{key} names {named}, which does not resolve, so klin infers the base"
+        ));
+        return None;
+    };
+    Some(Stacked {
+        reference,
+        named: named.to_string(),
+        how: key.to_string(),
+    })
+}
+
+/// The one remote branch other than the default that holds the fork point. Where the default
+/// branch holds it, or no branch does, the default branch is the base, and where several do, a
+/// note names them.
+fn inferred(
+    repo: &Repo,
+    name: &str,
+    defaults: &[String],
+    key: &str,
+    notes: &mut Vec<String>,
+) -> Option<Stacked> {
+    let holders = holding_the_fork_point(repo, name)?;
+    if holders.iter().any(|held| defaults.contains(held)) {
+        return None;
+    }
+    let short = |held: &str| held.strip_prefix(REMOTES).unwrap_or(held).to_string();
+    match holders.as_slice() {
+        [held] => Some(Stacked {
+            reference: held.clone(),
+            named: short(held),
+            how: "inferred".to_string(),
+        }),
+        [] => None,
+        many => {
+            notes.push(format!(
+                "this branch forks from a commit that {} all hold, so klin judges against the \
+                 default branch. Set {key} to the branch it was cut from",
+                many.iter()
+                    .map(|held| short(held))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+            None
+        }
+    }
+}
+
+/// The remote branches other than `origin/<name>` that hold the fork point: the newest
+/// first-parent ancestor of HEAD that one of them holds. Spec 6.5.
+fn holding_the_fork_point(repo: &Repo, name: &str) -> Option<Vec<String>> {
+    let own = format!("{REMOTES}origin/{name}");
+    let exclude = format!("--exclude=origin/{name}");
+    let walked = repo.text(&[
+        "rev-list",
+        "--first-parent",
+        "--boundary",
+        "HEAD",
+        "--not",
+        &exclude,
+        "--exclude=*/HEAD",
+        "--remotes",
+    ])?;
+    let fork = walked.lines().find_map(|line| line.strip_prefix('-'))?;
+    let holders = repo.text(&[
+        "for-each-ref",
+        "--contains",
+        fork,
+        "--format=%(refname)",
+        REMOTES,
+    ])?;
+    Some(
+        holders
+            .lines()
+            .filter(|held| !held.ends_with("/HEAD") && *held != own)
+            .map(str::to_string)
+            .collect(),
+    )
+}
+
+/// The full ref a branch name resolves to, and `None` for a name that is not a branch.
+fn full_name(repo: &Repo, named: &str) -> Option<String> {
+    let found = repo.text(&[
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "--symbolic-full-name",
+        named,
+    ])?;
+    let found = found.trim();
+    (found.starts_with("refs/")).then(|| found.to_string())
 }
 
 fn pushed_from() -> Option<String> {

@@ -195,7 +195,7 @@ fn taken(
         parent,
         time: now(),
         prompts,
-        history: History::now(root, at, &Here::read(root)),
+        history: History::now(root, at, &Here::read(root, base::stacked(root).as_deref())),
         ..Stamp::default()
     })
 }
@@ -282,8 +282,8 @@ pub fn window(
     let Some(at) = at else {
         return read_only(root, out);
     };
-    let here = Here::read(root);
     let held = held(root, &at, flags, out);
+    let here = Here::read(root, recorded_base(held.as_ref()));
     let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) else {
         if here.remotes {
             return Ok((branch(root, out)?, Some(Reason::StampMissing)));
@@ -307,6 +307,11 @@ pub fn window(
     reanchored(root);
     let base = branch(root, out)?;
     Ok((replaced(&at, held.as_ref(), None, base, out), None))
+}
+
+/// The stacked branch a stamp recorded as its base, which a Stop keeps tracking. Spec 6.6.
+fn recorded_base(stamp: Option<&Stamp>) -> Option<&str> {
+    stamp?.history.base.as_deref()
 }
 
 /// Why a Stop is advisory: the history moved under the turn, so a precise local judgement is
@@ -463,8 +468,9 @@ fn read_only(root: &Path, out: &mut String) -> Result<(Window, Option<Reason>), 
         .as_deref()
         .and_then(stamp::read)
         .filter(|stamp| stamp.commit.is_some() && resolves(root, stamp));
-    let here = Here::read(root);
-    let Some(stamp) = file.or_else(|| kept(root)) else {
+    let stamp = file.or_else(|| kept(root));
+    let here = Here::read(root, recorded_base(stamp.as_ref()));
+    let Some(stamp) = stamp else {
         return Ok((
             branch(root, out)?,
             here.remotes.then_some(Reason::StampMissing),

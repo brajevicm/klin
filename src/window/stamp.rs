@@ -157,11 +157,13 @@ pub struct Stamp {
     pub history: History,
 }
 
-/// The default-branch merge-base, HEAD's symbolic ref (`HEAD` when detached) and the position
-/// of HEAD's reflog. A field the stamp never recorded is `None`. Spec 6.6.
+/// The merge-base with the branch this one is based on, the ref of that branch where it is not
+/// the default branch, HEAD's symbolic ref (`HEAD` when detached) and the position of HEAD's
+/// reflog. A field the stamp never recorded is `None`. Spec 6.6.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct History {
     pub merge_base: Option<String>,
+    pub base: Option<String>,
     pub head_ref: Option<String>,
     pub reflog_position: Option<ReflogPosition>,
 }
@@ -178,6 +180,7 @@ impl History {
             merge_base: here
                 .pair()
                 .and_then(|(head, default)| merge_base(root, at, head, default)),
+            base: here.base.clone(),
             head_ref: here.head_ref.clone(),
             reflog_position: here
                 .reflog
@@ -188,16 +191,19 @@ impl History {
     }
 }
 
-/// HEAD, its symbolic ref, the default branch and HEAD's reflog as this event finds them, read
-/// from the git directory's files. The default branch is candidate 3 of 0.x 6.3 among
+/// HEAD, its symbolic ref, the base branch and HEAD's reflog as this event finds them, read
+/// from the git directory's files. The base branch is the stacked branch a stamp recorded while
+/// its ref resolves, and otherwise the default branch, candidate 4 of B.6.3 among
 /// remote-tracking refs alone. Spec 6.6.
 #[derive(Default)]
 pub struct Here {
     pub head: Option<String>,
     /// HEAD's symbolic ref, the branch an in-progress rebase works on, or `HEAD` when detached.
     pub head_ref: Option<String>,
-    /// The default branch's ref and the commit it names.
+    /// The base branch's ref and the commit it names.
     pub default: Option<(String, String)>,
+    /// The stacked branch's ref, when it resolved and stands in for the default branch.
+    pub base: Option<String>,
     /// Whether any `refs/remotes/*` ref exists.
     pub remotes: bool,
     /// The message of each entry of HEAD's reflog, oldest first, and `None` without a reflog.
@@ -205,14 +211,14 @@ pub struct Here {
 }
 
 impl Here {
-    pub fn read(root: &Path) -> Here {
+    pub fn read(root: &Path, base: Option<&str>) -> Here {
         let Some(dir) = Repo::at(root).rev_parse_path("--absolute-git-dir") else {
             return Here::default();
         };
         let common = std::fs::read_to_string(dir.join("commondir"))
             .map_or_else(|_| dir.clone(), |common| dir.join(common.trim()));
         if common.join("reftable").is_dir() {
-            return Here::through_git(root, &dir);
+            return Here::through_git(root, &dir, base);
         }
         let refs = Refs {
             packed: std::fs::read_to_string(common.join("packed-refs")).unwrap_or_default(),
@@ -220,11 +226,15 @@ impl Here {
             common,
         };
         let head_ref = rebasing(&refs.dir).or_else(|| refs.symbolic("HEAD"));
+        let stacked = base.and_then(|name| Some((name.to_string(), refs.resolve(name)?)));
         Here {
             head: refs.resolve("HEAD"),
             head_ref: Some(head_ref.unwrap_or_else(|| "HEAD".to_string())),
-            default: default_candidates(refs.symbolic("refs/remotes/origin/HEAD"))
-                .find_map(|name| Some((name.clone(), refs.resolve(&name)?))),
+            default: stacked.clone().or_else(|| {
+                default_candidates(refs.symbolic("refs/remotes/origin/HEAD"))
+                    .find_map(|name| Some((name.clone(), refs.resolve(&name)?)))
+            }),
+            base: stacked.map(|(name, _)| name),
             remotes: refs.packed.contains(" refs/remotes/")
                 || any_file(&refs.common.join("refs/remotes")),
             reflog: std::fs::read_to_string(refs.dir.join("logs/HEAD"))
@@ -244,8 +254,9 @@ impl Here {
 
     /// The same facts from git itself, for a repository that keeps its refs in a reftable.
     // ponytail: one git process per fact; one `for-each-ref` call if reftable Stops grow slow.
-    fn through_git(root: &Path, dir: &Path) -> Here {
+    fn through_git(root: &Path, dir: &Path, base: Option<&str>) -> Here {
         let repo = Repo::at(root);
+        let stacked = base.and_then(|name| Some((name.to_string(), resolve(root, name)?)));
         let symbolic = |name: &str| {
             repo.text(&["symbolic-ref", "-q", name])
                 .map(|found| found.trim().to_string())
@@ -258,8 +269,11 @@ impl Here {
                     .or_else(|| symbolic("HEAD"))
                     .unwrap_or_else(|| "HEAD".to_string()),
             ),
-            default: default_candidates(symbolic("refs/remotes/origin/HEAD"))
-                .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
+            default: stacked.clone().or_else(|| {
+                default_candidates(symbolic("refs/remotes/origin/HEAD"))
+                    .find_map(|name| Some((name.clone(), resolve(root, &name)?)))
+            }),
+            base: stacked.map(|(name, _)| name),
             remotes: repo
                 .text(&["for-each-ref", "--count=1", "refs/remotes"])
                 .is_some_and(|found| !found.trim().is_empty()),
@@ -270,7 +284,7 @@ impl Here {
         }
     }
 
-    /// HEAD and the default branch's commit, the pair the merge-base cache is keyed by.
+    /// HEAD and the base branch's commit, the pair the merge-base cache is keyed by.
     pub fn pair(&self) -> Option<(&str, &str)> {
         Some((self.head.as_deref()?, self.default.as_ref()?.1.as_str()))
     }
@@ -477,6 +491,7 @@ pub fn read(at: &Path) -> Option<Stamp> {
         told: strings(&held, "told"),
         history: History {
             merge_base: text("merge_base"),
+            base: text("base"),
             head_ref: text("head_ref"),
             reflog_position: held
                 .get("reflog_position")
@@ -516,6 +531,7 @@ pub fn recorded(stamp: &Stamp) -> Value {
             "merge_base",
             stamp.history.merge_base.clone().map(Value::from),
         ),
+        ("base", stamp.history.base.clone().map(Value::from)),
         ("head_ref", stamp.history.head_ref.clone().map(Value::from)),
         (
             "reflog_position",

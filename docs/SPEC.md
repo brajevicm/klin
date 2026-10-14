@@ -670,14 +670,18 @@ or take the turn's history away, so a precise local judgement is no longer
 possible. klin then degrades to reporting for one Stop. The stamp records
 the merge-base of HEAD with the default branch, HEAD's symbolic ref (an
 in-progress rebase counts as its `head-name` branch), and the position of
-HEAD's reflog. A Stop is advisory when, since the stamp was taken, one of
-these happened:
+HEAD's reflog. On a stacked branch it also records the ref of the branch it
+is stacked on (candidate 3 of B.6.3), resolved when the stamp is taken, and
+in this section that branch stands in for the default branch while its ref
+resolves. So a merge of that branch is incoming commits, and a later Stop
+reads its ref from the git directory's files with no git process. A Stop is
+advisory when, since the stamp was taken, one of these happened:
 
 1. **Incoming commits.** The default-branch merge-base moved forward, so
    the recorded one is an ancestor of it, and HEAD's
    reflog since the recorded position holds a `merge`, `pull`, `rebase` or
    `reset` entry, or the `commit (merge)` entry of a merge that stopped on a
-   conflict. The default branch is found by candidate 3 of B.6.3
+   conflict. The default branch is found by candidate 4 of B.6.3
    without the GitHub variables, and only a remote-tracking ref
    (`refs/remotes/...`) counts. The reflog is compared by entry position,
    never by time. When HEAD has no reflog, a merge-base that moved forward
@@ -807,8 +811,9 @@ changes:
 - The journal `reset` kind is not written, and a reader reads none, because
   it reads no schema 1 line. A Stop line can carry the verdict `advisory`
   (section 13.1).
-- The stamp also records the default-branch merge-base, HEAD's symbolic ref
-  and HEAD's reflog position (section 6.6).
+- The stamp also records the default-branch merge-base, the ref of the
+  branch a stacked branch is stacked on, HEAD's symbolic ref and HEAD's
+  reflog position (section 6.6).
 - vNext adds no readiness record and no readiness drift check.
 - `klin cache clean` does not exist. The cache stays safe to delete by hand.
   `klin status` prints the state directory and the cache path.
@@ -2858,8 +2863,12 @@ ticket that implements the area MUST measure them:
    on the agent's own feature branch does not move the default-branch
    merge-base, so it is not advisory, and those commits read as new at the
    Stop.
-3. **Stacked branches.** A merge of a branch other than the default branch
-   does not move the default-branch merge-base either.
+3. **Stacked branches.** klin infers the branch a branch is stacked on
+   (candidate 3 of B.6.3). A teammate's branch cut from this branch holds
+   some of its commits, so the inferred base is too new and this branch's
+   earlier commits do not read as new. `branch.<name>.klin-base` names the
+   right branch. A merge of a third branch, neither the default branch nor
+   the one the branch is stacked on, does not move the recorded merge-base.
 4. **Cross-file findings.** A finding in a file the agent changed that an
    earlier commit of the branch caused, without incoming commits.
 5. **Reflog dependence.** Rule 1 of section 6.6 reads HEAD's reflog. A
@@ -3163,7 +3172,7 @@ Three kinds exist.
 | Kind | `before` | `after` | Who uses it |
 |---|---|---|---|
 | `turn` | the tree as it stood when the current turn's window opened | working tree | the Stop hook, `klin radius` |
-| `branch` | the merge-base with the default branch, or the pull request base | working tree, or HEAD in CI | `klin check` by hand, CI on a pull request |
+| `branch` | the merge-base with the default branch or the branch it is stacked on, or the pull request base | working tree, or HEAD in CI | `klin check` by hand, CI on a pull request |
 | `push` | the push event's previous commit | HEAD | CI on a push |
 
 Every run MUST print the window it used, as one line, before any gate output.
@@ -3982,12 +3991,36 @@ Candidates, in order:
    `refs/remotes/origin/<target>` then as a local name. Kind `branch`.
 2. The push event's `before` commit from `GITHUB_EVENT_PATH`, when it is not
    the null commit. Kind `push`.
-3. The merge-base of HEAD with the default branch, trying the remote HEAD
+3. The merge-base of HEAD with the branch HEAD's branch `<name>` is stacked
+   on, only when neither candidate above is present. Kind `branch`.
+   - `git config branch.<name>.klin-base REF` names it, when REF resolves to a
+     ref. The window says `(branch.<name>.klin-base)`. A REF that does not
+     resolve is a note, and klin infers the branch.
+   - Otherwise klin infers it from the fork point: the newest first-parent
+     ancestor of HEAD that a remote-tracking branch holds, leaving out
+     `origin/<name>` and every `*/HEAD`. When exactly one such branch holds
+     the fork point and the default branch does not, it is the base, and the
+     window says `(inferred)`. When the default branch holds it, the default
+     branch is the base. When two or more other branches hold it, a note
+     names them and the key, and the default branch is the base.
+   - A detached HEAD, and a branch whose `origin/<name>` is the default branch,
+     are stacked on nothing.
+4. The merge-base of HEAD with the default branch, trying the remote HEAD
    symbolic ref, then `origin/main`, `origin/master`, `main`, `master`. Kind
    `branch`.
 
 The first candidate that resolves wins. None resolving is exit 2 with the list
-of what was tried. No flag overrides the list.
+of what was tried. No flag overrides the list. The key of candidate 3 is a
+person's override of the inference, and it never outranks candidates 1 and
+2, so CI is unchanged. `tests/base.rs` pins candidate 3 in
+`a_branch_stacked_on_another_remote_branch_is_judged_against_it`,
+`the_branch_base_key_overrides_the_inferred_base`,
+`a_branch_base_key_that_does_not_resolve_falls_back_to_the_inferred_base`,
+`a_fork_point_two_remote_branches_hold_is_judged_against_the_default_branch`,
+`the_pull_request_target_wins_over_the_branch_base` and
+`a_branch_that_tracks_the_default_branch_is_judged_against_it`, and
+`tests/advisory.rs` pins the Stop in
+`a_merge_of_the_branch_this_one_is_stacked_on_makes_the_stop_advisory`.
 
 #### B.6.5 Materialization
 
