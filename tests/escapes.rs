@@ -1291,6 +1291,52 @@ fn a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass() {
 }
 
 #[test]
+fn a_method_named_catch_is_not_an_empty_handler() {
+    let tree = tree();
+    tree.write(
+        "src/result.ts",
+        "class Result { catch() {} }\n\
+         const handler = { catch() {} };\n\
+         class Retry {\n  catch(error) {}\n}\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("empty handler"), "{}", run.out);
+}
+
+#[test]
+fn array_and_union_generic_arguments_and_typed_or_trailing_comma_handlers_fail() {
+    let tree = tree();
+    tree.write(
+        "src/forms.ts",
+        "const a: Map<string, any[]> = new Map();\n\
+         const b: Map<string, any | null> = new Map();\n\
+         let c: Result<any | undefined, Error>;\n\
+         const d: Array<any[]> = [];\n\
+         p.catch(\n  () => {},\n);\n\
+         p.catch((error): void => {});\n\
+         p.catch(function (error): void {});\n\
+         const ok = n < anyLimit || n > 0;\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("7 new escape site(s)"), "{}", run.out);
+    for expected in [
+        "src/forms.ts:1  any generic argument",
+        "src/forms.ts:2  any generic argument",
+        "src/forms.ts:3  any generic argument",
+        "src/forms.ts:4  any generic argument",
+        "src/forms.ts:5  empty handler",
+        "src/forms.ts:8  empty handler",
+        "src/forms.ts:9  empty handler",
+    ] {
+        assert!(run.says(expected), "missing {expected}\n{}", run.out);
+    }
+}
+
+#[test]
 fn a_double_cast_and_an_empty_handler_in_a_test_file_are_left_out_by_default() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");

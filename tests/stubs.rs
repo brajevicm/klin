@@ -668,3 +668,33 @@ fn a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not() {
         run.out
     );
 }
+
+#[test]
+fn a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder() {
+    let tree = tree();
+    tree.write(
+        "src/api.ts",
+        "const url = \"https://example.com/v1\"; const label = \"mock data\";\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("placeholder comment"), "{}", run.out);
+}
+
+#[test]
+fn a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails() {
+    let tree = tree();
+    tree.write(
+        "src/data.ts",
+        "/**\n * In a real implementation, fetch data\n */\nexport const data = [];\n",
+    );
+
+    let run = tree.run(&["check", "stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/data.ts:2  placeholder comment"),
+        "{}",
+        run.out
+    );
+}

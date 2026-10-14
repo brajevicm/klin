@@ -4486,8 +4486,9 @@ predicate always holds, as 8.2 states. Pinned by
 `a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test` and
 `a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
-`stubs` throws away a match that lies wholly inside a quoted span on one
-line, judges a test module like any other code, and refuses the key. Pinned by
+`stubs` throws away a match that starts inside a quoted span on one line
+and searches again after that span, so the `//` of a URL in a string starts
+no comment and a real marker later on the line is still a site, judges a test module like any other code, and refuses the key. Pinned by
 `repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
 `a_line_carrying_two_escape_kinds_counts_both_under_the_first` and
 `the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in
@@ -4497,14 +4498,22 @@ line. A finding that says `unwrap x4` may hold two `expect` calls, and an
 
 The TypeScript and JavaScript table also holds these rows, each with its own
 remedy (#581): the double cast `as unknown as`, `any` as a generic argument
-beside another argument such as `Record<string, any>` (a lone `<any>` stays
-the `any` row), `biome-ignore`, an ESLint configuration comment such as
-`/* eslint no-console: off */`, `NOSONAR`, `@codescene(disable`, and an empty
-handler: `catch {}`, `catch (e) {}` and `.catch(() => {})`, `.catch(async e => {})` or
-`.catch(function () {})` with nothing but whitespace in the body. A handler whose body holds a
-comment is no site. `biome-ignore` rides along (9.6), and every other row
+beside another argument such as `Record<string, any>`, as an array such as
+`Map<string, any[]>` or in a union such as `Result<any | undefined, E>` (a
+lone `<any>` stays the `any` row), `biome-ignore`, an ESLint configuration
+comment such as `/* eslint no-console: off */`, `NOSONAR`,
+`@codescene(disable`, and an empty handler: `} catch {}` and
+`} catch (e) {}` after the `try` block's brace on the same line, and
+`.catch(() => {})`, `.catch(async e => {})` or `.catch(function () {})` with
+nothing but whitespace in the body, a callback return type such as
+`(e): void =>` and a trailing comma included. A handler whose body holds a
+comment is no site, and a method named `catch` is no handler. Known limit: a
+`catch` clause on a line apart from the brace that closes its `try` block is
+no site. `biome-ignore` rides along (9.6), and every other row
 blocks. Pinned by `each_new_typescript_row_fails_with_its_own_remedy`,
 `a_handler_that_holds_a_comment_and_text_that_only_resembles_a_row_pass`,
+`a_method_named_catch_is_not_an_empty_handler`,
+`array_and_union_generic_arguments_and_typed_or_trailing_comma_handlers_fail`,
 `a_double_cast_and_an_empty_handler_in_a_test_file_are_left_out_by_default`
 and
 `a_line_that_holds_a_biome_ignore_and_a_blocking_escape_blocks_as_the_blocking_one`
@@ -4534,10 +4543,13 @@ linear in the file for each pattern, and the quoted-span lookup is a binary
 search. Known limit: a reworded marker, or a marker deleted while another is
 added in the same file, holds the count.
 The TypeScript and JavaScript table also keys a `placeholder comment` this
-way: a `//` or `/*` comment that says "in a real implementation",
-"simplified version", "replace with actual" or "mock data", in any case.
-"for now" is not a phrase, because #362 measured it as noise (#581). Pinned
-by `a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not` in
+way: a `//` or `/*` comment, or a line of a block comment that starts with
+`*`, that says "in a real implementation", "simplified version", "replace
+with actual" or "mock data", in any case. "for now" is not a phrase, because
+#362 measured it as noise (#581). Pinned by
+`a_placeholder_comment_fails_and_the_same_phrase_in_a_string_does_not`,
+`a_url_in_one_string_and_a_phrase_in_another_is_not_a_placeholder` and
+`a_placeholder_phrase_on_a_later_line_of_a_block_comment_fails` in
 `tests/stubs.rs`.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
 `a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,

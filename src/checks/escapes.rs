@@ -132,7 +132,11 @@ const LANGUAGES: &[Language] = &[
             (DOUBLE_CAST, r"\bas\s+unknown\s+as\b", DOUBLE_CAST_FIX),
             (
                 "any generic argument",
-                r"<\s*any\s*,|,\s*any\s*[,>]",
+                concat!(
+                    r",\s*any(?:\s*\[\s*\])*\s*[,>|&]",
+                    r"|<\s*any(?:\s*\[\s*\])*\s*[,|&]",
+                    r"|<\s*any(?:\s*\[\s*\])+\s*>",
+                ),
                 "name the type the argument holds, or take `unknown` and narrow it",
             ),
             (
@@ -149,7 +153,12 @@ const LANGUAGES: &[Language] = &[
             ("codescene disable", r"@codescene\(\s*disable", ANALYZER_FIX),
             (
                 EMPTY_HANDLER,
-                r"\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}|\.catch\(\s*(?:(?:async\s+)?(?:\([^)]*\)|\w+)\s*=>|(?:async\s+)?function\s*\w*\s*\([^)]*\))\s*\{\s*\}\s*\)",
+                concat!(
+                    r"\}[ \t]*catch\s*(?:\([^)]*\))?\s*\{\s*\}",
+                    r"|\.catch\(\s*(?:(?:async\s+)?(?:\([^)]*\)(?:\s*:\s*[^=(){};]+?)?|\w+)\s*=>",
+                    r"|(?:async\s+)?function\s*\w*\s*\([^)]*\)(?:\s*:\s*[^=(){};]+?)?)",
+                    r"\s*\{\s*\}\s*,?\s*\)",
+                ),
                 "handle the error, or say in a comment inside the handler why ignoring it is right",
             ),
         ],

@@ -636,15 +636,10 @@ fn tally(
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
     for pattern in &set.patterns {
-        let stands = pattern
-            .regex
-            .find_iter(text)
-            .filter(|found| set.stands(past, found));
+        let stands =
+            unquoted(&pattern.regex, text, &past.literals).filter(|found| set.stands(past, found));
         let (mut scanned, mut line) = (0, 1);
         for found in stands {
-            if quoted(past, found.range()) {
-                continue;
-            }
             line += text[scanned..found.start()].matches('\n').count() as u64;
             scanned = found.start();
             if pattern.test_idiom
@@ -664,12 +659,38 @@ fn tally(
     skipped
 }
 
-/// Whether one quoted span holds the whole match. A match that only starts in one, such as the
-/// `//` of a URL in a string ahead of a real comment marker, is a site. The spans come in order
-/// and never overlap, so only the last one to start at or before the match can hold it.
-fn quoted(past: &Skipped, at: std::ops::Range<usize>) -> bool {
-    let started = past.literals.partition_point(|(from, _)| *from <= at.start);
-    started > 0 && at.end <= past.literals[started - 1].1
+/// The matches that start outside every quoted span. A match that starts inside one, such as
+/// the `//` of a URL in a string, is no site, and the search starts again after that span, so a
+/// real comment marker later on the line is still a site. The spans come in order and never
+/// overlap, so only the last one to start at or before the match can hold its start.
+fn unquoted<'t>(
+    regex: &'t Regex,
+    text: &'t str,
+    literals: &'t [(usize, usize)],
+) -> impl Iterator<Item = regex::Match<'t>> {
+    let mut from = Some(0);
+    std::iter::from_fn(move || {
+        while let Some(found) = from.and_then(|at| regex.find_at(text, at)) {
+            let started = literals.partition_point(|(open, _)| *open <= found.start());
+            if let Some(close) = started
+                .checked_sub(1)
+                .map(|span| literals[span].1)
+                .filter(|close| found.start() <= *close)
+            {
+                from = Some(close + 1);
+                continue;
+            }
+            from = match found.is_empty() {
+                false => Some(found.end()),
+                true => text[found.end()..]
+                    .chars()
+                    .next()
+                    .map(|next| found.end() + next.len_utf8()),
+            };
+            return Some(found);
+        }
+        None
+    })
 }
 
 fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {
