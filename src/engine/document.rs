@@ -212,33 +212,37 @@ fn axes_of(code: u8, shown: &GateRecords) -> Axes {
     }
 }
 
-/// One gate's run: its exit code, what it told and what it cost.
+/// One gate's run: its exit code, what it told, what it cost, and how long it took in ms.
 struct Ran {
     code: u8,
     told: Vec<Told>,
     records: Records,
+    ms: u64,
 }
 
 /// The names of the gates whose run failed.
-fn failed_gates<'a>(wanted: &[&'a Gate], ran: &[Result<(Ran, u64), &str>]) -> Vec<&'a str> {
+fn failed_gates<'a>(wanted: &[&'a Gate], ran: &[Result<Ran, &str>]) -> Vec<&'a str> {
     wanted
         .iter()
         .zip(ran)
-        .filter(|(_, ran)| matches!(ran, Ok((ran, _)) if ran.code == 1))
+        .filter(|(_, ran)| matches!(ran, Ok(ran) if ran.code == 1))
         .map(|(gate, _)| gate.name.as_str())
         .collect()
 }
 
-/// One gate's run and how long it took, or why the base could not be laid out for it.
+/// One gate's run, or why the base could not be laid out for it.
 fn run<'a>(
     args: &Args,
     gate: &Gate,
     project: &Project,
     against: &'a Against,
-) -> Result<(Ran, u64), &'a str> {
+) -> Result<Ran, &'a str> {
     match (&against.unlaid, gate.check.needs.the_tree()) {
         (Some(why), true) => Err(why),
-        _ => Ok(clock::timed(|| one(args, gate, project, against))),
+        _ => {
+            let (ran, ms) = clock::timed(|| one(args, gate, project, against));
+            Ok(Ran { ms, ..ran })
+        }
     }
 }
 
@@ -277,6 +281,7 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
         code,
         told,
         records,
+        ms: 0,
     }
 }
 
@@ -299,22 +304,19 @@ fn shown(
 /// A remedy told beside another gate becomes a remedy, and joins the remedy of each failure it
 /// names, where that gate failed in the same run and one of those failures failed. Elsewhere it
 /// is dropped. Spec 10.6.
-fn beside(told: Vec<Told>, failed: &[&str]) -> Vec<Told> {
+fn beside(mut told: Vec<Told>, failed: &[&str]) -> Vec<Told> {
     let kept = kept_beside(&told, failed);
+    for item in &mut told {
+        if let Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) = item {
+            joined(failed, &kept);
+        }
+    }
     told.into_iter()
-        .filter_map(|mut item| {
-            match &mut item {
-                Told::Plain(Plain::Beside { key, remedy, .. }) => {
-                    return kept
-                        .contains(&(*key, *remedy))
-                        .then(|| Plain::Remedy(remedy.to_string()).into());
-                }
-                Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) => {
-                    joined(failed, &kept);
-                }
-                _ => (),
-            }
-            Some(item)
+        .filter_map(|item| match item {
+            Told::Plain(Plain::Beside { key, remedy, .. }) => kept
+                .contains(&(key, remedy))
+                .then(|| Plain::Remedy(remedy.to_string()).into()),
+            other => Some(other),
         })
         .collect()
 }
@@ -347,7 +349,8 @@ fn joined(found: &mut [Failed], kept: &[(&str, &str)]) {
     for finding in found {
         for (key, remedy) in kept {
             if finding.values.contains_key(*key) {
-                finding.fix_advice = format!("{} {remedy}", finding.fix_advice);
+                finding.fix_advice.push(' ');
+                finding.fix_advice.push_str(remedy);
             }
         }
     }
@@ -927,7 +930,7 @@ impl CheckDocument {
         let failed = failed_gates(wanted, &ran);
         for (gate, ran) in wanted.iter().zip(ran) {
             match ran {
-                Ok((ran, ms)) => self.took(args, (gate, project, against), (ran, ms), &failed, out),
+                Ok(ran) => self.took(args, (gate, project, against), ran, &failed, out),
                 Err(why) => self.unlaid(args, gate, why, out),
             }
         }
@@ -1006,7 +1009,7 @@ impl CheckDocument {
         &mut self,
         args: &Args,
         (gate, project, against): (&Gate, &Project, &Against),
-        (ran, ms): (Ran, u64),
+        ran: Ran,
         failed: &[&str],
         out: &mut String,
     ) {
@@ -1014,6 +1017,7 @@ impl CheckDocument {
             code,
             told,
             records,
+            ms,
         } = ran;
         let (told, shown) = shown(args, (gate, project), told, failed);
         let axes = axes_of(code, &shown);

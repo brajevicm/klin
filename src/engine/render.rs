@@ -22,29 +22,37 @@ use crate::contract::holes::{self, Unmeasured};
 /// How many rows a listed block prints before it says how many more there are.
 const SHOWN: usize = 20;
 
+/// How a gate's new sites print: every one with what it matched, as `klin check` prints them,
+/// or the first `SHOWN` of them with no word that nothing matched, as the Stop prints them.
+/// Spec 10.6.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Detail {
+    Whole,
+    Capped,
+}
+
 /// The report text `klin check` prints of one gate's result.
 pub fn text(told: &[Told]) -> String {
-    rendered(told, true, true)
+    rendered(told, true, Detail::Whole)
 }
 
 /// The report text the Stop hook prints of one gate's result. A gate that passed prints only what
 /// it tells beside its success, so the agent reads what it must act on, and a gate that failed
 /// lists its first new sites without saying that nothing matched them. Spec 9.5, 10.6.
 pub fn stop(told: &[Told], passed: bool) -> String {
-    rendered(told, !passed, false)
+    rendered(told, !passed, Detail::Capped)
 }
 
-fn rendered(told: &[Told], with_ok: bool, whole: bool) -> String {
+fn rendered(told: &[Told], with_ok: bool, detail: Detail) -> String {
     let mut out = String::new();
     for item in told {
-        one(item, (with_ok, whole), &mut out);
+        one(item, (with_ok, detail), &mut out);
     }
     out
 }
 
-/// One item, where `with_ok` says whether its `OK:` lines print and `whole` whether every new
-/// site prints with what it matched.
-fn one(told: &Told, (with_ok, whole): (bool, bool), out: &mut String) {
+/// One item, where `with_ok` says whether its `OK:` lines print.
+fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
     match told {
         Told::Judged { line, held } if with_ok => judged(line, *held, out),
         Told::Document {
@@ -53,7 +61,7 @@ fn one(told: &Told, (with_ok, whole): (bool, bool), out: &mut String) {
             ceiling,
             standing,
         } => document((name, *words, ceiling), standing, with_ok, out),
-        Told::Ratchet(said) => ratchet(said, whole, out),
+        Told::Ratchet(said) => ratchet(said, detail, out),
         other => said(other, out),
     }
 }
@@ -187,9 +195,8 @@ fn sites(listed: &Listed, out: &mut String) {
     }
 }
 
-/// A gate's ratchet failures, where `whole` says whether every new site prints with what it
-/// matched. Spec 10.6.
-fn ratchet(said: &Ratchet, whole: bool, out: &mut String) {
+/// A gate's ratchet failures, its new sites in `detail`. Spec 10.6.
+fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
     match said {
         Ratchet::New {
             unit,
@@ -201,7 +208,7 @@ fn ratchet(said: &Ratchet, whole: bool, out: &mut String) {
                 "FAIL: {} new {unit} {condition}, beyond the {held} the base holds:",
                 failed.len()
             );
-            new_sites(&heading, failed, whole, out);
+            new_sites(&heading, failed, detail, out);
         }
         Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
         Ratchet::RidesAlong {
@@ -225,9 +232,9 @@ fn ratchet(said: &Ratchet, whole: bool, out: &mut String) {
     }
 }
 
-/// The new sites under their heading: every one with what it matched where `whole`, and
-/// otherwise the first `SHOWN` of them with the command that lists the rest. Spec 10.6.
-fn new_sites(heading: &str, failed: &[Failed], whole: bool, out: &mut String) {
+/// The new sites under their heading in `detail`, and where it caps them, the command that lists
+/// the rest. Spec 10.6.
+fn new_sites(heading: &str, failed: &[Failed], detail: Detail, out: &mut String) {
     let rows: Vec<String> = grouped(failed)
         .into_iter()
         .flat_map(|(lead, inside)| {
@@ -241,11 +248,11 @@ fn new_sites(heading: &str, failed: &[Failed], whole: bool, out: &mut String) {
                 finding.line,
                 finding.shown,
                 clip(&finding.text),
-                against(finding, whole)
+                against(finding, detail)
             )
         })
         .collect();
-    if whole {
+    if detail == Detail::Whole {
         return block(out, heading, rows.into_iter());
     }
     let rest = match rows.len() > SHOWN {
@@ -316,7 +323,7 @@ fn worse(unit: &str, failed: &[Failed], out: &mut String) {
             finding.line,
             finding.shown,
             clip(&finding.text),
-            against(finding, true)
+            against(finding, Detail::Whole)
         );
     }
 }
@@ -551,11 +558,11 @@ fn document(
     }
 }
 
-/// What one failure was judged against, and the ceiling in force beside it. Where `whole` is
-/// false a new failure leaves out that nothing matched it. Spec 8.6, 10.6.
-fn against(finding: &Failed, whole: bool) -> String {
+/// What one failure was judged against, and the ceiling in force beside it. A capped new failure
+/// leaves out that nothing matched it. Spec 8.6, 10.6.
+fn against(finding: &Failed, detail: Detail) -> String {
     let matched = match &finding.matched {
-        Matched::Nothing if !whole => None,
+        Matched::Nothing if detail == Detail::Capped => None,
         Matched::Nothing => Some("nothing matched".to_string()),
         Matched::Accepted(entry) => Some(format!("matched the accepted entry for {}", entry.file)),
         Matched::Base(entry) => Some(format!(

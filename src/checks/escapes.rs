@@ -17,6 +17,10 @@ const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, markers::SKIP_TEST_IDIOMS];
 
 const LABEL: &str = "escape";
 
+/// The remedy of a worsened site, whose values name no kind.
+const EVERY_KIND_REMEDY: &str = "Fix what the escape hides: handle the error instead of \
+                                 unwrapping it, address the lint instead of allowing it. Remove \
+                                 the skip, or fix what made the test fail.";
 const SHARED_REMEDY: &str = "Swallowing an error in place of the escape is not a fix. Accepting \
                              a new escape is a policy decision for a person, in the config, in a \
                              reviewed commit.";
@@ -163,6 +167,13 @@ pub const KIND: Kind = Kind {
 };
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    debug_assert!(
+        LANGUAGES
+            .iter()
+            .flat_map(|language| language.patterns)
+            .all(|(row, ..)| kind_remedy(row).is_some()),
+        "every escape row needs a remedy of its kind"
+    );
     markers::gate(&KIND, at, out)
 }
 
@@ -176,7 +187,11 @@ fn show(values: &Values) -> String {
 fn remedy(failed: &[&Values]) -> String {
     let mut said: Vec<&str> = Vec::new();
     for values in failed {
-        let kind = kind_remedy(values.get(LABEL).and_then(Value::as_str));
+        let kind = values
+            .get(LABEL)
+            .and_then(Value::as_str)
+            .and_then(kind_remedy)
+            .unwrap_or(EVERY_KIND_REMEDY);
         if !said.contains(&kind) {
             said.push(kind);
         }
@@ -185,31 +200,26 @@ fn remedy(failed: &[&Values]) -> String {
     said.join(" ")
 }
 
-fn kind_remedy(kind: Option<&str>) -> &'static str {
-    match kind {
-        Some("unwrap" | "expect" | "force try" | "bare except" | "errors ignored") => {
+/// The remedy of one row of `LANGUAGES`, and nothing for a name no row holds. The gate asserts
+/// that every row has one.
+fn kind_remedy(row: &str) -> Option<&'static str> {
+    Some(match row {
+        "unwrap" | "expect" | "force try" | "bare except" | "errors ignored" => {
             "Handle the error instead of unwrapping or ignoring it."
         }
-        Some(
-            "any" | "non-null assertion" | "not-null assertion" | "force unwrap" | "force cast"
-            | "type ignore" | "ts-ignore" | "ts-expect-error" | "unchecked Sendable",
-        ) => {
+        "any" | "non-null assertion" | "not-null assertion" | "force unwrap" | "force cast"
+        | "type ignore" | "ts-ignore" | "ts-expect-error" | "unchecked Sendable" => {
             "Give the value its real type, or narrow it with a check the type checker sees, \
              instead of asserting a type or silencing the type error."
         }
-        Some(
-            "nolint" | "suppress warnings" | "suppress" | "noqa" | "allow" | "eslint-disable"
-            | "rubocop:disable" | "shellcheck disable" | "swiftlint:disable",
-        ) => "Address the lint instead of allowing it.",
-        Some("skipped test" | "expected failure") => {
-            "Remove the skip, or fix what made the test fail."
+        "nolint" | "suppress warnings" | "suppress" | "noqa" | "allow" | "eslint-disable"
+        | "rubocop:disable" | "shellcheck disable" | "swiftlint:disable" => {
+            "Address the lint instead of allowing it."
         }
-        Some("focused test") => "Remove the focus, so that every test runs.",
-        Some("no cover") => "Cover the code with a test instead of excluding it from coverage.",
-        Some("unsafe") => "Use a safe API in place of the unsafe block.",
-        _ => {
-            "Fix what the escape hides: handle the error instead of unwrapping it, address the \
-             lint instead of allowing it. Remove the skip, or fix what made the test fail."
-        }
-    }
+        "skipped test" | "expected failure" => "Remove the skip, or fix what made the test fail.",
+        "focused test" => "Remove the focus, so that every test runs.",
+        "no cover" => "Cover the code with a test instead of excluding it from coverage.",
+        "unsafe" => "Use a safe API in place of the unsafe block.",
+        _ => return None,
+    })
 }
