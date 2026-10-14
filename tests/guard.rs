@@ -143,6 +143,23 @@ fn a_link_to_the_configuration_is_its_own_file() {
     );
 }
 
+/// A case-insensitive file system removes `klin.json` under any spelling of its name. ADR 0074.
+#[test]
+fn asks_before_a_command_removes_the_configuration_under_another_case() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    if !tree.path("KLIN.json").exists() {
+        return;
+    }
+    for command in ["rm KLIN.json", "mv Klin.json old.json"] {
+        asked(
+            &bash_in(&tree, command),
+            command.split(' ').nth(1).unwrap(),
+            command,
+        );
+    }
+}
+
 #[test]
 fn refuses_an_edit_of_klins_own_state() {
     let tree = Tree::new();

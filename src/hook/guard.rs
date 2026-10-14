@@ -1,4 +1,5 @@
 use std::cell::OnceCell;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Component, Path, PathBuf};
 
 use crate::hook::copy;
@@ -215,7 +216,8 @@ impl Guarded {
     /// file klin answers nothing, so a person decides. Spec 10.8, ADR 0074.
     fn removed(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
         let at = entry(base, token)?;
-        (at == entry(Some(&self.root), NAME)?).then(|| {
+        let config = entry(Some(&self.root), NAME)?;
+        (at == config || same_entry(&at, &config)).then(|| {
             (
                 Decision::Ask(format!(
                     "this deletes or moves \"{token}\", the file that turns klin on."
@@ -243,6 +245,15 @@ fn entry(base: Option<&Path>, token: &str) -> Option<PathBuf> {
     }
     let at = plain(&joined(base, token)?);
     Some(real(at.parent()?).join(at.file_name()?))
+}
+
+/// Whether two existing paths name one file without following a final link, so a spelling a
+/// case-insensitive file system accepts still matches. A hard link matches too.
+fn same_entry(one: &Path, other: &Path) -> bool {
+    match (one.symlink_metadata(), other.symlink_metadata()) {
+        (Ok(one), Ok(other)) => (one.dev(), one.ino()) == (other.dev(), other.ino()),
+        _ => false,
+    }
 }
 
 /// The path a token names from `base`, and `None` for a relative one with no `base`.

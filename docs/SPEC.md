@@ -1685,7 +1685,9 @@ or a patch that moves another file onto it keeps klin on and is `allow`. The
 copy reader of 10.8.1 finds the sources of `mv`. When the reader does not know
 an option of `mv`, it takes every word as a source. A command acts on a link
 itself, so removing a link to `klin.json` is `allow`, and removing a
-`klin.json` that is a link is `ask`. Inside an update hunk of a Codex patch,
+`klin.json` that is a link is `ask`. A spelling of the name that the file
+system resolves to the same file, such as `KLIN.json` on a case-insensitive
+file system, is `ask` too. Inside an update hunk of a Codex patch,
 a line that starts with a space is context, never a header.
 
 The `deny` list of commands is:
