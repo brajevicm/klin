@@ -201,6 +201,21 @@ fn shaped() -> Tree {
     tree
 }
 
+/// Spec 10.6.
+#[test]
+fn the_remedy_of_a_site_leads_the_remedy_of_its_finding() {
+    let tree = shaped();
+    tree.write("src/a.py", "def save(key):\n    pass\n");
+
+    let report = tree.run(&["check", "stubs", "--json"]).json();
+    assert!(
+        report["findings"][0]["remedy"]
+            .as_str()
+            .is_some_and(|remedy| remedy.starts_with("Implement the body. Do what the marker")),
+        "{report}"
+    );
+}
+
 #[test]
 fn a_pass_body_fails_and_the_same_declaration_with_a_body_stays_green() {
     let tree = shaped();

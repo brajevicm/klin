@@ -504,3 +504,71 @@ fn the_journal_keeps_the_error_of_an_unjudged_stop() {
     assert_eq!(unjudged["verdict"], "red", "{unjudged}");
     assert!(unjudged.to_string().contains("klin.json"), "{unjudged}");
 }
+
+fn branchy(branches: usize) -> String {
+    let arms: String = (0..branches)
+        .map(|at| format!("    if a == {at} {{\n        return {at};\n    }}\n"))
+        .collect();
+    format!("pub fn branchy(a: u8) -> u8 {{\n{arms}    0\n}}\n")
+}
+
+/// Spec 10.6.
+#[test]
+fn the_stop_text_leaves_out_the_provenance_klin_check_prints() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 3}}"#);
+    tree.write("src/lib.rs", &branchy(4));
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL  complexity"), "{}", run.out);
+    let check = tree.run(&["check", "--changed"]);
+    assert_eq!(check.code, 1, "{}", check.out);
+    for said in ["nothing matched", "derived: ", "window: ", "changed: "] {
+        assert!(!run.says(said), "{said:?} in: {}", run.out);
+        assert!(check.says(said), "{said:?} not in: {}", check.out);
+    }
+}
+
+/// Spec 10.6.
+#[test]
+fn the_stop_text_names_the_base_site_a_worsened_finding_matched() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 3}}"#);
+    tree.write("src/lib.rs", &branchy(4));
+    tree.base();
+    tree.write("src/lib.rs", &branchy(5));
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(
+        run.says("matched the base site at src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+/// Spec 10.6.
+#[test]
+fn the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest() {
+    let tree = tree(r#"{"escapes": {"in": "src"}}"#);
+    let lines: String = (0..25)
+        .map(|at| format!("    let _v{at} = x.unwrap();\n"))
+        .collect();
+    tree.write("src/lib.rs", &format!("fn f() {{\n{lines}}}\n"));
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let sites = |out: &str| {
+        out.lines()
+            .filter(|line| line.contains("= x.unwrap();"))
+            .count()
+    };
+    assert_eq!(sites(&run.out), 20, "{}", run.out);
+    assert!(
+        run.says("  … and 5 more — klin check --changed lists every site\n"),
+        "{}",
+        run.out
+    );
+    let check = tree.run(&["check", "--changed"]);
+    assert_eq!(sites(&check.out), 25, "{}", check.out);
+}

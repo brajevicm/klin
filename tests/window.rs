@@ -30,6 +30,10 @@ fn stop(tree: &Tree) -> Run {
     harness::feed(tree.root(), harness::AGENT, A_STOP)
 }
 
+fn stop_report(tree: &Tree) -> (Run, Value) {
+    harness::stop_report(tree.root(), A_STOP, &[])
+}
+
 /// One prompt of the same turn, which raises the prompt counter and so hands the next stop a
 /// fresh block budget.
 fn prompt(tree: &Tree) {
@@ -50,10 +54,10 @@ fn a_commit_inside_the_turn_leaves_the_debt_new() {
     tree.write("src/lib.rs", text::WRAPPED);
     tree.commit("the agent committed its own debt");
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("src/lib.rs"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
 }
 
 #[test]
@@ -103,10 +107,10 @@ fn a_turn_file_that_is_gone_is_restored_red_from_the_ref() {
     tree.write("src/lib.rs", text::WRAPPED);
     tree.remove(".git/klin/turn");
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(tree.field("commit"), held);
     assert_eq!(tree.field("verdict"), "red");
 }
@@ -119,10 +123,10 @@ fn a_stamp_and_a_ref_that_are_both_gone_widen_the_window_to_the_branch() {
     tree.write("src/lib.rs", text::WRAPPED);
     tree.commit("the debt the deletion meant to hide");
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no turn stamp resolves"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
     assert!(run.says("src/lib.rs"), "{}", run.out);
     assert_eq!(tree.field("commit"), tree.revision("main"));
     assert_eq!(tree.field("verdict"), "red");
@@ -140,10 +144,10 @@ fn a_deleted_stamp_falls_back_to_head_when_no_base_resolves() {
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no base resolves"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
     assert_eq!(tree.field("commit"), tree.revision("HEAD"));
 }
 
@@ -183,10 +187,10 @@ fn a_stamp_commit_git_no_longer_holds_comes_back_from_the_ref() {
     tree.write("src/lib.rs", text::WRAPPED);
     pruned(&tree);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(tree.field("commit"), ref_holds);
 }
 
@@ -198,10 +202,10 @@ fn a_stamp_commit_no_reference_holds_widens_the_window_to_the_branch() {
     pruned(&tree);
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no turn stamp resolves"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
     assert!(run.says("src/lib.rs"), "{}", run.out);
     assert_eq!(tree.field("commit"), tree.revision("main"));
 }
@@ -213,14 +217,10 @@ fn a_state_directory_klin_cannot_keep_still_reads_the_stamp_from_the_ref() {
     tree.write("a-file", "");
     let held = tree.at("a-file");
 
-    let run = harness::feed_with(
-        tree.root(),
-        &[("KLIN_STATE_DIR", held.as_str())],
-        harness::AGENT,
-        A_STOP,
-    );
+    let (run, report) =
+        harness::stop_report(tree.root(), A_STOP, &[("KLIN_STATE_DIR", held.as_str())]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert!(run.says("FAIL"), "{}", run.out);
     assert!(run.says("wrote no verdict"), "{}", run.out);
 }
@@ -230,7 +230,7 @@ fn the_json_report_names_the_window_the_stop_used() {
     let tree = stamped();
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     let window = report["window"].clone();
     assert_eq!(window["kind"], "turn", "{window}");
@@ -292,9 +292,9 @@ fn a_stop_without_the_lock_restores_no_turn_file_from_the_ref() {
     let _lock = held_lock(&tree);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert!(!tree.state("turn").exists(), "{}", run.out);
     assert_eq!(tree.revision("refs/worktree/klin/turn"), reference);
 }
@@ -308,9 +308,9 @@ fn a_stop_without_the_lock_leaves_an_abandoned_stamp_and_its_refs_alone() {
     let _lock = held_lock(&tree);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
     let after = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
     assert_eq!(after, stamp, "a stop without the lock replaced the stamp");
     assert_eq!(tree.revision("refs/worktree/klin/turn"), reference);
@@ -333,10 +333,10 @@ fn a_turn_the_checkout_left_behind_judges_the_current_branch() {
     let tree = left_behind();
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("HEAD no longer holds"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
     assert!(!run.says("test_only_on_work"), "{}", run.out);
     assert_eq!(tree.field("commit"), tree.revision("main"));
     assert_eq!(tree.field("verdict"), "red");
@@ -348,8 +348,8 @@ fn the_stop_after_the_fallback_reports_nothing_the_branch_beside_it_held() {
     tree.write("src/lib.rs", text::WRAPPED);
     assert_eq!(stop(&tree).code, 2);
 
-    let run = stop(&tree);
-    assert!(run.says("window: turn"), "{}", run.out);
+    let (run, report) = stop_report(&tree);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert!(!run.says("test_only_on_work"), "{}", run.out);
     assert!(!run.says("HEAD no longer holds"), "{}", run.out);
 }
@@ -410,10 +410,10 @@ fn a_branch_that_forked_before_the_base_cannot_restore_the_window_the_fallback_w
     tree.git(&["checkout", "-q", "-b", "older", "main~1"]);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no turn stamp resolves"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
 }
 
 #[test]
@@ -422,10 +422,10 @@ fn a_detached_head_outside_the_turn_history_judges_the_current_branch() {
     tree.git(&["checkout", "-q", "--detach", "main"]);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("HEAD no longer holds"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "branch", "{report}");
 }
 
 /// A rewrite on the same branch is not a branch change, so with no remote to make the Stop
@@ -436,10 +436,10 @@ fn a_reset_on_the_same_branch_keeps_the_turn_window() {
     tree.git(&["reset", "-q", "--hard", "main"]);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(!run.says("HEAD no longer holds"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
 }
 
 #[test]
@@ -457,10 +457,10 @@ fn a_rebase_on_the_same_branch_keeps_the_turn_window() {
     tree.git(&["rebase", "-q", "main"]);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(!run.says("HEAD no longer holds"), "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
 }
 
 #[test]
@@ -469,9 +469,9 @@ fn a_branch_made_at_the_same_head_keeps_the_turn_window() {
     tree.write("src/lib.rs", text::WRAPPED);
     tree.git(&["checkout", "-q", "-b", "elsewhere"]);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert_eq!(
         tree.field("commit"),
         tree.revision("refs/worktree/klin/turn")
@@ -485,8 +485,8 @@ fn a_branch_that_descends_from_the_turn_keeps_the_turn_window() {
     tree.commit("the agent committed its own debt");
     tree.git(&["checkout", "-q", "-b", "downstream"]);
 
-    let run = stop(&tree);
+    let (run, report) = stop_report(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(report["window"]["kind"], "turn", "{report}");
     assert!(run.says("src/lib.rs"), "{}", run.out);
 }

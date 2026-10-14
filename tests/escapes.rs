@@ -204,9 +204,79 @@ fn failure_output_names_the_fix_and_no_command_that_records_debt() {
 
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("Fix what the escape hides"), "{}", run.out);
+    assert!(
+        run.says("Handle the error instead of unwrapping"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("--write-baseline"), "{}", run.out);
     assert!(!run.says("Tighten"), "{}", run.out);
+}
+
+/// Spec 10.6.
+#[test]
+fn each_escape_kind_gets_its_own_remedy() {
+    let tree = tree();
+    tree.write("src/a.ts", "export const a = b as any;\n");
+
+    let typed = tree.run(&["check", "escapes"]);
+    assert_eq!(typed.code, 1, "{}", typed.out);
+    assert!(typed.says("Give the value its real type"), "{}", typed.out);
+    assert!(!typed.says("unwrap"), "{}", typed.out);
+
+    tree.remove("src/a.ts");
+    tree.write("src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
+
+    let erred = tree.run(&["check", "escapes"]);
+    assert_eq!(erred.code, 1, "{}", erred.out);
+    assert!(erred.says("Handle the error"), "{}", erred.out);
+    assert!(!erred.says("real type"), "{}", erred.out);
+}
+
+/// Spec 10.6.
+#[test]
+fn a_worsened_escape_site_gets_the_remedy_of_its_kind() {
+    let tree = tree();
+    tree.write("src/a.ts", "export const a = b as any;\n");
+    tree.base();
+    tree.write(
+        "src/a.ts",
+        "export const a = b as any;\nexport const a = b as any;\n",
+    );
+
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("Give the value its real type"), "{}", run.out);
+    assert!(!run.says("unwrapping"), "{}", run.out);
+    let report = tree.run(&["check", "escapes", "--json"]).json();
+    assert!(
+        report["findings"][0]["remedy"]
+            .as_str()
+            .is_some_and(|remedy| remedy.starts_with("Give the value its real type")),
+        "{report}"
+    );
+}
+
+/// Spec 10.6.
+#[test]
+fn a_focused_test_and_a_skipped_test_each_get_their_own_remedy() {
+    let tree = tree();
+    tree.write("src/a.ts", "it.only('x', () => {});\n");
+
+    let focused = tree.run(&["check", "escapes"]);
+    assert_eq!(focused.code, 1, "{}", focused.out);
+    assert!(focused.says("src/a.ts:1  focused test"), "{}", focused.out);
+    assert!(focused.says("Remove the focus"), "{}", focused.out);
+    assert!(!focused.says("Remove the skip"), "{}", focused.out);
+
+    tree.write("src/a.ts", "it.skip('x', () => {});\n");
+
+    let skipped = tree.run(&["check", "escapes"]);
+    assert_eq!(skipped.code, 1, "{}", skipped.out);
+    assert!(skipped.says("src/a.ts:1  skipped test"), "{}", skipped.out);
+    assert!(skipped.says("Remove the skip"), "{}", skipped.out);
+    assert!(!skipped.says("Remove the focus"), "{}", skipped.out);
 }
 
 fn spread() -> Tree {
@@ -489,7 +559,7 @@ fn javascript_is_read_by_the_typescript_set() {
 
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/thing.js:1  skipped test"), "{}", run.out);
+    assert!(run.says("src/thing.js:1  focused test"), "{}", run.out);
 }
 
 #[test]
@@ -581,7 +651,7 @@ fn every_alternative_inside_a_pattern_matches_too() {
         "src/alt.ts:1  any",
         "src/alt.ts:2  any",
         "src/alt.ts:3  skipped test",
-        "src/alt.ts:4  skipped test",
+        "src/alt.ts:4  focused test",
         "src/alt.ts:5  skipped test",
         "src/alt.rs:2  allow",
         "src/alt.go:1  skipped test",

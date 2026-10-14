@@ -67,6 +67,44 @@ fn a_family_the_base_proves_judges_a_new_unreached_member() {
     assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
 }
 
+/// Spec 10.6.
+#[test]
+fn the_remedy_names_public_api_only_when_public_api_failed() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
+
+    let run = tree.run(&["check", "--changed"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  reachability"), "{}", run.out);
+    assert!(!run.says("FAIL  public-api"), "{}", run.out);
+    assert!(
+        run.says("Wire this file into the application"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("public-api break"), "{}", run.out);
+    assert!(
+        !remedies(&tree).contains("public-api break"),
+        "{}",
+        remedies(&tree)
+    );
+}
+
+/// The remedies of the reachability findings a `klin check --changed --json` records.
+fn remedies(tree: &Tree) -> String {
+    let report = tree.run(&["check", "--changed", "--json"]).json();
+    report["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|finding| finding["check"] == "reachability")
+        .filter_map(|finding| finding["remedy"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 #[test]
 fn json_exposes_the_derived_family_topology() {
     let tree = three_reached_commands();
@@ -1120,5 +1158,10 @@ fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_b
         !run.says("delete the file and leave the break"),
         "{}",
         run.out
+    );
+    assert!(
+        remedies(&tree).contains("If a public-api break names what an unreached file held"),
+        "{}",
+        remedies(&tree)
     );
 }

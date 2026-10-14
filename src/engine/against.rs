@@ -44,7 +44,7 @@ fn base(
         return Ok(None);
     }
     let base = chosen(window, project)?;
-    if !args.json() {
+    if args.text() {
         let _ = writeln!(out, "  {}", base.line());
     }
     Ok(Some(base))
@@ -83,7 +83,7 @@ fn changes<'a>(
         return Ok(None);
     };
     let changed = project.changes(&base.before)?;
-    if !args.json() {
+    if args.text() {
         let _ = writeln!(
             out,
             "  changed: {} file(s) against the base — the scoped gates judge those; \

@@ -266,7 +266,7 @@ pub fn show(label: &str, values: &Values) -> String {
         let plural = if lines.contains(',') { "s" } else { "" };
         let _ = write!(named, ", new on line{plural} {lines}");
     }
-    match values.get("remedy").and_then(Value::as_str) {
+    match values.get(ratchet::REMEDY).and_then(Value::as_str) {
         Some(remedy) if !remedy.is_empty() => format!("{named} — {remedy}"),
         _ => named,
     }
@@ -667,7 +667,7 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Findi
             values.insert(kind.label.into(), tally.name.into());
             values.insert("count".into(), tally.count.into());
             if !tally.remedy.is_empty() {
-                values.insert("remedy".into(), tally.remedy.into());
+                values.insert(ratchet::REMEDY.into(), tally.remedy.into());
             }
             Finding {
                 file,
