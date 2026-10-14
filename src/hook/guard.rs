@@ -55,6 +55,12 @@ const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
 const HOST_REFUSAL: &str = "host-refusal";
 
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
+/// The opt-in file. An agent may edit it when the person asks, but deleting or moving it
+/// switches klin off for the session, so a proven delete or move of it is put to the person.
+/// ADR 0074.
+const NAME: &str = "klin.json";
+/// The writers that delete, move or empty a file.
+const REMOVERS: &[&str] = &["rm", "rmdir", "unlink", "shred", "mv", "truncate"];
 /// The commands that write every argument they take, so a guarded path among the arguments is a
 /// write under any reading. `cp` and `install` write their destination alone, which the copy
 /// reader finds. ADR 0033, ADR 0068.
@@ -194,6 +200,20 @@ impl Guarded {
                     "this names \"{token}\", which is klin's own record of the turn."
                 )),
                 "state-mention",
+            )
+        })
+    }
+
+    /// The opt-in file taken as an argument by a command that deletes or moves it. Without the
+    /// file klin answers nothing, so a person decides. Spec 10.8, ADR 0074.
+    fn removed(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
+        let at = resolved(base, token)?;
+        (at == real(&self.root.join(NAME))).then(|| {
+            (
+                Decision::Ask(format!(
+                    "this deletes or moves \"{token}\", the file that turns klin on."
+                )),
+                "config-mention",
             )
         })
     }
@@ -458,6 +478,7 @@ fn segment_decision(
         return (Decision::Allow, "");
     }
     let written = written_by(&segment.words, cwd);
+    let removed = removed_by(&segment.words);
     strictest(
         segment
             .targets
@@ -469,6 +490,12 @@ fn segment_decision(
                     .iter()
                     .filter(|word| !word.contains(PARAMETER))
                     .flat_map(|word| guarded.asked(cwd, word)),
+            )
+            .chain(
+                removed
+                    .iter()
+                    .filter(|word| !word.contains(PARAMETER))
+                    .flat_map(|word| guarded.removed(cwd, word)),
             ),
     )
 }
@@ -490,6 +517,14 @@ fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
         },
         command if WRITERS.contains(&command) => args.to_vec(),
         _ => Vec::new(),
+    }
+}
+
+/// The files a command deletes, moves or empties. ADR 0074.
+fn removed_by(words: &[String]) -> &[String] {
+    match command(words) {
+        Some((command, args)) if REMOVERS.contains(&command) => args,
+        _ => &[],
     }
 }
 

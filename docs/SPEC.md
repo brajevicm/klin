@@ -1627,8 +1627,13 @@ guard answers nothing (section 5.1).
 `klin.json` is not in the guarded set (ADR 0074). Every agent on every host
 may edit it. The klin skill tells the agent to change it only when the person
 explicitly asks for that change, and to write it only after the person
-approves the exact edit. klin does not enforce this rule. The diff a person
-reviews and CI catch a `klin.json` that an agent weakened.
+approves the exact edit. klin does not enforce this rule. The Stop and `klin
+check` judge under the `klin.json` in the tree, so only a person who reads
+its diff catches a `klin.json` that an agent weakened.
+
+`klin.json` is also the opt-in file. A proven `rm`, `rmdir`, `unlink`,
+`shred`, `mv` or `truncate` of the `klin.json` at the tree root is `ask`,
+with the reason `config-mention`, because without it klin answers nothing.
 
 The `deny` list of commands is:
 
@@ -6832,7 +6837,8 @@ because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
   `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
   `install` are not writers here, because each reads its first argument.
   Section 10.8.1 makes each a writer of its destination. The reason quotes
-  the token that matched. The person decides.
+  the token that matched. The person decides. Section 10.8 adds a delete or
+  move of `klin.json` to this decision.
 - `allow`: everything else, including every command that only names a guarded
   path.
 
@@ -7091,8 +7097,9 @@ tells a reader nothing.
   `state-mention` for a command that only names a guarded path as a writer's
   argument, which klin cannot prove the way it proves the first (ADR 0033),
   and `setup`, `update` and `agent` for one of klin's own subcommands that
-  only a person or the host runs. A journal from before ADR 0074 also holds
-  `config-write` and `config-mention`, and `klin report` still reads them.
+  only a person or the host runs. `config-mention` names a delete or move of
+  `klin.json` (section 10.8). A journal from before ADR 0074 also holds
+  `config-write`, and `klin report` still reads it.
 
 The `reset` line is what the 0.x reset command wrote. vNext writes none:
 

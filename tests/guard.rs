@@ -85,7 +85,7 @@ fn an_agent_may_edit_the_configuration() {
     }
     for command in [
         "echo '{}' > klin.json",
-        "rm klin.json",
+        "tee klin.json",
         "cp a klin.json",
         "sed -i s/a/b/ klin.json",
     ] {
@@ -93,6 +93,26 @@ fn an_agent_may_edit_the_configuration() {
         assert_eq!(run.out, "", "{command}: {}", run.out);
         allowed(&run, command);
     }
+}
+
+/// Without `klin.json` klin answers nothing, so a command that deletes or moves it is put to
+/// the person. Another project's `klin.json` is an ordinary file. ADR 0074.
+#[test]
+fn asks_before_a_command_deletes_or_moves_the_configuration() {
+    let tree = Tree::new();
+    for (command, quoted) in [
+        ("rm klin.json", "klin.json"),
+        ("rm -f ./klin.json", "./klin.json"),
+        ("unlink klin.json", "klin.json"),
+        ("shred -u klin.json", "klin.json"),
+        ("truncate -s 0 klin.json", "klin.json"),
+        ("mv klin.json old.json", "klin.json"),
+        ("sudo rm klin.json", "klin.json"),
+    ] {
+        asked(&bash_in(&tree, command), quoted, command);
+    }
+    tree.write("sub/klin.json", "{}\n");
+    allowed(&bash_in(&tree, "rm sub/klin.json"), "rm sub/klin.json");
 }
 
 #[test]

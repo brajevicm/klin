@@ -67,11 +67,16 @@ Each route below makes a gate pass without fixing anything. Every one of them
 is visible in the diff a person reviews.
 
 - Editing `klin.json` on your own. Change it only when the person
-  explicitly asks for that change. Show the person the exact change, and
-  write it only after they say yes. Never add an entry to `accepted` or
-  raise a ceiling to make a gate pass. klin does not refuse the edit, so
-  this rule is yours to keep, and the edit shows in the diff a person
-  reviews.
+  explicitly asks for that change: the request names `klin.json`, or the
+  setting or entry to change. "Make the gates pass" or "fix CI however you
+  need" is not such a request. When the person gave the exact change, make
+  it and show the diff. When you choose any value yourself, such as which
+  entry to accept, its reason or a ceiling, show the change and write it
+  only after the person says yes. Never add an entry to `accepted` or raise
+  a ceiling to make a gate pass. klin does not refuse the edit, and klin
+  judges under the edited file, so this rule is yours to keep. Never delete
+  or move `klin.json`: without it klin is off, and klin asks the person
+  first.
 - Deleting a failing test. The stop asks once why each deleted test went.
   If it failed because the code is wrong, restore it and fix the code. If
   the removal is intended, say why in your reply, and the stop after that

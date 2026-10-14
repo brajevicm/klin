@@ -54,7 +54,8 @@ other file the coding agent can edit through its host.
   them is `allow` (SPEC 10.8 and B.9.4, ADR 0027, ADR 0032, ADR 0033, ADR
   0074).
 - The klin skill tells the agent to change `klin.json` only when the person
-  explicitly asks for that change. klin does not enforce this.
+  explicitly asks for that change. klin does not enforce this. A proven delete
+  or move of `klin.json`, which switches klin off, is `ask`.
 - The guard answers only where it can prove that a call writes a guarded path.
   A shell wildcard, an unbalanced quote, `$(`, a backtick, `${`, `<<`, a
   backslash, a `cd` command word, or a path it cannot resolve all end in
@@ -124,7 +125,7 @@ gate that would have named it.
 | Behavior | Local feedback | Independent CI | Needs repository policy |
 | --- | --- | --- | --- |
 | A new complexity, escape, stub or other finding | The stop hook blocks the turn and names it | `klin check` measures the committed tree again | Yes, to make the check required |
-| An agent edit to `klin.json` | `allow`; the skill says to edit it only when the person asks (ADR 0074) | The diff is visible, and `klin check` reads the committed config | Yes, review over `klin.json` |
+| An agent edit to `klin.json` | `allow`; the skill says to edit it only when the person asks (ADR 0074) | `klin check` judges under the edited config, so it passes; only the diff shows the change | Yes, review over `klin.json` |
 | An agent removes or disables the local hook | May remove the feedback, and klin does not detect it | Still measures the final tree | Yes |
 | An agent changes the CI workflow | The hook file and the workflow are not guarded | The same change may alter the run that judges it | Yes, CODEOWNERS and protected settings |
 | An agent adds an entry to `accepted` | The skill says to add one only when the person asks | `klin check` reads the committed config, so an accepted entry is silent in CI too | Yes, a reviewed commit by a person |

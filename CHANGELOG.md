@@ -11,7 +11,9 @@ the version, so add the heading again after each release.
 
 - Your agent can edit `klin.json` again. The guard no longer refuses it, and
   the klin skill tells the agent to change it only when you ask, and to show
-  you the change first. klin's own state under `.git/klin` stays guarded.
+  you the change first. A command that deletes or moves `klin.json` still
+  asks you first, because without it klin is off. klin's own state under
+  `.git/klin` stays guarded.
 
 ## 0.5.4
 

@@ -14,11 +14,18 @@ it, but only when the person asks for that change.
 shell write of it with `allow`, on every host. klin's own state directory
 stays guarded as before.
 
+One exception stays. `klin.json` is also the opt-in file, and without it klin
+answers nothing. So a proven `rm`, `rmdir`, `unlink`, `shred`, `mv` or
+`truncate` of the `klin.json` at the tree root is still `ask`: a person
+decides whether klin goes off.
+
 The rule moves into the klin skill, which every host's plugin carries. The
 agent changes `klin.json` only when the person explicitly asks for that
-change. It shows the person the exact change and writes it only after the
-person says yes. It never adds an `accepted` entry or raises a ceiling to make
-a gate pass.
+change: the request names `klin.json`, or the setting or entry to change, and
+"make the gates pass" is not one. When the person gave the exact change, the
+agent makes it and shows the diff. When the agent chooses any value, it shows
+the change and writes it only after the person says yes. It never adds an
+`accepted` entry or raises a ceiling to make a gate pass.
 
 ## Rejected
 
@@ -37,12 +44,14 @@ a gate pass.
 
 ## Consequences
 
-klin does not enforce the rule. An agent that ignores the skill can weaken
-`klin.json`, and the diff a person reviews and a required `klin check` in CI
-are what catch it (`docs/THREAT_MODEL.md`). CODEOWNERS over `klin.json` stays
-the way to make that review required.
+klin does not enforce the rule. The Stop and `klin check` both judge under the
+`klin.json` in the tree, so an agent that ignores the skill can weaken it and
+pass both, in the same turn and in CI. Only a person who reads the
+`klin.json` diff catches that, and CODEOWNERS over `klin.json` makes that
+review required (`docs/THREAT_MODEL.md`). #575 adds a review item that names
+what a changed `klin.json` loosens.
 
-A proven shell write of `klin.json`, which #426 put to the person as `ask`, is
-now `allow` like an edit. The journal writes no `config-write` or
-`config-mention` line, and `klin report` still reads them from an older
-journal.
+A proven shell write of `klin.json` other than a delete or move, which #426
+put to the person as `ask`, is now `allow` like an edit. The journal writes no
+`config-write` line, and `klin report` still reads one from an older journal.
+A delete or move of `klin.json` keeps the `config-mention` reason.

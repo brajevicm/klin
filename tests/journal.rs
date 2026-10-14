@@ -632,7 +632,7 @@ fn a_call_that_writes_the_configuration_appends_no_line() {
     );
     for event in [
         edit.as_str(),
-        r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "sed -i s/a/b/ klin.json"}}"#,
     ] {
         let run = guard(&tree, event);
         assert_eq!(run.code, 0, "{event}: {}", run.out);
