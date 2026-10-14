@@ -61,6 +61,10 @@ impl Args {
     pub fn at_stop(&self) -> bool {
         self.view == View::Stop
     }
+
+    pub fn text(&self) -> bool {
+        self.view == View::Text
+    }
 }
 
 /// What this run judges the working tree against: the base commit, laid out, and the files
@@ -307,8 +311,11 @@ fn shown(
 fn beside(mut told: Vec<Told>, failed: &[&str]) -> Vec<Told> {
     let kept = kept_beside(&told, failed);
     for item in &mut told {
-        if let Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) = item {
-            joined(failed, &kept);
+        if let Told::Ratchet(
+            Ratchet::New { failed: found, .. } | Ratchet::Worse { failed: found, .. },
+        ) = item
+        {
+            joined(found, &kept);
         }
     }
     told.into_iter()
@@ -326,9 +333,9 @@ fn beside(mut told: Vec<Told>, failed: &[&str]) -> Vec<Told> {
 fn kept_beside(told: &[Told], failed: &[&str]) -> Vec<(&'static str, &'static str)> {
     let fails = |key: &str| {
         told.iter().any(|item| match item {
-            Told::Ratchet(Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. }) => failed
-                .iter()
-                .any(|finding| finding.values.contains_key(key)),
+            Told::Ratchet(
+                Ratchet::New { failed: found, .. } | Ratchet::Worse { failed: found, .. },
+            ) => found.iter().any(|finding| finding.values.contains_key(key)),
             _ => false,
         })
     };
@@ -968,7 +975,7 @@ impl CheckDocument {
         base: Option<&Window>,
         out: &mut String,
     ) {
-        let says = args.view == View::Text;
+        let says = args.text();
         self.window = base.map(Window::record);
         self.tree = (!args.at_stop()).then(|| base::tree_record(project.root()));
         for review in selected(project.moves(), wanted).filter_map(moved_review) {

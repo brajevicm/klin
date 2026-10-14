@@ -188,7 +188,7 @@ fn remedy(failed: &[&Values]) -> String {
     let mut said: Vec<&str> = Vec::new();
     for values in failed
         .iter()
-        .filter(|values| !values.contains_key("remedy"))
+        .filter(|values| !values.contains_key(markers::REMEDY))
     {
         let kind = values
             .get(LABEL)
