@@ -1248,4 +1248,16 @@ fn the_note_of_an_inherited_binary_attribute_says_the_file_is_still_measured() {
         run.out
     );
     assert!(!run.says("src/art.rs is not measured"), "{}", run.out);
+
+    let (_, report) = checked(&tree, &[]);
+    assert_eq!(report["not_measured"], 0, "{report}");
+    let note = list(&report, "notes")
+        .iter()
+        .find(|note| note["file"] == "src/art.rs")
+        .unwrap_or_else(|| panic!("no note for src/art.rs in {report}"));
+    assert_eq!(note["values"]["measured"], true, "{report}");
+
+    assert_eq!(stop(&tree).code, 0);
+    let since = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(since["counts"]["not_measured"], 0, "{since}");
 }

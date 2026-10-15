@@ -494,8 +494,9 @@ pub fn stop_tail(root: &Path) -> journal::Tail {
     journal::tail(root, cutoff)
 }
 
-/// What the turn end tells the person on a stop nothing blocks: the turn line, and beside it at
-/// most once every seven days the week's line, each with the name the journal records it under.
+/// What the turn end tells the person on a stop nothing blocks: the turn line, and at most once
+/// every seven days the week's line, each told on its own and with the name the journal records
+/// it under.
 /// `this` is the stop's own line, which the journal does not hold yet. It reads the bounded tail
 /// the stop already took and never the whole journal. Spec 9.5.
 pub fn turn_end(root: &Path, tail: journal::Tail, this: Value) -> Vec<(&'static str, String)> {
@@ -504,17 +505,14 @@ pub fn turn_end(root: &Path, tail: journal::Tail, this: Value) -> Vec<(&'static 
     let now = clock();
     let turn = scoped(&lines, Scope::Turn, root, now);
     let prompt = turn.iter().rposition(|line| kind(line) == "prompt");
-    let Some(said) = turn_line(&regressions(&turn[prompt.unwrap_or(0)..])) else {
-        return Vec::new();
-    };
-    let mut parts = vec![("turn", said)];
-    if weekly(&lines, tail.older, now) {
-        parts.push((
-            "weekly",
-            weekly_line(&scoped(&lines, Scope::Since(7), root, now)),
-        ));
-    }
-    parts
+    let said = turn_line(&regressions(&turn[prompt.unwrap_or(0)..]));
+    let week = weekly(&lines, tail.older, now)
+        .then(|| weekly_line(&scoped(&lines, Scope::Since(7), root, now)))
+        .flatten();
+    [("turn", said), ("weekly", week)]
+        .into_iter()
+        .filter_map(|(name, said)| Some((name, said?)))
+        .collect()
 }
 
 /// The turn in one sentence: what klin caught and what became of it, or what still needs the
@@ -560,18 +558,21 @@ fn weekly(lines: &[Value], older: bool, now: u64) -> bool {
 }
 
 /// The week in one sentence, with the command that lists it, so a person who never types the
-/// command learns it exists. Spec 9.5.
-fn weekly_line(week: &[Value]) -> String {
+/// command learns it exists. Nothing for a week that caught none. Spec 9.5.
+fn weekly_line(week: &[Value]) -> Option<String> {
     let held = regressions(week);
     let counts = Counts::of(&held);
+    if counts.caught == 0 {
+        return None;
+    }
     let rest = match counts.fixed == counts.caught {
         true => "`klin report --since 7d` shows them.",
         false => "`klin report --since 7d` shows the rest.",
     };
-    format!(
+    Some(format!(
         "{} {rest}",
         caught_this("in the last seven days", counts.caught, counts.fixed)
-    )
+    ))
 }
 
 /// The counted unit in the person's words. Spec 11.5, CONTEXT.md.

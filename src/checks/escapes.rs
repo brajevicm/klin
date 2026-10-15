@@ -207,6 +207,7 @@ pub const KIND: Kind = Kind {
         nested: None,
         rides_along,
         worsened: ratchet::Worsened::Fails,
+        fails: None,
     },
 };
 

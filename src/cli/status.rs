@@ -1,6 +1,7 @@
 //! `klin status`: the configuration, each host integration, the state directory and the local
 //! window, read without running a check and without writing anything. Spec 11.4, 11.7.
 
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -108,7 +109,7 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     let held = stamp::read(at)?;
     let mut window = json!({
         "verdict": held.verdict.name(),
-        "age_seconds": now().saturating_sub(held.time),
+        "age_seconds": known(held.time).map(|time| now().saturating_sub(time)),
         "open": [],
         "open_sites": [],
         "unasked": [],
@@ -123,31 +124,47 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     });
     match held.verdict {
         Verdict::Red { open, unasked } => {
-            window["open_sites"] = open.iter().map(|id| site_of(lines, id)).collect();
+            window["open_sites"] = sites_of(lines, &open).into();
             window["open"] = open.into();
             window["unasked"] = unasked.into();
         }
         Verdict::Unjudged { error, .. } => window["error"] = error.into(),
-        Verdict::Aborted { since } => window["aborted_since"] = since.into(),
+        Verdict::Aborted { since } => window["aborted_since"] = known(since).into(),
         Verdict::Pending | Verdict::Green => {}
     }
     Some(window)
 }
 
-/// Where the newest Stop that recorded this finding id found it, as file and line, or the id
-/// where no Stop the journal holds recorded it. Spec 11.4.
-fn site_of(lines: &[Value], id: &str) -> String {
-    let found = lines
+/// Where the newest Stop that recorded each open finding id found it, as file and line, or the
+/// id where no Stop the journal holds recorded it. One pass from the newest line, which stops once
+/// every id has its site. Spec 11.4.
+fn sites_of(lines: &[Value], open: &[String]) -> Vec<String> {
+    let wanted: HashSet<&str> = open.iter().map(String::as_str).collect();
+    let mut found: HashMap<&str, String> = HashMap::new();
+    let findings = lines
         .iter()
         .rev()
         .filter(|line| line["kind"] == "stop")
         .filter_map(|line| line["result"]["findings"].as_array())
-        .flatten()
-        .find(|finding| finding["id"] == id);
-    match found.map(|finding| (word(finding, "file"), finding["line"].as_u64())) {
-        Some((file, Some(line))) if !file.is_empty() && line > 0 => format!("{file}:{line}"),
-        Some((file, _)) if !file.is_empty() => file.to_string(),
-        _ => id.to_string(),
+        .flatten();
+    for finding in findings {
+        if found.len() == wanted.len() {
+            break;
+        }
+        if let Some(id) = finding["id"].as_str().filter(|id| wanted.contains(id)) {
+            found.entry(id).or_insert_with(|| site(finding, id));
+        }
+    }
+    open.iter()
+        .map(|id| found.remove(id.as_str()).unwrap_or_else(|| id.clone()))
+        .collect()
+}
+
+fn site(finding: &Value, id: &str) -> String {
+    match (word(finding, "file"), finding["line"].as_u64()) {
+        ("", _) => id.to_string(),
+        (file, Some(line)) if line > 0 => format!("{file}:{line}"),
+        (file, _) => file.to_string(),
     }
 }
 
@@ -304,8 +321,14 @@ fn history_text(window: &Value, out: &mut String) {
 /// How long ago a journal time was, after a comma, and nothing where the time is unknown.
 fn when(time: &Value) -> String {
     time.as_u64()
+        .and_then(known)
         .map(|time| format!(", {}", turn::age(now().saturating_sub(time))))
         .unwrap_or_default()
+}
+
+/// A time a stamp or a journal line holds, where zero is the default of a missing one.
+fn known(time: u64) -> Option<u64> {
+    (time > 0).then_some(time)
 }
 
 fn word<'a>(value: &'a Value, key: &str) -> &'a str {

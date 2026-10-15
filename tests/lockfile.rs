@@ -1577,3 +1577,25 @@ fn an_accepted_entry_that_gives_no_stale_holds_no_staleness() {
         run.out
     );
 }
+
+/// A base dependency with a range and a lockfile entry passes, so a FAIL beside it does not count
+/// it among the sites the base holds. Spec 10.6.
+#[test]
+fn a_fail_counts_no_passing_range_dependency_as_held_by_the_base() {
+    let tree = Tree::new();
+    tree.write(
+        "Cargo.toml",
+        &manifest("serde = \"=1.0.0\"\nregex = \"1.0\"\n"),
+    );
+    tree.write("Cargo.lock", &locked(&["serde", "regex"]));
+    tree.base();
+    tree.write(
+        "Cargo.toml",
+        &manifest("serde = \"=1.0.0\"\nregex = \"1.0\"\nlog = \"=1.0.0\"\n"),
+    );
+
+    let run = tree.run(&["check", "lockfile"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("beyond the 0 the base holds"), "{}", run.out);
+}

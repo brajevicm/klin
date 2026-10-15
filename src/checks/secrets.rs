@@ -133,6 +133,7 @@ const EVALUATOR: Evaluator = Evaluator {
     nested: None,
     rides_along: ratchet::every_row_blocks,
     worsened: ratchet::Worsened::Fails,
+    fails: None,
 };
 
 /// Every language name this section reads, with the extensions each selects. It also reads each

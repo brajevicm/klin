@@ -1763,6 +1763,28 @@ fn the_weekly_line_rides_the_first_turn_end_seven_days_after_the_last_and_not_th
     );
 }
 
+/// The weekly line does not wait for a turn line: a prompt that ends clean after an earlier
+/// prompt blocked still tells the week when it is due. Spec 9.5.
+#[test]
+fn a_due_weekly_line_is_told_at_a_clean_prompt_after_a_blocked_one() {
+    let tree = hooked();
+    weekly_eight_days_ago(&tree);
+    blocked(&tree);
+
+    prompt(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    let clean = hook(&tree, A_STOP);
+
+    assert_eq!(clean.code, 0, "{}", clean.out);
+    assert_eq!(
+        told(&clean),
+        "klin caught 1 regression in the last seven days. It was fixed after klin flagged it. \
+         `klin report --since 7d` shows them.",
+        "{}",
+        clean.out
+    );
+}
+
 /// A stop's telling reads the history its turn and its week need and stops there. The prefix here
 /// is a month of blocked stops, each with its own regression, so the richer per-site aggregation
 /// of #172 is what the bounded reader of #184 keeps out of the stop path.

@@ -980,7 +980,10 @@ the exit code.
 **4. A coverage note** is klin's own limit that the change did not open. It
 never makes the measurement incomplete, never blocks and never keeps the
 stamp. The coverage counts and the summary still count its file as not
-measured.
+measured, except a file that a capability still measured under a form an
+attribute gives it. That note, or the review item of such an opened gap,
+holds `values: {"measured": true}`, the check document's `not_measured`
+leaves the file out, and `klin report` does not list it as not measured.
 
 - Any reason of the opened-gap table that the base holds at the same site
   with the same reason.
@@ -1617,9 +1620,13 @@ once.
 A FAIL's heading counts the new sites "beyond the N the base holds". N counts
 only the failing sites the base holds. An accepted entry is not one, and
 neither is a base member that a gate records to match against but that
-passes, such as a reached file. Pinned by
-`a_fail_counts_no_reached_base_member_as_held` and
-`a_fail_counts_no_accepted_entry_as_held_by_the_base`.
+passes, such as a reached file. A gate whose ratcheted values do not say
+alone whether a site fails names its own test: `lockfile` counts a base
+dependency only where it is unlocked or stale, so a locked range is not
+counted. Pinned by
+`a_fail_counts_no_reached_base_member_as_held`,
+`a_fail_counts_no_accepted_entry_as_held_by_the_base` and
+`a_fail_counts_no_passing_range_dependency_as_held_by_the_base`.
 
 The Stop text leaves out provenance that does not change the repair:
 
@@ -1665,6 +1672,10 @@ The Stop keeps these 0.x shapes, with vNext command names:
   current prompt flagged. A regression that an earlier prompt left red, and
   that no stop of this prompt flagged, is not counted again. Pinned by
   `the_turn_line_counts_only_the_current_prompt`;
+- the weekly line does not wait for a turn line: it is told when it is due
+  and the last seven days caught a regression, also at a stop whose turn line
+  says nothing. Pinned by
+  `a_due_weekly_line_is_told_at_a_clean_prompt_after_a_blocked_one`;
 - the `no-prompt-event` note says that klin grants no fresh gate blocks until
   the host's prompt hook runs `klin __agent event`.
 
@@ -1990,8 +2001,10 @@ Text output:
   - the last Stop, labeled as historical.
 - The text names each open finding by file and line, from the newest Stop
   in the journal that recorded its id, and by its id where no such Stop
-  remains. It prints each time as an age, such as "5 minute(s) ago". Pinned
-  by `status_names_an_open_finding_by_its_site_and_each_time_by_its_age`.
+  remains. It prints each time as an age, such as "5 minute(s) ago", and
+  leaves out a time the stamp or the journal does not hold. Pinned by
+  `status_names_an_open_finding_by_its_site_and_each_time_by_its_age` and
+  `status_prints_no_age_for_a_stamp_without_a_time`.
 - It never claims that the current working tree passes.
 - Integration states:
 
@@ -2217,7 +2230,8 @@ The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
 `red`. Each `unasked` entry is the site as `file:line  text` of a deleted test, so a gate
 that errors adds none. `error` is null
 unless the verdict is `unjudged`, and `aborted_since` is null unless it is
-`aborted`. The text prints an `unjudged` window as "nothing judged" with its
+`aborted`. `age_seconds` and `aborted_since` are null where the stamp holds
+no time. The text prints an `unjudged` window as "nothing judged" with its
 error.
 
 #### The `report` document

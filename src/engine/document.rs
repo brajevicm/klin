@@ -1165,10 +1165,13 @@ impl CheckDocument {
     }
 
     /// A review item per opened gap and a coverage note per limit, every sorted file counted as
-    /// not measured, and each gate's gap and limit counts. Spec 7.2, 11.7.
+    /// not measured but one a gate still measured under a form an attribute gives it, and each
+    /// gate's gap and limit counts. Spec 7.2, 11.7.
     fn reviewed(&mut self, sorted: &[Unmeasured]) {
         for item in sorted {
-            self.not_measured.insert(item.file.clone());
+            if !item.measured {
+                self.not_measured.insert(item.file.clone());
+            }
             match item.class {
                 Class::Lost => (),
                 Class::Opened if item.reason == Cause::LeftScope && self.fails_at(&item.file) => (),
@@ -1794,6 +1797,7 @@ mod tests {
         nested: None,
         rides_along: |values| values.get("kind").and_then(Value::as_str) == Some(RIDER),
         worsened: ratchet::Worsened::Fails,
+        fails: None,
     };
 
     fn site(kind: &str) -> ratchet::Finding {

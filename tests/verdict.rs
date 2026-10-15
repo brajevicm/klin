@@ -604,3 +604,24 @@ fn status_names_an_open_finding_by_its_site_and_each_time_by_its_age() {
         serde_json::json!(["src/lib.rs:5"])
     );
 }
+
+/// A stamp that holds no time prints no age, and its JSON age is null. Spec 11.4.
+#[test]
+fn status_prints_no_age_for_a_stamp_without_a_time() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    tree.write(
+        "src/lib.rs",
+        "pub fn knot(a: bool) -> u8 {\n    if a { 1 } else { 0 }\n}\n",
+    );
+    assert_eq!(stop(&tree).code, 2);
+    let at = tree.path(".git/klin/turn");
+    let mut stamp: Value = serde_json::from_str(&std::fs::read_to_string(&at).unwrap()).unwrap();
+    stamp.as_object_mut().unwrap().remove("time");
+    std::fs::write(&at, stamp.to_string()).unwrap();
+
+    let status = tree.run(&["status"]);
+
+    assert_eq!(status.code, 0, "{}", status.out);
+    assert!(status.says("window: red\n"), "{}", status.out);
+    assert_eq!(window(&tree)["age_seconds"], Value::Null);
+}

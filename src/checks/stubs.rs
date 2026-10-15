@@ -118,6 +118,7 @@ pub const KIND: Kind = Kind {
         nested: None,
         rides_along: ratchet::every_row_blocks,
         worsened: ratchet::Worsened::Fails,
+        fails: None,
     },
 };
 
