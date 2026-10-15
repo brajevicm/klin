@@ -121,3 +121,36 @@ fn an_accepted_entry_the_change_adds_names_the_escape_it_holds() {
         run.out
     );
 }
+
+#[test]
+fn a_first_klin_json_that_turns_escapes_off_names_the_escape_it_hides() {
+    let tree = Tree::new();
+    tree.write("src/a.ts", CLEAN);
+    tree.base();
+    tree.write("klin.json", r#"{"escapes": false}"#);
+    tree.write("src/b.ts", ESCAPED);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let hidden = loosened(&report);
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "src/b.ts", "{report}");
+}
+
+#[test]
+fn a_run_that_selects_another_gate_or_names_a_config_judges_once() {
+    let tree = based();
+    tree.write("klin.json", r#"{"escapes": false}"#);
+    tree.write("src/b.ts", ESCAPED);
+
+    let selected = tree.run(&["check", "complexity", "--json"]);
+    assert_eq!(selected.code, 0, "{}", selected.out);
+    let report = selected.json();
+    assert!(loosened(&report).is_empty(), "{report}");
+
+    let named = tree.run(&["check", "--config", "klin.json", "--json"]);
+    assert_eq!(named.code, 0, "{}", named.out);
+    let report = named.json();
+    assert!(loosened(&report).is_empty(), "{report}");
+}

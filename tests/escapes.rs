@@ -448,6 +448,7 @@ fn except_drops_a_subtree() {
         "klin.json",
         r#"{ "escapes": { "in": "src", "except": "src/generated" } }"#,
     );
+    tree.base();
     tree.write("src/thing.ts", "const a: any = 1;\n");
     tree.write("src/thing.test.ts", "const b: any = 1;\n");
     tree.write("src/generated/api.ts", "const c: any = 1;\n");

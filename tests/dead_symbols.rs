@@ -763,6 +763,7 @@ fn ignore_globs_match_every_name_a_destructuring_binds() {
         "klin.json",
         r#"{"dead_symbols":{"in":"src","ignore":["_*"]}}"#,
     );
+    tree.base();
     tree.write(
         "src/unused.ts",
         "import { settings } from \"./settings\";\n\nconst { _limit } = settings;\nconst [_first, second] = [1, 2];\n",

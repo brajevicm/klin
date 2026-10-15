@@ -127,9 +127,8 @@ fn measured(
     let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
     let (mut wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
     if args.without_integrations {
-        let (integrations, kept): (Vec<&Gate>, Vec<&Gate>) = wanted
-            .into_iter()
-            .partition(|gate| gate.check.activation == Activation::Integration);
+        let (integrations, kept): (Vec<&Gate>, Vec<&Gate>) =
+            wanted.into_iter().partition(|gate| left_alone(args, gate));
         report.skip(&integrations);
         wanted = kept;
     }
@@ -174,14 +173,18 @@ fn loosened(
     }
 }
 
-/// The run under the `klin.json` the base holds at the worktree root, read as the tree's file.
-/// A run under a `--config` names no such file.
+/// The run under the `klin.json` the base holds at the worktree root, read as the tree's file,
+/// where the change altered that file. A missing file on either side reads as `{}`. A run under
+/// a `--config` names no such file.
 fn under_base(args: &Args, project: &Project, window: &Window) -> Option<Project> {
     if args.config.is_some() {
         return None;
     }
-    let bytes = crate::sys::git::Repo::at(project.root()).blob(&window.before, FILENAME)?;
-    let text = String::from_utf8(bytes).ok()?;
+    let base = at_base(project, window);
+    if base == std::fs::read(&project.config.file).ok() {
+        return None;
+    }
+    let text = String::from_utf8(base.unwrap_or_else(|| b"{}".to_vec())).ok()?;
     let base = Config::read(&project.config.file, &text, &catalogue::sections()).ok()?;
     let mut judged = Project::of(base, project.start());
     judged.bind(window);
@@ -197,10 +200,7 @@ fn changed_gates<'a>(
 ) -> Vec<(&'a Gate, String)> {
     plan.gates
         .iter()
-        .filter(|gate| args.gates.is_empty() || args.gates.contains(&gate.name))
-        .filter(|gate| {
-            !args.without_integrations || gate.check.activation != Activation::Integration
-        })
+        .filter(|gate| named(&args.gates, gate) && !left_alone(args, gate))
         .filter_map(|gate| Some((gate, change(base, tree, gate)?)))
         .collect()
 }
@@ -287,8 +287,7 @@ fn deleted_config(args: &Args, project: &Project, window: Option<&Window>) -> Op
     if args.config.is_some() || project.config.written() {
         return None;
     }
-    let window = window?;
-    crate::sys::git::Repo::at(project.root()).blob(&window.before, FILENAME)?;
+    at_base(project, window?)?;
     Some(Note {
         check: None,
         kind: "config-deleted",
@@ -333,7 +332,22 @@ fn chosen_gates<'a>(
     let wanted = plan
         .gates
         .iter()
-        .filter(|gate| named.is_empty() || named.contains(&gate.name))
+        .filter(|gate| self::named(named, gate))
         .collect();
     Ok((wanted, unsupported))
+}
+
+/// Whether a run's selector takes this gate: it names no gate, or names this one.
+fn named(names: &[String], gate: &Gate) -> bool {
+    names.is_empty() || names.contains(&gate.name)
+}
+
+/// Whether the run leaves this gate alone, as the baseline of `setup` leaves every integration.
+fn left_alone(args: &Args, gate: &Gate) -> bool {
+    args.without_integrations && gate.check.activation == Activation::Integration
+}
+
+/// The worktree root's `klin.json` as the window's base holds it.
+fn at_base(project: &Project, window: &Window) -> Option<Vec<u8>> {
+    crate::sys::git::Repo::at(project.root()).blob(&window.before, FILENAME)
 }

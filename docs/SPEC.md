@@ -2777,11 +2777,13 @@ the job summary and as annotations (section 12.3). They do not fail CI. A person
 
 The tree's `klin.json` sets the judgement, so a change that loosens it passes
 under its own policy. `klin check` therefore judges a second time when the
-base holds a `klin.json` at the worktree root and the run names no
+change altered the `klin.json` at the worktree root and the run names no
 `--config`:
 
-1. It reads the base's `klin.json` as the tree's file. A base file that
-   does not load ends the second judgement in silence.
+1. It reads the base's `klin.json` as the tree's file. A file missing on
+   either side reads as `{}`, so a first `klin.json` and a deleted one are
+   changes too. A base file that does not load ends the second judgement in
+   silence.
 2. It selects each gate of the base's plan whose section, or whose `accepted`
    entries, the change altered, within the run's own selection.
 3. It runs those gates under the base's policy, over the same window.
