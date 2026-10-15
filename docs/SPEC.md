@@ -2187,11 +2187,11 @@ and `rides_along` (true) for a finding of a ride-along row at the Stop
 (section 9.6).
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
-`unmeasured`, `moved-pin`, `moved-skipped`, `ride-along`), `file`, `line`,
-`text`, `reason` (the agent's reply for a deleted test, the gap reason for
-`unmeasured`, the old and new path for `moved-pin` and `moved-skipped`, the
-condition the row breaks for `ride-along`), and `values` where the item has
-them.
+`unmeasured`, `moved-pin`, `moved-skipped`, `ride-along`, `config-loosened`),
+`file`, `line`, `text`, `reason` (the agent's reply for a deleted test, the
+gap reason for `unmeasured`, the old and new path for `moved-pin` and
+`moved-skipped`, the condition the row breaks for `ride-along`, null for
+`config-loosened`), and `values` where the item has them.
 
 A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
@@ -2721,6 +2721,7 @@ the base (section 6.5).
 | Integration tool error | Not applicable: integrations never run at Stop. | Hole, `tool-error`, exit 3, unless a FAIL gives exit 1. |
 | Deleted test | Section 9.2. | Review item. Exit unaffected. |
 | Unmatched accepted entry | A note. | Review item. Exit unaffected. |
+| A `klin.json` change that hides a finding the base's `klin.json` fails | Not applicable: the Stop judges once. | `config-loosened` review item per hidden finding (section 16.2). Exit unaffected. |
 | Build fails | Build block per section 6.4. | Not applicable: no build. |
 | Build tool absent (127) | A note. The gates still run. | Not applicable. |
 | Host event unreadable, usage error, panic | Section 10.10. | Not applicable. |
@@ -2773,6 +2774,31 @@ tests or type checks. The project's CI owns those (section 12.2).
 A deleted test, an unmatched accepted entry and a finding of a ride-along
 row (section 9.6) are review items at this level. The Action shows them in
 the job summary and as annotations (section 12.3). They do not fail CI. A person's code review decides them.
+
+The tree's `klin.json` sets the judgement, so a change that loosens it passes
+under its own policy. `klin check` therefore judges a second time when the
+base holds a `klin.json` at the worktree root and the run names no
+`--config`:
+
+1. It reads the base's `klin.json` as the tree's file. A base file that
+   does not load ends the second judgement in silence.
+2. It selects each gate of the base's plan whose section, or whose `accepted`
+   entries, the change altered, within the run's own selection.
+3. It runs those gates under the base's policy, over the same window.
+4. Each finding they fail that the run's own gates do not fail is a
+   `config-loosened` review item. The item names the gate, the site, and the
+   change, such as `escapes: false`.
+
+The text report groups the items under one line:
+
+```text
+  REVIEW: klin.json loosens the policy:
+    escapes: false hides 1 new finding: src/b.ts:2  export const n = (y as any).n;
+```
+
+The second judgement changes no exit code. A hard failure would stop a person
+from accepting debt in the same change as the code. The Stop never judges
+twice.
 
 The README MUST name both levels and say which one a setup reaches.
 

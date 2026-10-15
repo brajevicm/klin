@@ -782,6 +782,23 @@ impl CheckDocument {
         self.notes.push(note);
     }
 
+    pub fn review(&mut self, review: Review) {
+        self.reviews.push(review);
+    }
+
+    /// The findings `wanted` fail under `project`'s policy, run apart from any document a
+    /// person reads. Spec 16.2.
+    pub fn failing_under(
+        args: &Args,
+        (project, wanted): (&Project, &[&Gate]),
+        against: &Against,
+    ) -> Vec<Finding> {
+        let mut apart = CheckDocument::default();
+        apart.gates(args, (project, wanted), against, &mut String::new());
+        apart.findings.retain(Finding::failing);
+        apart.findings
+    }
+
     /// A run-scope error, which stops the run before any capability measures. Spec 7.3.
     pub fn stop(&mut self, fault: Fault) {
         self.stopped = true;

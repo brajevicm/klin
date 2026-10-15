@@ -119,15 +119,30 @@ impl Config {
             return Ok(Config::unwritten(start));
         };
         let text = std::fs::read_to_string(&file).map_err(|why| Error::unreadable(&file, why))?;
-        let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
-        let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
-        well_formed(&file, &data, sections)?;
+        Config::read(&file, &text, sections)
+    }
+
+    /// The config `text` states, judged as the file at `file`, whose directory every path is
+    /// relative to. Spec 5.1, 14.
+    pub fn read(file: &Path, text: &str, sections: &[Section]) -> Result<Config, Error> {
+        let data = serde_json::from_str(text).map_err(|why| Error::unreadable(file, why))?;
+        well_formed(file, &data, sections)?;
         Ok(Config {
-            file,
-            root,
+            file: file.to_path_buf(),
+            root: file.parent().unwrap_or(Path::new("")).to_path_buf(),
             data,
             sections: sections.to_vec(),
         })
+    }
+
+    /// The `accepted` entries this config states for one gate.
+    pub fn accepted_for(&self, gate: &str) -> Vec<&Value> {
+        self.pinned(ACCEPTED.name)
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter(|entry| entry.get("gate").and_then(Value::as_str) == Some(gate))
+            .collect()
     }
 
     /// A tree with no configuration at all. The file it names is the one `init` would write, so
