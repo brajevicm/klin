@@ -47,11 +47,11 @@ From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
 
-# Set up this repository. For Claude Code only, add --host claude.
+# Set up this repository.
 klin setup
 ```
 
-Then commit `klin.json` and the generated integration files.
+Then commit `klin.json` and the generated integration files, and ask your agent to tailor `klin.json`. With a plugin, which never runs `klin setup`, start with that request.
 
 klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, add `--host claude`, `codex`, or `cursor`.
 
@@ -82,7 +82,7 @@ Add `--details` for individual findings, `--since 7d` for the last seven days, o
 
 ## Native plugins
 
-Instead of the CLI setup, you can run klin as a Claude Code, Codex, or Cursor plugin.
+klin also runs as a Claude Code, Codex, or Cursor plugin.
 
 A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin report`. If the plugin and the repository hooks are both present, only one of them handles each event.
 
@@ -131,7 +131,7 @@ A plugin does nothing until the repository has a `klin.json`. At the repository 
 echo '{}' > klin.json
 ```
 
-`{}` is a complete configuration. klin derives everything else from the repository.
+`{}` is a complete configuration.
 
 ## Why klin
 

@@ -1572,7 +1572,7 @@ fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
     assert_eq!(run.code, 0, "{}", run.out);
     let lines: Vec<&str> = run.out.lines().collect();
     assert_eq!(
-        lines[lines.len() - 2..],
+        lines[lines.len() - 3..lines.len() - 1],
         [
             "klin now holds today's debt as the floor: 2 escape hatches.",
             "Only new problems block. Blind spots here: lockfile (0 of 1 files judged), \
@@ -1583,6 +1583,43 @@ fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
         run.out
     );
 }
+
+/// A setup that leaves the repository opted in ends by naming the next step, as a request to
+/// the agent rather than a slash command, because each host invokes a skill its own way. A
+/// second run, which changes nothing, still names it. Spec 11.2, #593.
+#[test]
+fn setup_ends_by_naming_the_request_to_tailor_klin_json() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+
+    for _ in 0..2 {
+        let run = tree.run(&["setup", "--host", "claude"]);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert_eq!(run.out.lines().last(), Some(TAILOR_NEXT), "{}", run.out);
+    }
+}
+
+/// A first `--user` setup in a repository writes its `klin.json` too, so it names the same next
+/// step. Review 5532508565, #593.
+#[test]
+fn setup_user_names_the_request_to_tailor_the_klin_json_it_wrote() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+    let home = Tree::bare();
+    let at = home_of(&home);
+
+    let run = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "claude"],
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path("klin.json").is_file(), "{}", run.out);
+    assert_eq!(run.out.lines().last(), Some(TAILOR_NEXT), "{}", run.out);
+}
+
+const TAILOR_NEXT: &str = "Next: ask your agent to tailor klin.json to this repository.";
 
 /// A tree with no debt says so, rather than naming an empty floor. #587.
 #[test]
