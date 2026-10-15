@@ -941,10 +941,11 @@ fn a_deleted_test_klin_let_through_is_a_question_and_stays_out_of_the_count() {
 
     let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(
-        all.says("a test deleted from tests/pay.rs:20, fn refund_twice(). The agent said why."),
+        all.says("a test deleted from tests/pay.rs:20, fn refund_twice()."),
         "{}",
         all.out
     );
+    assert!(!all.says("said why"), "{}", all.out);
 }
 
 #[test]
@@ -1363,8 +1364,10 @@ fn a_red_pass_through_tells_the_person_one_regression_still_needs_them() {
     );
 }
 
+/// The turn line counts only what the stops of the current prompt flagged, so a regression an
+/// earlier prompt left red is not caught again. Spec 9.5.
 #[test]
-fn a_fix_in_a_later_prompt_of_the_same_turn_still_tells_the_count() {
+fn the_turn_line_counts_only_the_current_prompt() {
     let tree = hooked();
     blocked(&tree);
     let through = hook(&tree, A_SECOND_STOP);
@@ -1374,12 +1377,7 @@ fn a_fix_in_a_later_prompt_of_the_same_turn_still_tells_the_count() {
     tree.write("src/lib.rs", CLEAN);
     let green = hook(&tree, A_STOP);
     assert_eq!(green.code, 0, "{}", green.out);
-    assert_eq!(
-        told(&green),
-        "klin caught 1 regression this turn. It was fixed after klin flagged it.",
-        "{}",
-        green.out
-    );
+    assert_eq!(told(&green), "", "{}", green.out);
 }
 
 const SUITE: &str = "#[test]\nfn alpha() {\n    assert!(true);\n}\n\n#[test]\nfn beta() {\n    assert!(1 == 1);\n}\n";
@@ -1836,11 +1834,7 @@ fn a_deleted_test_file_reads_as_the_file_deleted() {
 
     let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert_eq!(all.code, 0, "{}", all.out);
-    assert!(
-        all.says("tests/test_two.py deleted. The agent said why."),
-        "{}",
-        all.out
-    );
+    assert!(all.says("tests/test_two.py deleted."), "{}", all.out);
     assert_eq!(
         outcomes(
             &tree.run(&["report", "--since", "7d", "--json"]).json(),

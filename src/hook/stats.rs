@@ -502,8 +502,9 @@ pub fn turn_end(root: &Path, tail: journal::Tail, this: Value) -> Vec<(&'static 
     let mut lines = tail.lines;
     lines.push(this);
     let now = clock();
-    let turn = regressions(&scoped(&lines, Scope::Turn, root, now));
-    let Some(said) = turn_line(&turn) else {
+    let turn = scoped(&lines, Scope::Turn, root, now);
+    let prompt = turn.iter().rposition(|line| kind(line) == "prompt");
+    let Some(said) = turn_line(&regressions(&turn[prompt.unwrap_or(0)..])) else {
         return Vec::new();
     };
     let mut parts = vec![("turn", said)];

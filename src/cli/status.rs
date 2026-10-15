@@ -13,7 +13,7 @@ use crate::engine::catalogue;
 use crate::sys::error::Error;
 use crate::sys::release::{self, Expected};
 use crate::window::stamp::{Here, Verdict};
-use crate::{hook::journal, sys::state, window::stamp};
+use crate::{hook::journal, hook::turn, sys::state, window::stamp};
 
 const NO_REPOSITORY: &str = "klin status reads a repository, and this is no git repository.";
 
@@ -122,6 +122,7 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     });
     match held.verdict {
         Verdict::Red { open, unasked } => {
+            window["open_sites"] = open.iter().map(|id| site_of(lines, id)).collect();
             window["open"] = open.into();
             window["unasked"] = unasked.into();
         }
@@ -130,6 +131,23 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         Verdict::Pending | Verdict::Green => {}
     }
     Some(window)
+}
+
+/// Where the newest Stop that recorded this finding id found it, as file and line, or the id
+/// where no Stop the journal holds recorded it. Spec 11.4.
+fn site_of(lines: &[Value], id: &str) -> String {
+    let found = lines
+        .iter()
+        .rev()
+        .filter(|line| line["kind"] == "stop")
+        .filter_map(|line| line["result"]["findings"].as_array())
+        .flatten()
+        .find(|finding| finding["id"] == id);
+    match found.map(|finding| (word(finding, "file"), finding["line"].as_u64())) {
+        Some((file, Some(line))) if !file.is_empty() && line > 0 => format!("{file}:{line}"),
+        Some((file, _)) if !file.is_empty() => file.to_string(),
+        _ => id.to_string(),
+    }
 }
 
 /// The last advisory Stop the journal records and its reason, also one that lost the lock and
@@ -223,27 +241,31 @@ fn local_text(document: &Value, out: &mut String) {
     window_text(window, out);
     let stop = &document["last_stop"];
     if let Some(verdict) = stop["verdict"].as_str() {
-        let _ = writeln!(out, "last stop (historical): {verdict} at {}", stop["time"]);
+        let _ = writeln!(
+            out,
+            "last stop (historical): {verdict}, {}",
+            when(&stop["time"])
+        );
     }
 }
 
 /// The stamp's verdict and age, and what keeps the window red: "nothing judged" for an
 /// unjudged window, never green. Spec 6.6, 11.4.
 fn window_text(window: &Value, out: &mut String) {
-    let age = &window["age_seconds"];
+    let age = turn::ago(now().saturating_sub(window["age_seconds"].as_u64().unwrap_or_default()));
     let _ = match window["verdict"].as_str() {
         Some("unjudged") => writeln!(
             out,
-            "window: nothing judged, stamped {age} s ago — {}",
+            "window: nothing judged, stamped {age} — {}",
             word(window, "error")
         ),
         Some("aborted") => writeln!(
             out,
-            "window: aborted since {}, stamped {age} s ago — klin failed during a stop, and \
+            "window: aborted {}, stamped {age} — klin failed during a stop, and \
              the next stop that measures replaces it",
-            window["aborted_since"]
+            when(&window["aborted_since"])
         ),
-        Some(verdict) => writeln!(out, "window: {verdict}, stamped {age} s ago"),
+        Some(verdict) => writeln!(out, "window: {verdict}, stamped {age}"),
         None => writeln!(out, "window: none, no session has opened one"),
     };
     history_text(window, out);
@@ -251,7 +273,7 @@ fn window_text(window: &Value, out: &mut String) {
         let _ = writeln!(out, "  notice: {}", word(notice, "message"));
     }
     for (key, label) in [
-        ("open", "open finding"),
+        ("open_sites", "open finding"),
         ("unasked", "deleted test not asked about"),
     ] {
         for item in window[key].as_array().into_iter().flatten() {
@@ -269,10 +291,14 @@ fn history_text(window: &Value, out: &mut String) {
     if let Some(reason) = advisory["reason"].as_str() {
         let _ = writeln!(
             out,
-            "  last advisory stop: {reason} at {}",
-            advisory["time"]
+            "  last advisory stop: {reason}, {}",
+            when(&advisory["time"])
         );
     }
+}
+
+fn when(time: &Value) -> String {
+    turn::ago(time.as_u64().unwrap_or_default())
 }
 
 fn word<'a>(value: &'a Value, key: &str) -> &'a str {

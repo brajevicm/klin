@@ -517,9 +517,23 @@ impl Evaluator<'_> {
             .chain(prior.iter().map(Finding::entry))
             .collect();
         let (findings, entries) = restrict(findings, entries, at.only);
-        let held = entries.len();
+        let held = entries
+            .iter()
+            .filter(|entry| !is_accepted(entry) && self.fails(entry))
+            .count();
         let comparison = judge(findings, entries, self.metrics);
         report(&comparison, self, held, line, at, out)
+    }
+
+    /// Whether a base entry is a failing site: a gate that records every base member, passing
+    /// ones included, writes a zero for each ratcheted value of a passing one. Spec 10.6.
+    fn fails(&self, entry: &Values) -> bool {
+        self.metrics.is_empty()
+            || self.metrics.iter().any(|metric| {
+                entry
+                    .get(*metric)
+                    .is_some_and(|value| value.as_u64() != Some(0))
+            })
     }
 }
 

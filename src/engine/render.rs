@@ -1295,8 +1295,12 @@ pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
 }
 
 fn unmeasured_said(item: &Unmeasured) -> String {
+    let measured = match item.measured {
+        true => "is still measured",
+        false => "is not measured",
+    };
     format!(
-        "{} is not measured ({}) — {}",
+        "{} {measured} ({}) — {}",
         item.file,
         item.reason.name(),
         item.text

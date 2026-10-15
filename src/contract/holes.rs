@@ -225,6 +225,9 @@ pub struct Unmeasured {
     pub at: Option<(u64, u64)>,
     pub text: String,
     pub gates: Vec<String>,
+    /// Whether the capabilities still measured the file's bytes, as they do for a form an
+    /// attribute gives. Spec 7.2.
+    pub measured: bool,
 }
 
 /// Every file the gates of one run reported, each sorted once against the base, in path order.
@@ -248,7 +251,7 @@ pub fn sorted(
         .map(|(file, seen)| {
             let mut gates: Vec<String> = seen.iter().map(|(gate, _)| gate.clone()).collect();
             gates.dedup();
-            let (class, reason, at, text) = one(project, against, &file, &seen);
+            let ((class, reason, at, text), measured) = one(project, against, &file, &seen);
             Unmeasured {
                 language: syntax::language_of(&file).map(|language| language.name),
                 file,
@@ -257,6 +260,7 @@ pub fn sorted(
                 at,
                 text,
                 gates,
+                measured,
             }
         })
         .collect();
@@ -288,35 +292,39 @@ fn in_place<'a>(
 type Sorted = (Class, Cause, Option<(u64, u64)>, String);
 
 /// One file, by the strongest thing a gate saw: a read that failed, then a manifest, then a
-/// file that left a scope.
+/// file that left a scope, and whether the capabilities still measured it, which only a form an
+/// attribute gives leaves true.
 fn one(
     project: &Project,
     against: Option<(&[Change], &str)>,
     file: &str,
     seen: &[(String, Seen)],
-) -> Sorted {
+) -> (Sorted, bool) {
     let form = files::form_in(project.root(), file);
     if form.any() {
-        return formed(
+        let sorted = formed(
             project.root(),
             against,
             file,
             (form, measured_at_base(seen)),
         );
+        return (sorted, true);
     }
     let strongest = seen
         .iter()
         .map(|(_, seen)| seen)
         .min_by_key(|seen| seen.rank());
-    match strongest {
+    let sorted = match strongest {
         Some(Seen::Form(form, measured)) => {
-            formed(project.root(), against, file, (*form, Some(*measured)))
+            let sorted = formed(project.root(), against, file, (*form, Some(*measured)));
+            return (sorted, true);
         }
         Some(Seen::Unread) => unread(project, against, file),
         Some(Seen::Manifest { class, why }) => manifest(*class, why),
         Some(Seen::Left(_)) => left(project, against, file, &whys(seen)),
         None => left(project, against, file, &[]),
-    }
+    };
+    (sorted, false)
 }
 
 impl Seen {

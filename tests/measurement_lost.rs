@@ -1227,3 +1227,25 @@ fn global_used_as_an_identifier_stays_measured() {
         "declare const global: { fetch: unknown };\nglobal.fetch = 1;\nexport class Wrapped extends global.constructor {}\n",
     );
 }
+
+/// An attribute never takes a file out of measurement, so the note of a form an attribute gives
+/// does not say the file is not measured. Spec 7.2.
+#[test]
+fn the_note_of_an_inherited_binary_attribute_says_the_file_is_still_measured() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    tree.write("src/art.rs", CLEAN);
+    tree.write(".gitattributes", "src/art.rs binary\n");
+    tree.base();
+
+    let run = tree.run(&["check"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: src/art.rs is still measured (not-text) — its attributes make it binary"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("src/art.rs is not measured"), "{}", run.out);
+}

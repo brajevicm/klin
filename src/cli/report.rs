@@ -479,11 +479,9 @@ fn deleted(file: &str, line: Option<u64>, text: &str) -> String {
     let clipped = clip(text);
     let site = clipped.trim_end_matches(['{', ':', ' ']);
     match (site.is_empty(), line.filter(|line| *line > 0)) {
-        (true, _) => format!("{file} deleted. The agent said why."),
-        (false, Some(line)) => {
-            format!("a test deleted from {file}:{line}, {site}. The agent said why.")
-        }
-        (false, None) => format!("a test deleted from {file}, {site}. The agent said why."),
+        (true, _) => format!("{file} deleted."),
+        (false, Some(line)) => format!("a test deleted from {file}:{line}, {site}."),
+        (false, None) => format!("a test deleted from {file}, {site}."),
     }
 }
 

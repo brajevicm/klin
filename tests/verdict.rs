@@ -572,3 +572,31 @@ fn the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest() {
     let check = tree.run(&["check", "--changed"]);
     assert_eq!(sites(&check.out), 25, "{}", check.out);
 }
+
+/// `klin status` names each open finding by file and line, and each time as an age a person
+/// reads. Spec 11.4.
+#[test]
+fn status_names_an_open_finding_by_its_site_and_each_time_by_its_age() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    tree.write(
+        "src/lib.rs",
+        "pub fn kept() -> u8 {\n    1\n}\n\npub fn knot(a: bool) -> u8 {\n    if a { 1 } else { 0 }\n}\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let status = tree.run(&["status"]);
+
+    assert_eq!(status.code, 0, "{}", status.out);
+    assert!(status.says("open finding: src/lib.rs:5"), "{}", status.out);
+    assert!(
+        status.says("window: red, stamped just now"),
+        "{}",
+        status.out
+    );
+    assert!(
+        status.says("last stop (historical): red, just now"),
+        "{}",
+        status.out
+    );
+}
