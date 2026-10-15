@@ -149,7 +149,7 @@ when the roadmap ticket that implements them lands.
 | 0010 | `--strict` and the meaning of naming a gate. | No `--strict`. Every `klin check` judges the holes 0.x added under `--strict` (section 11.3). | #452. |
 | 0012 | The build is a config key, and klin runs it. | The build is local Stop feedback only. `klin check` never runs it. | #452, #453. |
 | 0013 | A base equal to HEAD is refused when work is hidden. | Section 6.5. A refusal is INCOMPLETE, exit 3. | `--strict` is gone, and the case is an unproven comparison. |
-| 0014, 0024 | `klin radius --report` is a person's command. | No public radius command. The radius note reaches the person at the Stop that ends a wide turn, through the person channel. | #452, #579. |
+| 0014, 0024 | `klin radius --report` is a person's command. | No public radius command. The radius note reaches the person at the next prompt, through the host's person channel and never the agent's context. | #452, #579. |
 | 0017, 0032 | `klin turn reset` moves the stamp to the current tree. | No `turn reset`. A history move makes one Stop advisory, and that Stop takes a fresh stamp. The 0.x branch fallback stays only in a repository with no remote. | Owner. Section 6.6. |
 | 0028 | `klin gate` without `klin.json` is exit 2. | `klin check` runs under `{}`. The file stays the hooks' opt-in marker. | A person or CI ran `klin check` on purpose. |
 | 0031 | A deleted test is asked about once, and CI only notes it. | It is asked about once at Stop, and it stays a review item at `klin check`. | #475 section 11. |
@@ -307,14 +307,13 @@ One binary holds these components.
 
 ```text
 LOCAL (Feedback)
-  session / prompt event  -> stamp, prompt counter
+  session / prompt event  -> stamp, prompt counter, radius note to the person
   pre_tool event          -> guard
   agent works
   stop event              -> optional build feedback
                           -> engine(placement = stop, window = turn, scope = changed)
                           -> Stop policy: block #1, changed-tree block #2,
                              then report and pass through
-                          -> radius note to the person
   person
 
 ENFORCED
@@ -1517,9 +1516,9 @@ loads configuration, builds facts, resolves a base or walks the tree.
 | Kind | Does | Blocks | Writes |
 | --- | --- | --- | --- |
 | `session` | moves the stamp per B.6.2, raises the prompt counter, moves the prompt mark | never | stamp, mark, counter, journal `note` line |
-| `prompt` | the same as `session`, and consumes a matching handoff record | never | stamp, mark, counter, journal `prompt` and `note` lines |
+| `prompt` | the same as `session`, consumes a matching handoff record, and tells the person the radius note when the window passed its value (B.6.2.1, ADR 0024) | never | stamp, mark, counter, journal `prompt` and `note` lines |
 | `pre_tool` | the guard (section 10.8) | `deny` or `ask` | journal line for `ask` and `deny` |
-| `stop` | build feedback, then the engine at placement `stop`, then the Stop policy, and the radius note when the turn passed its value (B.6.2.1, ADR 0024) | per section 10.4 | verdict, build stamp, handoff record, journal `stop` line |
+| `stop` | build feedback, then the engine at placement `stop`, then the Stop policy | per section 10.4 | verdict, build stamp, handoff record, journal `stop` line |
 
 A `session` or `prompt` event prints nothing into the agent's context except
 the release notice of 11.9. A note about the turn state, such as a stamp
@@ -1527,17 +1526,16 @@ restored from its ref or a stamp that is gone, asks the agent nothing, so it
 goes to a journal `note` line only (13.1). The radius prompt facts stay on
 the journal `prompt` line.
 
-The radius note asks for nothing. A Stop that blocks nothing tells it to the
-person, through the host's person channel, as the `radius` part of its
-notice (10.7). It measures the turn from the prompt mark to the working tree,
-so it names the turn that this Stop ends. Cursor has no person channel at
-the Stop, so there the note is a notice that only the journal holds, and
-`klin status` and `klin report` show it while its window is open (10.7).
-When the Stop of a wide turn blocks, the note waits for the next Stop that
-blocks nothing. Pinned by
-`a_prompt_after_a_wide_turn_prints_nothing`,
-`the_stop_of_a_wide_turn_tells_the_person_the_spread` and
-`on_cursor_the_radius_note_is_a_notice_the_journal_holds` in `tests/radius.rs`,
+The radius note asks for nothing. The prompt measures the turn it ends from
+the prompt mark to the tree it captures for the stamp, so the measurement
+adds no work to any event, and the Stop does none. The prompt tells the note
+to the person through the host's person channel: a JSON `systemMessage` on
+Claude Code and Codex, never plain text, which the host would put in the
+agent's context. Cursor has no person channel, so there the note goes to
+stderr, and the journal's `prompt` line records the turn as `wide`. Pinned by
+`a_prompt_after_a_wide_turn_tells_the_person_the_spread` and
+`on_cursor_the_prompt_tells_the_agent_nothing_and_the_journal_records_the_wide_turn`
+in `tests/radius.rs`, where every prompt checks that it printed no plain text,
 and `a_stamp_that_stays_gone_is_noted_on_every_prompt` in `tests/turn.rs`.
 
 The adapters, the event identity, the claims that let one copy act per event,
@@ -7338,8 +7336,8 @@ failure, or an error alike — plus what only the hook knew:
   `no-prompt-event` (16.3, a prompt that
   spent a gate block found no prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
-  empty where it printed none: `note` (8.2, 14, 16.3), `radius` (10.3),
-  `turn` and `weekly` (9.5), and `release` (11.9). A reader finds the last weekly line from it.
+  empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
+  (9.5), and `release` (11.9). A reader finds the last weekly line from it.
 - `window`, the window the stop judged, which the line carries even where its
   run compared nothing against a base, so a reader knows which turn stamp
   each stop judged against (11.5).

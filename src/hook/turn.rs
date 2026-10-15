@@ -2,8 +2,6 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use serde_json::Value;
-
 use crate::config::file::{self, Config};
 use crate::config::key::Section;
 use crate::hook::handoff;
@@ -23,7 +21,8 @@ use crate::window::stamp::{self, Here, History, Stamp, Verdict};
 const REFERENCE: &str = "refs/worktree/klin/turn";
 /// A `session` or `prompt` event of the agent ingress, over the tree the event names, after the
 /// opt-in walk found the worktree root's `klin.json`. Spec 10.3.
-/// The notes of the turn state, which ask the agent nothing, go to the journal only. Spec 10.3.
+/// The notes of the turn state go to the journal only, and the radius note goes to the person
+/// through the host, because neither asks the agent anything. Spec 10.3.
 pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String) -> u8 {
     let kind = event.kind.map(adapter::Kind::name);
     let mut noted = String::new();
@@ -63,8 +62,12 @@ fn turned(
     let held = held(start, &at, &mut Vec::new(), noted);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     handoff::clear(start, &event.session);
-    if let Some((enabled, facts)) = facts {
+    if let Some((enabled, turn)) = facts {
+        let (facts, note) = turn.map_or((None, None), |turn| (Some(turn.facts), turn.note));
         journal::prompt(start, prompts, Some(&event), enabled, facts);
+        if let Some(note) = note {
+            event.host.tell(&note);
+        }
     }
     let mark = tree.and_then(|tree| marked(start, tree));
     if let Some(stamp) = next(start, &at, tree, never, held, prompts, noted) {
@@ -109,7 +112,7 @@ fn prompt_facts(
     opened: Option<&str>,
     tree: Option<&str>,
     sections: &[Section],
-) -> (bool, Option<Value>) {
+) -> (bool, Option<radius::Turn>) {
     match Config::load(None, start, sections) {
         Ok(config) => (
             journal::prompt_enabled(&config),

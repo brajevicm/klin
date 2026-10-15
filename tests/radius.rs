@@ -39,25 +39,33 @@ fn stamped(tree: &Tree) -> Run {
     run
 }
 
-const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
-
-/// The Stop that ends the turn, with what it tells the person through the host's
-/// `systemMessage` as its `out`.
-fn ended(tree: &Tree) -> Run {
-    ended_in(tree.root())
+/// The prompt that ends the turn, with what it tells the person through the host's
+/// `systemMessage` as its `out`. Nothing it prints is plain text, which the host would put in
+/// the agent's context.
+fn told(tree: &Tree) -> Run {
+    told_in(tree.root())
 }
 
-fn ended_in(at: &std::path::Path) -> Run {
-    let run = harness::feed(at, harness::AGENT, A_STOP);
+fn told_in(at: &std::path::Path) -> Run {
+    let run = harness::feed(at, harness::AGENT, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    let told = run
-        .out
+    let messages: Vec<serde_json::Value> = run
+        .printed
         .lines()
-        .find_map(|line| {
-            let held: serde_json::Value = serde_json::from_str(line).ok()?;
-            held.get("systemMessage")?.as_str().map(str::to_string)
-        })
-        .unwrap_or_default();
+        .map(|line| serde_json::from_str(line).unwrap_or_default())
+        .collect();
+    assert!(
+        messages
+            .iter()
+            .all(|held| held.get("systemMessage").is_some()),
+        "the prompt printed into the agent's context: {}",
+        run.printed
+    );
+    let told = messages
+        .iter()
+        .filter_map(|held| held["systemMessage"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
     Run { out: told, ..run }
 }
 
@@ -68,12 +76,12 @@ fn a_wide_turn(tree: &Tree) {
 }
 
 #[test]
-fn the_stop_of_a_wide_turn_tells_the_person_the_spread() {
+fn a_prompt_after_a_wide_turn_tells_the_person_the_spread() {
     let tree = tree();
     stamped(&tree);
     a_wide_turn(&tree);
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(
         run.says("wider than this project's usual change"),
         "{}",
@@ -101,45 +109,24 @@ fn the_stop_of_a_wide_turn_tells_the_person_the_spread() {
     );
 }
 
-const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
-
-/// Cursor has no person channel at the Stop, so the note is a notice the journal holds, which
-/// `klin status` and `klin report` show while its window is open. Spec 10.3, 10.7.
+/// Cursor has no person channel, so the note goes to stderr and the journal's prompt line
+/// records the turn as wide. Spec 10.3.
 #[test]
-fn on_cursor_the_radius_note_is_a_notice_the_journal_holds() {
+fn on_cursor_the_prompt_tells_the_agent_nothing_and_the_journal_records_the_wide_turn() {
     let tree = tree();
     assert_eq!(radius(&tree, A_CURSOR_SESSION).code, 0);
     a_wide_turn(&tree);
 
-    let run = radius(&tree, A_CURSOR_STOP);
+    let run = radius(&tree, A_CURSOR_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("followup_message"), "{}", run.out);
+    assert!(!run.printed.contains("wider"), "{}", run.printed);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     let line: serde_json::Value = journal
         .lines()
-        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .rfind(|line| line.contains(r#""kind":"prompt""#))
         .and_then(|line| serde_json::from_str(line).ok())
         .unwrap_or_default();
-    assert_eq!(line["notice"]["delivered"], false, "{line}");
-    let message = line["notice"]["message"].as_str().unwrap_or_default();
-    assert!(message.contains("wider than"), "{line}");
-    let status = tree.run(&["status", "--json"]).json();
-    assert_eq!(
-        status["window"]["notices"][0]["message"], message,
-        "{status}"
-    );
-}
-
-/// The radius note and the state notes ask the agent nothing, so a prompt prints neither.
-#[test]
-fn a_prompt_after_a_wide_turn_prints_nothing() {
-    let tree = tree();
-    stamped(&tree);
-    a_wide_turn(&tree);
-
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.out, "", "the prompt printed into the agent's context");
+    assert_eq!(line["radius"]["wide"], true, "{line}");
 }
 
 /// Either value alone is enough, so a turn that spread over more directories than usual
@@ -152,7 +139,7 @@ fn the_directories_alone_carry_the_report() {
         tree.write(&format!("d{at}/f.rs"), &lines(2, "// f"));
     }
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(run.says("wider than"), "{}", run.out);
     assert!(
         run.says("6 lines in 3 files, under d0/, d1/, d2/."),
@@ -167,7 +154,7 @@ fn a_turn_within_both_values_reports_nothing() {
     stamped(&tree);
     tree.write("src/a.rs", &lines(10, "// touched "));
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
@@ -180,7 +167,7 @@ fn a_config_with_no_radius_section_reports_nothing() {
     stamped(&tree);
     a_wide_turn(&tree);
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
@@ -194,7 +181,7 @@ fn a_user_diff_setting_does_not_change_the_numbers() {
     tree.git(&["config", "diff.algorithm", "myers"]);
     tree.git(&["mv", "src/moved.rs", "src/elsewhere.rs"]);
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(run.says("120 lines in 2 files, under src/."), "{}", run.out);
     assert!(
         run.says("0 of those lines are formatting only, and 120 are code that moved."),
@@ -210,7 +197,7 @@ fn a_diff_setting_and_a_subdirectory_do_not_change_the_numbers() {
     tree.git(&["config", "diff.relative", "true"]);
     a_wide_turn(&tree);
 
-    let run = ended_in(&tree.path("src"));
+    let run = told_in(&tree.path("src"));
     assert!(
         run.says("110 lines in 3 files, under docs/, src/."),
         "{}",
@@ -226,7 +213,7 @@ fn the_report_names_directories_up_to_a_point() {
         tree.write(&format!("d{at}/f.rs"), &lines(10, "// f"));
     }
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(
         run.says("80 lines in 8 files, under d0/, d1/, d2/, d3/, d4/, d5/, and 2 more."),
         "{}",
@@ -234,10 +221,10 @@ fn the_report_names_directories_up_to_a_point() {
     );
 }
 
-/// The stamp waits for a green stop, and the mark does not, so the Stop after a second prompt
-/// measures that prompt's turn rather than the window the stamp left. ADR 0024.
+/// The stamp waits for a green stop, and the mark does not, so a second prompt measures its own
+/// turn rather than the window the stamp left. ADR 0024.
 #[test]
-fn a_prompt_moves_the_mark_the_stop_measures_from() {
+fn a_prompt_moves_the_mark_the_next_prompt_measures_from() {
     let tree = tree();
     stamped(&tree);
     a_wide_turn(&tree);
@@ -250,7 +237,7 @@ fn a_prompt_moves_the_mark_the_stop_measures_from() {
     );
 
     tree.write("src/a.rs", &lines(10, "// touched "));
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
@@ -263,7 +250,7 @@ fn a_session_start_moves_the_mark() {
     a_wide_turn(&tree);
     assert_eq!(radius(&tree, A_SESSION).code, 0);
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
@@ -383,13 +370,13 @@ fn history(small: usize, big: usize) -> Tree {
     tree
 }
 
-/// A turn wider than any history here, named by `tag` so each one adds files, and the Stop
+/// A turn wider than any history here, named by `tag` so each one adds files, and the prompt
 /// that reports it beside what this project usually changes.
 fn usual(tree: &Tree, tag: &str) -> Run {
     for at in 0..5 {
         tree.write(&format!("{tag}{at}/f.txt"), &lines(200, "line "));
     }
-    ended(tree)
+    told(tree)
 }
 
 fn reported(tree: &Tree) -> Run {
@@ -481,7 +468,7 @@ fn below_fifty_commits_the_hook_says_nothing() {
     stamped(&tree);
     a_wide_turn(&tree);
 
-    let run = ended(&tree);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
     assert!(!run.says("derived:"), "{}", run.out);
 }
@@ -600,7 +587,7 @@ fn a_commit_inside_the_turn_does_not_move_the_derivation_commit() {
         tree.write(&format!("d{at}/f.txt"), &lines(200, "line "));
     }
     tree.commit("a commit inside the turn");
-    assert!(ended(&tree).says("usually change about 30 lines"));
+    assert!(told(&tree).says("usually change about 30 lines"));
 
     assert_eq!(cache(&tree), first, "the derivation commit moved");
 }
