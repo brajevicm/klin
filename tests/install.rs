@@ -1585,23 +1585,30 @@ fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
 }
 
 /// A repository setup ends by naming the next step, as a request to the agent rather than a
-/// slash command, because each host invokes a skill its own way. #593.
+/// slash command, because each host invokes a skill its own way. A second run, which changes
+/// nothing, still names it, and a `--user` run, which writes no `klin.json`, does not.
+/// Spec 11.2, #593.
 #[test]
 fn setup_ends_by_naming_the_request_to_tailor_klin_json() {
     let tree = Tree::new();
     tree.write("src/lib.rs", "pub fn f() {}\n");
     tree.base();
+    let next = "Next: ask your agent to tailor klin.json to this repository.";
 
     for _ in 0..2 {
         let run = tree.run(&["setup", "--host", "claude"]);
         assert_eq!(run.code, 0, "{}", run.out);
-        assert_eq!(
-            run.out.lines().last(),
-            Some("Next: ask your agent to tailor klin.json to this repository."),
-            "{}",
-            run.out
-        );
+        assert_eq!(run.out.lines().last(), Some(next), "{}", run.out);
     }
+
+    let home = Tree::bare();
+    let at = home_of(&home);
+    let user = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "claude"],
+    );
+    assert_eq!(user.code, 0, "{}", user.out);
+    assert!(!user.says(next), "{}", user.out);
 }
 
 /// A tree with no debt says so, rather than naming an empty floor. #587.
