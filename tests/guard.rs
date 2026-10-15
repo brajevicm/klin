@@ -172,7 +172,11 @@ fn asks_before_a_command_removes_the_configuration_under_another_case() {
     if !tree.path("KLIN.json").exists() {
         return;
     }
-    for command in ["rm KLIN.json", "mv Klin.json old.json"] {
+    for command in [
+        "rm KLIN.json",
+        "mv Klin.json old.json",
+        "rm \u{212A}lin.json",
+    ] {
         asked(
             &bash_in(&tree, command),
             command.split(' ').nth(1).unwrap(),

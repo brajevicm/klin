@@ -65,14 +65,14 @@ impl Adapter for Codex {
     fn event(&'static self, payload: &Value) -> Event {
         let tool = text(payload.get("tool_name"));
         let command = input(payload, "command");
-        let ((file_paths, removed), command) = match tool == PATCH {
-            true => (patch_paths(&command), String::new()),
-            false => (Default::default(), command),
+        let (patch, command) = match tool == PATCH {
+            true => (Patch::of(&command), String::new()),
+            false => (Patch::default(), command),
         };
         Event {
             tool,
-            file_paths,
-            removed,
+            file_paths: patch.named,
+            removed: patch.removed,
             command,
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
@@ -128,33 +128,41 @@ fn disabled(line: &str) -> bool {
     key.trim() == "enabled" && value.trim().starts_with("false")
 }
 
-/// Every path a patch's headers name, and the paths it deletes or moves away: a `*** Delete
-/// File:` path, and the `*** Update File:` path a `*** Move to:` follows. Codex finds a header
-/// after it trims the line, so klin does too, except inside an update hunk, where Codex keeps a
-/// line that starts with a space as context.
-fn patch_paths(patch: &str) -> (Vec<String>, Vec<String>) {
-    let mut paths: Vec<String> = Vec::new();
-    let mut removed = Vec::new();
-    let mut updating = false;
-    for line in patch.lines() {
-        if updating && line.starts_with(' ') {
-            continue;
+/// The paths a patch names in its headers, and the ones among them it deletes or moves away.
+#[derive(Default)]
+struct Patch {
+    named: Vec<String>,
+    removed: Vec<String>,
+}
+
+impl Patch {
+    /// Every path a patch's headers name, and the paths it deletes or moves away: a `*** Delete
+    /// File:` path, and the `*** Update File:` path a `*** Move to:` follows. Codex finds a
+    /// header after it trims the line, so klin does too, except inside an update hunk, where
+    /// Codex keeps a line that starts with a space as context.
+    fn of(patch: &str) -> Patch {
+        let mut read = Patch::default();
+        let mut updating = false;
+        for line in patch.lines() {
+            if updating && line.starts_with(' ') {
+                continue;
+            }
+            let line = line.trim();
+            let Some((header, path)) = HEADERS
+                .iter()
+                .find_map(|header| Some((*header, line.strip_prefix(header)?.trim())))
+            else {
+                continue;
+            };
+            updating = matches!(header, UPDATE | MOVE);
+            match header {
+                _ if path.is_empty() => continue,
+                DELETE => read.removed.push(path.to_string()),
+                MOVE => read.removed.extend(read.named.last().cloned()),
+                _ => {}
+            }
+            read.named.push(path.to_string());
         }
-        let line = line.trim();
-        let Some((header, path)) = HEADERS
-            .iter()
-            .find_map(|header| Some((*header, line.strip_prefix(header)?.trim())))
-        else {
-            continue;
-        };
-        updating = matches!(header, UPDATE | MOVE);
-        match header {
-            _ if path.is_empty() => continue,
-            DELETE => removed.push(path.to_string()),
-            MOVE => removed.extend(paths.last().cloned()),
-            _ => {}
-        }
-        paths.push(path.to_string());
+        read
     }
-    (paths, removed)
 }

@@ -215,9 +215,8 @@ impl Guarded {
     /// The opt-in file taken as an argument by a command that deletes or moves it. Without the
     /// file klin answers nothing, so a person decides. Spec 10.8, ADR 0074.
     fn removed(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
-        let at = entry(base, token)?;
-        let config = entry(Some(&self.root), NAME)?;
-        (at == config || same_entry(&at, &config)).then(|| {
+        let at = Entry::of(base, token)?;
+        at.is(&Entry::of(Some(&self.root), NAME)?).then(|| {
             (
                 Decision::Ask(format!(
                     "this deletes or moves \"{token}\", the file that turns klin on."
@@ -237,35 +236,54 @@ fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
     Some(real(&plain(&joined(base, token)?)))
 }
 
-/// The directory entry a token names from `base`: its parent resolved by the file system, so a
-/// `..` after a link climbs out of where the link points, and the name itself kept, because
-/// `rm` and `mv` act on a link and never on what it points to.
-fn entry(base: Option<&Path>, token: &str) -> Option<PathBuf> {
-    if token.is_empty() || token.contains(WILDCARDS) {
-        return None;
+/// A directory entry, which `rm` and `mv` act on: a link itself, never what it points to.
+/// Kept apart from a resolved path, which follows a final link.
+#[derive(PartialEq)]
+struct Entry(PathBuf);
+
+impl Entry {
+    /// The entry a token names from `base`: its parent resolved by the file system, so a `..`
+    /// after a link climbs out of where the link points, and the name kept as it is spelled.
+    fn of(base: Option<&Path>, token: &str) -> Option<Entry> {
+        if token.is_empty() || token.contains(WILDCARDS) {
+            return None;
+        }
+        let at = joined(base, token)?;
+        let (parent, name) = (at.parent()?, at.file_name()?);
+        let parent = parent
+            .canonicalize()
+            .unwrap_or_else(|_| real(&plain(parent)));
+        Some(Entry(parent.join(name)))
     }
-    let at = joined(base, token)?;
-    let (parent, name) = (at.parent()?, at.file_name()?);
-    let parent = parent
-        .canonicalize()
-        .unwrap_or_else(|_| real(&plain(parent)));
-    Some(parent.join(name))
+
+    /// Whether this entry is `other`: the same path, or in the same directory a spelling the
+    /// directory does not list that reaches the same file, which a case-insensitive file system
+    /// accepts under any case folding it does. A hard link is listed under its own name, so it
+    /// is its own entry.
+    fn is(&self, other: &Entry) -> bool {
+        let (one, other) = (&self.0, &other.0);
+        if one == other {
+            return true;
+        }
+        let file = |at: &Path| {
+            at.symlink_metadata()
+                .map(|found| (found.dev(), found.ino()))
+        };
+        one.parent() == other.parent()
+            && matches!((file(one), file(other)), (Ok(one), Ok(other)) if one == other)
+            && !listed(one)
+    }
 }
 
-/// Whether two entries in one directory are one entry under names that differ in case alone,
-/// which a case-insensitive file system accepts. A hard link under another name is its own
-/// entry.
-fn same_entry(one: &Path, other: &Path) -> bool {
-    let named = one.parent() == other.parent()
-        && one
-            .file_name()
-            .zip(other.file_name())
-            .is_some_and(|(one, other)| one.eq_ignore_ascii_case(other));
-    named
-        && match (one.symlink_metadata(), other.symlink_metadata()) {
-            (Ok(one), Ok(other)) => (one.dev(), one.ino()) == (other.dev(), other.ino()),
-            _ => false,
-        }
+/// Whether the directory lists a name spelled exactly as the path's own, and `false` when it
+/// cannot be read.
+fn listed(at: &Path) -> bool {
+    let (Some(parent), Some(name)) = (at.parent(), at.file_name()) else {
+        return false;
+    };
+    parent.read_dir().is_ok_and(|mut names| {
+        names.any(|found| found.is_ok_and(|found| found.file_name() == name))
+    })
 }
 
 /// The path a token names from `base`, and `None` for a relative one with no `base`.
