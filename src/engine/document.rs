@@ -675,6 +675,23 @@ pub enum Standing {
     Skipped,
 }
 
+/// What a run found, beside the first error that kept it from judging everything. What it found
+/// stays valid when the error is there. Spec 16.2.
+pub struct Partial<T> {
+    pub found: Vec<T>,
+    pub erred: Option<Error>,
+}
+
+impl<T> Partial<T> {
+    /// A run the error stopped before it found anything.
+    pub fn stopped(why: Error) -> Partial<T> {
+        Partial {
+            found: Vec::new(),
+            erred: Some(why),
+        }
+    }
+}
+
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
 pub struct CheckDocument {
@@ -792,12 +809,15 @@ impl CheckDocument {
         args: &Args,
         (project, wanted): (&Project, &[&Gate]),
         against: &Against,
-    ) -> (Vec<Finding>, Option<Error>) {
+    ) -> Partial<Finding> {
         let mut apart = CheckDocument::default();
         apart.gates(args, (project, wanted), against, &mut String::new());
         let erred = apart.first_problem();
         apart.findings.retain(Finding::failing);
-        (apart.findings, erred)
+        Partial {
+            found: apart.findings,
+            erred,
+        }
     }
 
     /// The first error of the run, a check's included.
@@ -907,22 +927,17 @@ impl CheckDocument {
 
     /// The id and line of every finding the run failed, which tell apart the findings that share
     /// an id: the same text more than once in one file. Spec 16.2.
-    pub fn failing_sites(&self) -> Vec<(&str, Option<u64>)> {
+    pub fn failing_sites(&self) -> impl Iterator<Item = (&str, Option<u64>)> {
         self.findings
             .iter()
             .filter(|finding| finding.failing())
             .map(|finding| (finding.id.as_str(), finding.line))
-            .collect()
     }
 
     /// The site id of every finding the run failed, which a stop that blocks records as asked.
     /// Spec 8.2, 9.2.
     pub fn reported(&self) -> Vec<String> {
-        self.findings
-            .iter()
-            .filter(|finding| finding.failing())
-            .map(|finding| finding.id.clone())
-            .collect()
+        self.failing_sites().map(|(id, _)| id.to_string()).collect()
     }
 
     /// The deleted tests among the findings, as sites, which klin has not asked about yet.

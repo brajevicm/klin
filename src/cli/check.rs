@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -7,7 +8,7 @@ use crate::config::file::{Config, FILENAME, ignored, located, notes};
 use crate::contract::check::{Activation, CONFIG_LOOSENED};
 use crate::contract::project::Project;
 use crate::engine::against::against;
-use crate::engine::document::{Args, CheckDocument, View};
+use crate::engine::document::{Args, CheckDocument, Partial, View};
 use crate::engine::plan::{Gate, Plan};
 use crate::engine::render::{Finding, Note, Review, Slot};
 use crate::engine::{catalogue, diagnostics};
@@ -155,13 +156,9 @@ fn loosened(
     let Some(judged) = under_base(args, project, window) else {
         return;
     };
-    let failing: Vec<(String, Option<u64>)> = report
-        .failing_sites()
-        .into_iter()
-        .map(|(id, line)| (id.to_string(), line))
-        .collect();
-    let (hidden, erred) = hidden_by_gate(args, (project, &judged), window, &failing);
-    told(args, hidden, report, out);
+    let failing: HashSet<(&str, Option<u64>)> = report.failing_sites().collect();
+    let Partial { found, erred } = hidden_by_gate(args, (project, &judged), window, &failing);
+    told(args, found, report, out);
     if let Some(why) = erred {
         unjudged(args, &why, report, out);
     }
@@ -201,16 +198,19 @@ fn hidden_by_gate(
     args: &Args,
     (project, judged): (&Project, &Project),
     window: &Window,
-    failing: &[(String, Option<u64>)],
-) -> (Vec<Hidden>, Option<Error>) {
+    failing: &HashSet<(&str, Option<u64>)>,
+) -> Partial<Hidden> {
     let plan = match Plan::of(judged) {
         Ok(plan) => plan,
-        Err(why) => return (Vec::new(), Some(why)),
+        Err(why) => return Partial::stopped(why),
     };
     let changed = changed_gates(args, (&judged.config, &project.config), &plan);
     let gates: Vec<&Gate> = changed.iter().map(|(gate, _)| *gate).collect();
-    let (mut hidden, erred) = hidden(args, (judged, &gates), window, failing);
-    let grouped = changed
+    let Partial {
+        found: mut hidden,
+        erred,
+    } = hidden(args, (judged, &gates), window, failing);
+    let found = changed
         .into_iter()
         .filter_map(|(gate, change)| {
             let found: Vec<Finding> = hidden
@@ -223,7 +223,7 @@ fn hidden_by_gate(
             })
         })
         .collect();
-    (grouped, erred)
+    Partial { found, erred }
 }
 
 /// The gates of the base's plan the run selects whose policy the change altered, each with
@@ -247,25 +247,23 @@ fn hidden(
     args: &Args,
     (judged, gates): (&Project, &[&Gate]),
     window: &Window,
-    failing: &[(String, Option<u64>)],
-) -> (Vec<Finding>, Option<Error>) {
+    failing: &HashSet<(&str, Option<u64>)>,
+) -> Partial<Finding> {
     if gates.is_empty() {
-        return (Vec::new(), None);
+        return Partial {
+            found: Vec::new(),
+            erred: None,
+        };
     }
     let against = match against(args, gates, judged, Some(window), &mut String::new()) {
         Ok(against) => against,
-        Err(fault) => return (Vec::new(), Some(fault.error)),
+        Err(fault) => return Partial::stopped(fault.error),
     };
-    let (found, erred) = CheckDocument::failing_under(args, (judged, gates), &against);
-    let hidden = found
-        .into_iter()
-        .filter(|finding| {
-            !failing
-                .iter()
-                .any(|(id, line)| *id == finding.id && *line == finding.line)
-        })
-        .collect();
-    (hidden, erred)
+    let mut partial = CheckDocument::failing_under(args, (judged, gates), &against);
+    partial
+        .found
+        .retain(|finding| !failing.contains(&(finding.id.as_str(), finding.line)));
+    partial
 }
 
 /// The report's heading and one line per changed gate that hides a finding, and a review item
