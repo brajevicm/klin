@@ -695,6 +695,9 @@ pub struct CheckDocument {
     /// The Stop text of each gate whose only failures are of ride-along rows, which the Stop
     /// prints only when another finding blocks it. Spec 9.6.
     riding: Vec<String>,
+    /// How many gates failed only on a question, which the Stop asks and does not judge.
+    /// Spec 9.2.
+    asked: usize,
 }
 
 /// The findings a capability's ratchet passed that are debt, as its check counts debt.
@@ -842,6 +845,11 @@ impl CheckDocument {
 
     pub fn told(&self) -> usize {
         self.told
+    }
+
+    /// How many failed gates failed only on a question. Spec 9.2.
+    pub fn asked(&self) -> usize {
+        self.asked
     }
 
     pub fn grammar_lag(&self) -> bool {
@@ -1031,12 +1039,17 @@ impl CheckDocument {
         let axes = axes_of(code, &shown);
         self.axes = self.axes.and(axes);
         let told = self.held_back(args, &gate.name, axes, told);
+        let state = match (axes.state(args.view), render::asks_only(&told)) {
+            ("FAIL", true) => ASK,
+            (state, _) => state,
+        };
+        self.asked += usize::from(state == ASK);
         if shows(args, code, &shown) {
             let (provenance, text) = match args.view {
                 View::Stop => (render::pinned(&told), render::stop(&told, code == 0)),
                 View::Text | View::Json => (render::provenance(&told), render::text(&told)),
             };
-            printed(&gate.name, axes.state(args.view), (&provenance, &text), out);
+            printed(&gate.name, state, (&provenance, &text), out);
         }
         self.told += shown.notes.iter().filter(|note| note.told()).count();
         let erred = usize::from(code == 2 && !records.errors.is_empty());
@@ -1387,6 +1400,9 @@ fn shows(args: &Args, code: u8, shown: &GateRecords) -> bool {
         View::Stop => code != 0 || shown.notes.iter().any(Note::told),
     }
 }
+
+/// The row word of a gate that failed only on a question. Spec 9.2.
+const ASK: &str = "ASK ";
 
 /// One gate's block of the text report: its provenance, its status row, and its rendered result.
 fn printed(gate: &str, state: &str, (provenance, text): (&[String], &str), out: &mut String) {

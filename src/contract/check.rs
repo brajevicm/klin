@@ -700,6 +700,9 @@ pub enum Ratchet {
         unit: String,
         condition: String,
         failed: Vec<Failed>,
+        /// Whether the gate asks about these and does not judge them, as the Stop asks about a
+        /// deleted test. Spec 9.2.
+        asks: bool,
     },
     /// The findings of ride-along rows at `klin check`: review items. Spec 9.6.
     RidesAlong {
@@ -730,6 +733,7 @@ impl Ratchet {
             unit,
             condition,
             failed,
+            ..
         }) = self
         else {
             return None;
@@ -801,6 +805,16 @@ impl From<Ratchet> for Told {
 impl<'a> Sink<'a> {
     pub fn tell(&mut self, told: impl Into<Told>) {
         self.told.push(told.into());
+    }
+
+    /// Makes every worsened result this gate told a question, which the Stop asks and does not
+    /// judge. Spec 9.2.
+    pub fn ask_worsened(&mut self) {
+        for item in self.told.iter_mut() {
+            if let Told::Ratchet(Ratchet::Worse { asks, .. }) = item {
+                *asks = true;
+            }
+        }
     }
 
     pub fn tell_each<T: Into<Told>>(&mut self, told: impl IntoIterator<Item = T>) {

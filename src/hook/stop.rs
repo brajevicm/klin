@@ -23,7 +23,7 @@ use crate::sys::error::{Error, ErrorKind, Fault, fault};
 use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
-    hook::{build, handoff, journal, stats, turn},
+    hook::{build, handoff, journal, radius, stats, turn},
     sys::{
         clock, release,
         release::{Audience, News, Route},
@@ -169,7 +169,8 @@ fn stopped(
     log.asked = asked.unwrap_or_default();
     let seen = spent(root, lost, &mut log);
     let quiet = || !moved && unchanged(root, mark.as_deref(), seen.as_ref());
-    let (said, noted) = tell(args, root, code, note, &mut log, quiet, behind);
+    let wide = || wide(project, mark.as_deref());
+    let (said, noted) = tell(args, root, code, note, &mut log, (quiet, wide), behind);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
     if !lost && (log.blocked || noted) {
         turn::heard(root, &told);
@@ -398,17 +399,19 @@ fn key(text: &str) -> String {
 
 /// What this stop tells the person when nothing blocks it, as one `systemMessage`, and whether
 /// the run's own note is part of it: the notes the run left, then the turn end and the week's
-/// headline. The turn end reads the journal, so it
+/// headline. The radius note follows the run's notes when the turn was `wide`. The turn end
+/// reads the journal, so it
 /// runs only in a turn whose stamp says a stop spent a gate block, or under a prompt whose build
 /// stamp says so when the verdict could not be written. The journal records each part by name.
-/// A `quiet` turn tells only that no prompt event reached the session. Spec 9.5, 10.7, 11.4.
+/// A `quiet` turn tells only that no prompt event reached the session. Spec 9.5, 10.3, 10.7,
+/// 11.4.
 fn tell(
     args: &Args,
     root: &Path,
     code: u8,
     note: Option<String>,
     log: &mut journal::Stop,
-    quiet: impl FnOnce() -> bool,
+    (quiet, wide): (impl FnOnce() -> bool, impl FnOnce() -> Option<String>),
     behind: Behind,
 ) -> (Option<String>, bool) {
     let noting = note.is_some();
@@ -416,6 +419,7 @@ fn tell(
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_blocks > 0 || turn::intervened(root);
     let telling = code == 0 && !args.json() && log.host.is_some();
+    parts.extend(telling.then(wide).flatten().map(|wide| ("radius", wide)));
     if telling && intervened {
         let tail = stats::stop_tail(root);
         add_prompt_note(&tail, log, &mut parts);
@@ -454,6 +458,15 @@ fn kept(
     }
     parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
     (parts, false)
+}
+
+/// The radius note of the turn this Stop ends, measured from the prompt `mark` to the working
+/// tree, and `None` when the turn was not wide or nothing could be measured. Spec 10.3.
+fn wide(project: &Project, mark: Option<&str>) -> Option<String> {
+    let root = project.root();
+    let at = state::ready(root).ok()?;
+    let tree = budget::working_tree(root, &at)?;
+    radius::note(&project.config, root, &at, mark?, &tree)
 }
 
 /// Whether the turn changed nothing: the working tree, and every tree a block of this prompt
@@ -921,7 +934,11 @@ fn summary_line(plan: &Plan, gates: usize, doc: &CheckDocument, out: &mut String
     };
     let line = format!(
         "klin: {gates} gate(s), {excluded}{}",
-        summary(doc.failed_in_report(), doc.errored())
+        summary(
+            doc.failed_in_report().saturating_sub(doc.asked()),
+            doc.asked(),
+            doc.errored()
+        )
     );
     let _ = writeln!(out, "{line}");
 }
@@ -959,6 +976,10 @@ fn hook(
     };
     let numbered = budget::gate_numbered(number);
     let lead = match doc.errored() {
+        0 if doc.failed() == doc.asked() => format!(
+            "klin: a test the base holds went — answer each ASK, then stop again \
+             ({numbered}):"
+        ),
         0 => format!(
             "klin: a quality gate failed — fix what each names, then stop again \
              ({numbered}):"
@@ -1089,10 +1110,13 @@ fn lead(errored: usize) -> &'static str {
     }
 }
 
-fn summary(failed: usize, errored: usize) -> String {
+fn summary(failed: usize, asked: usize, errored: usize) -> String {
     let mut parts = Vec::new();
     if failed > 0 {
         parts.push(format!("{failed} failed"));
+    }
+    if asked > 0 {
+        parts.push(format!("{asked} asked"));
     }
     if errored > 0 {
         let plural = if errored == 1 { "" } else { "s" };

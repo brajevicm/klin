@@ -139,6 +139,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         gone: went.len(),
     };
     let code = evaluator().evaluate(now, before, accepted, at, Line::new(state, said), out);
+    out.ask_worsened();
     deleted(&went, at, out);
     noted(&paired, out);
     orphaned(&orphans, out);
@@ -274,13 +275,16 @@ fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Erro
 }
 
 /// Which of the base's test functions the working tree still holds: by site first, then by
-/// body hash across files, and one to one on both passes. Spec 4.4, 16.4.
+/// body hash across files, and one to one on both passes. A site matches with its skip or focus
+/// marker taken off, so a skipped test is held and only `escapes` judges the skip. Spec 4.4,
+/// 8.2, 16.4.
 fn still_there(before: &[Test], after: &[Test]) -> Vec<bool> {
     let mut taken = vec![false; after.len()];
     let mut found = vec![false; before.len()];
     for (at, site) in before.iter().enumerate() {
         found[at] = claimed(after, &mut taken, |other| {
-            other.file == site.file && other.text == site.text
+            other.file == site.file
+                && convention::unmarked(&other.text) == convention::unmarked(&site.text)
         });
     }
     for (at, site) in before.iter().enumerate() {

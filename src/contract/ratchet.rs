@@ -612,6 +612,7 @@ fn failures(
                 .iter()
                 .map(|(finding, entry)| failed(gate, finding, Some(entry), evaluator))
                 .collect(),
+            asks: false,
         });
     }
     out.tell(Plain::Remedy(remedy(comparison, evaluator)));

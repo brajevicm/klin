@@ -16,11 +16,7 @@ fn a_deleted_test_file_blocks_the_stop_naming_the_path() {
     tree.remove("tests/test_foo.py");
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("tests/test_foo.py:0  missing 1, was missing 0"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("tests/test_foo.py:0  test file"), "{}", run.out);
     assert!(run.says(QUESTION), "{}", run.out);
 }
 
@@ -130,7 +126,11 @@ fn each_vanished_file_is_its_own_finding() {
     tree.remove("tests/test_two.py");
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("2 test site(s) got worse"), "{}", run.out);
+    assert!(
+        run.says("ASK: 2 test site(s) the base holds went"),
+        "{}",
+        run.out
+    );
     assert!(run.says("tests/test_one.py:0"), "{}", run.out);
     assert!(run.says("tests/test_two.py:0"), "{}", run.out);
 }
@@ -147,11 +147,7 @@ fn a_test_file_beside_its_source_is_judged_with_no_configuration() {
 
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("src/foo_test.go:0  missing 1, was missing 0"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("src/foo_test.go:0  test file"), "{}", run.out);
 }
 
 #[test]
@@ -165,11 +161,7 @@ fn a_file_under_a_test_root_at_the_tree_root_is_a_test_file() {
 
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("notes.txt:0  missing 1, was missing 0"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("notes.txt:0  test file"), "{}", run.out);
 }
 
 /// `except` takes a path out of the tests judged, and the base's own scope decides, so a
@@ -324,15 +316,70 @@ fn deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why(
         let run = stop(&tree);
         assert_eq!(run.code, 2, "{}: {}", pattern.marker, run.out);
         assert!(
-            run.says(&format!("missing 1, was missing 0  {}", pattern.site)),
+            run.says("ASK: 1 test site(s) the base holds went in this window:"),
             "{}: {}",
             pattern.marker,
             run.out
         );
+        assert!(run.says(pattern.site), "{}: {}", pattern.marker, run.out);
+        assert!(
+            run.says("  ASK   inventory"),
+            "{}: {}",
+            pattern.marker,
+            run.out
+        );
+        assert!(!run.says("FAIL"), "{}: {}", pattern.marker, run.out);
         assert!(run.says(QUESTION), "{}: {}", pattern.marker, run.out);
         assert!(!run.says("accepted"), "{}: {}", pattern.marker, run.out);
         assert!(!run.says("restore"), "{}: {}", pattern.marker, run.out);
     }
+}
+
+/// The skip and focus markers `escapes` judges, each on a test the base holds without one.
+const MARKED: &[&str] = &[
+    "test.skip(",
+    "it.skip(",
+    "xit(",
+    "xtest(",
+    "test.only(",
+    "it.only(",
+    "fit(",
+];
+
+fn marked(marker: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"a\", () => {\n  expect(1).toBe(1);\n});\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        &format!("{marker}\"a\", () => {{\n  expect(1).toBe(1);\n}});\n"),
+    );
+    tree
+}
+
+#[test]
+fn a_skipped_or_focused_test_is_still_a_test_site() {
+    for marker in MARKED {
+        let tree = marked(marker);
+        let run = tree.run(&["check", "inventory"]);
+        assert_eq!(run.code, 0, "{marker}: {}", run.out);
+        assert!(run.says("OK: 2 test site(s)"), "{marker}: {}", run.out);
+        assert!(!run.says("went in this window"), "{marker}: {}", run.out);
+    }
+}
+
+#[test]
+fn a_new_skip_at_the_stop_is_one_escapes_finding() {
+    let tree = marked("test.skip(");
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL  escapes"), "{}", run.out);
+    assert!(run.says("skipped test  test.skip(\"a\""), "{}", run.out);
+    assert!(!run.says("inventory"), "{}", run.out);
+    assert!(!run.says(QUESTION), "{}", run.out);
 }
 
 #[test]
@@ -351,6 +398,16 @@ fn a_deleted_test_function_is_a_review_item_that_fails_nothing_at_klin_check() {
         );
         assert!(run.says(pattern.site), "{}: {}", pattern.marker, run.out);
     }
+}
+
+/// The rows of a stop's question, without the deletions it lets through, which a NOTE lists.
+fn asked(run: &harness::Run) -> String {
+    let mut lines = run.out.lines().skip_while(|line| !line.contains("ASK: "));
+    lines.next();
+    lines
+        .take_while(|line| line.starts_with("          "))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
@@ -424,12 +481,12 @@ fn a_test_deleted_after_the_question_gets_its_own_question() {
     let after = stop(&tree);
     assert_eq!(after.code, 2, "{}", after.out);
     assert!(
-        after.says("tests/test_two.py:0  missing 1, was missing 0"),
+        asked(&after).contains("tests/test_two.py:0  test file"),
         "{}",
         after.out
     );
     assert!(
-        !after.says("tests/test_one.py:0  missing 1, was missing 0"),
+        !asked(&after).contains("tests/test_one.py:0  test file"),
         "{}",
         after.out
     );
@@ -472,7 +529,7 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
     assert_eq!(second.code, 2, "{}", second.out);
     assert!(second.says("gate block 2 of 2"), "{}", second.out);
     assert!(
-        second.says("tests/test_two.py:0  missing 1, was missing 0"),
+        second.says("tests/test_two.py:0  test file"),
         "{}",
         second.out
     );
@@ -482,7 +539,7 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
     assert_eq!(third.code, 0, "{}", third.out);
     assert!(third.says("has blocked 2 stops"), "{}", third.out);
     assert!(
-        third.says("tests/test_three.py:0  missing 1, was missing 0"),
+        third.says("tests/test_three.py:0  test file"),
         "{}",
         third.out
     );
@@ -492,12 +549,12 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
     assert_eq!(later.code, 2, "{}", later.out);
     assert!(later.says("gate block 1 of 2"), "{}", later.out);
     assert!(
-        later.says("tests/test_three.py:0  missing 1, was missing 0"),
+        asked(&later).contains("tests/test_three.py:0  test file"),
         "{}",
         later.out
     );
     assert!(
-        !later.says("tests/test_two.py:0  missing 1, was missing 0"),
+        !asked(&later).contains("tests/test_two.py:0  test file"),
         "{}",
         later.out
     );
@@ -593,11 +650,7 @@ fn a_test_function_edited_as_it_moved_is_reported_as_gone() {
     );
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("tests/suite.rs:7  missing 1, was missing 0  fn beta() {"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("tests/suite.rs:7  fn beta() {"), "{}", run.out);
 }
 
 #[test]
@@ -609,11 +662,7 @@ fn an_in_that_names_one_file_judges_the_functions_in_it() {
     tree.write("tests/suite.rs", PATTERNS[0].stays);
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("missing 1, was missing 0  fn beta() {"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("fn beta() {"), "{}", run.out);
 }
 
 #[test]
@@ -700,11 +749,7 @@ fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
     );
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("missing 1, was missing 0  pub fn test_beta() {"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("pub fn test_beta() {"), "{}", run.out);
 }
 
 #[test]
@@ -722,11 +767,7 @@ fn deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site() {
     );
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("missing 1, was missing 0  async fn beta() {"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("async fn beta() {"), "{}", run.out);
 }
 
 /// Spec 8.2: a stop that blocks records every finding it reported, so the report must name
@@ -748,7 +789,7 @@ fn a_stop_that_blocks_names_every_deleted_test_it_then_lets_through() {
     let asked = stop(&tree);
     assert_eq!(asked.code, 2, "{}", asked.out);
     for at in 0..25 {
-        let named = format!("tests/test_{at:02}.py:0  missing 1, was missing 0");
+        let named = format!("tests/test_{at:02}.py:0  test file");
         assert!(asked.says(&named), "no {named} in: {}", asked.out);
     }
     let after = second_stop(&tree);
