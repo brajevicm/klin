@@ -599,4 +599,8 @@ fn status_names_an_open_finding_by_its_site_and_each_time_by_its_age() {
         "{}",
         status.out
     );
+    assert_eq!(
+        window(&tree)["open_sites"],
+        serde_json::json!(["src/lib.rs:5"])
+    );
 }

@@ -110,6 +110,7 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         "verdict": held.verdict.name(),
         "age_seconds": now().saturating_sub(held.time),
         "open": [],
+        "open_sites": [],
         "unasked": [],
         "error": null,
         "aborted_since": null,
@@ -252,7 +253,7 @@ fn local_text(document: &Value, out: &mut String) {
 /// The stamp's verdict and age, and what keeps the window red: "nothing judged" for an
 /// unjudged window, never green. Spec 6.6, 11.4.
 fn window_text(window: &Value, out: &mut String) {
-    let age = turn::ago(now().saturating_sub(window["age_seconds"].as_u64().unwrap_or_default()));
+    let age = turn::age(window["age_seconds"].as_u64().unwrap_or_default());
     let _ = match window["verdict"].as_str() {
         Some("unjudged") => writeln!(
             out,
@@ -298,7 +299,7 @@ fn history_text(window: &Value, out: &mut String) {
 }
 
 fn when(time: &Value) -> String {
-    turn::ago(time.as_u64().unwrap_or_default())
+    turn::age(now().saturating_sub(time.as_u64().unwrap_or_default()))
 }
 
 fn word<'a>(value: &'a Value, key: &str) -> &'a str {

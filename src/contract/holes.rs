@@ -292,14 +292,15 @@ fn in_place<'a>(
 type Sorted = (Class, Cause, Option<(u64, u64)>, String);
 
 /// One file, by the strongest thing a gate saw: a read that failed, then a manifest, then a
-/// file that left a scope, and whether the capabilities still measured it, which only a form an
-/// attribute gives leaves true.
+/// file that left a scope, and whether a gate still measured its bytes under a form an attribute
+/// gives it.
 fn one(
     project: &Project,
     against: Option<(&[Change], &str)>,
     file: &str,
     seen: &[(String, Seen)],
 ) -> (Sorted, bool) {
+    let measured = seen.iter().any(|(_, seen)| matches!(seen, Seen::Form(..)));
     let form = files::form_in(project.root(), file);
     if form.any() {
         let sorted = formed(
@@ -308,7 +309,7 @@ fn one(
             file,
             (form, measured_at_base(seen)),
         );
-        return (sorted, true);
+        return (sorted, measured);
     }
     let strongest = seen
         .iter()
@@ -316,15 +317,14 @@ fn one(
         .min_by_key(|seen| seen.rank());
     let sorted = match strongest {
         Some(Seen::Form(form, measured)) => {
-            let sorted = formed(project.root(), against, file, (*form, Some(*measured)));
-            return (sorted, true);
+            formed(project.root(), against, file, (*form, Some(*measured)))
         }
         Some(Seen::Unread) => unread(project, against, file),
         Some(Seen::Manifest { class, why }) => manifest(*class, why),
         Some(Seen::Left(_)) => left(project, against, file, &whys(seen)),
         None => left(project, against, file, &[]),
     };
-    (sorted, false)
+    (sorted, measured)
 }
 
 impl Seen {
