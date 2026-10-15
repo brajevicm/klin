@@ -237,8 +237,8 @@ fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
 }
 
 /// A directory entry, which `rm` and `mv` act on: a link itself, never what it points to.
-/// Kept apart from a resolved path, which follows a final link.
-#[derive(PartialEq)]
+/// Kept apart from a resolved path, which follows a final link. Two entries compare through
+/// `is` alone.
 struct Entry(PathBuf);
 
 impl Entry {
