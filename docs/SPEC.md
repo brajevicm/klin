@@ -1674,7 +1674,10 @@ guard answers nothing (section 5.1).
 may edit it. The klin skill tells the agent to change it only when the person
 explicitly asks for that change. The agent makes an exact change the person
 gave and shows the diff, and it shows a value it chose itself and writes it
-only after the person says yes. klin does not enforce this rule. The Stop and `klin
+only after the person says yes. A request to tailor `klin.json` is a request
+to propose: the skill has the agent explain each value of `klin policy
+--suggest` and create a missing `klin.json` only after a yes, because that
+turns klin on. klin does not enforce this rule. The Stop and `klin
 check` judge under the `klin.json` in the tree, so only a person who reads
 its diff catches a `klin.json` that an agent weakened.
 

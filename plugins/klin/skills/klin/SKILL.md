@@ -73,7 +73,8 @@ is visible in the diff a person reviews.
   it and show the diff. When you choose any value yourself, such as which
   entry to accept, its reason or a ceiling, show the change and write it
   only after the person says yes. Never add an entry to `accepted` or raise
-  a ceiling to make a gate pass. klin does not refuse the edit, and klin
+  a ceiling on your own to make a gate pass. An entry the person asks for
+  follows "Tailoring klin.json" below. klin does not refuse the edit, and klin
   judges under the edited file, so this rule is yours to keep. Never delete
   or move `klin.json`: without it klin is off, and klin asks the person
   first.
@@ -100,6 +101,42 @@ is visible in the diff a person reviews.
   integration; a person runs it.
 - `klin update`. It replaces the binary that judges this work; a person
   runs it.
+
+## Tailoring klin.json
+
+A request to tailor, tune or set up `klin.json` is a request to propose a
+change. The rule for `klin.json` above still holds, and this section applies
+it.
+
+1. When the repository has no `klin.json`, say that creating it turns klin on
+   for this repository. Create it only after the person says yes.
+2. Run `klin policy --suggest`. It prints a starter policy computed from the
+   tree, and writes nothing.
+3. Explain each suggested value from the `derived:` and `held:` lines under
+   the JSON. Say what pinning the value changes compared with the value klin
+   derives without it: a pinned value stays fixed, and a derived value moves
+   with the tree. A suggested `layering` section has no derived value. Its
+   `held:` line names the findings that section holds today.
+4. Write a suggestion the person picks unchanged, because that is their exact
+   change. A value you chose or edited is yours, and the rule above applies.
+   `--suggest` prints only the values the file does not state yet, so merge
+   the picked values into the existing `klin.json`. Keep every other key,
+   nested value and `accepted` entry as it is.
+5. When the person asks to accept a finding, build the `accepted` entry with
+   its reason, in the shape `klin policy --schema` gives. The entry also
+   needs each number the finding gives for a value its gate ratchets, such
+   as `cc` and `lines` for `complexity`. Copy them from the finding, and add
+   no value the finding does not carry. The entry, its numbers and its reason
+   are values you chose.
+6. After the write, show `git diff klin.json`, or the whole file when it is
+   new, and `klin policy`, which marks each value pinned, derived or
+   built-in. Tell the person to commit the file.
+
+When a write needs a value that the person did not see, do not add it
+yourself. Show the new value and wait for a yes again.
+
+`klin check` judges under the edited file, so it cannot show that the edit
+is sound.
 
 ## Installation ownership
 
