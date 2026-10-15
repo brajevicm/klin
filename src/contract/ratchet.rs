@@ -88,18 +88,29 @@ impl Finding {
     }
 }
 
-/// The debt a person accepted in the config, as prior entries for one gate. An entry must carry
-/// every value the gate ratchets, or it would hold a site at any value it grows to.
-pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Values>, Error> {
-    accepted_leaving_out(config, gate, metrics, &[])
+/// The values one gate ratchets, which an accepted entry for it gives a number for, and the
+/// ones of them an entry may leave out. Spec B.4.8.
+#[derive(Clone, Copy)]
+pub struct Accepts {
+    pub ratchets: &'static [&'static str],
+    pub optional: &'static [&'static str],
+    /// Whether the check judges its entries under `<gate>/<name>` and never under its own name.
+    pub by_entry: bool,
 }
 
-pub fn accepted_leaving_out(
-    config: &Config,
-    gate: &str,
-    metrics: &[&str],
-    optional: &[&str],
-) -> Result<Vec<Values>, Error> {
+impl Accepts {
+    pub const fn all(ratchets: &'static [&'static str]) -> Accepts {
+        Accepts {
+            ratchets,
+            optional: &[],
+            by_entry: false,
+        }
+    }
+}
+
+/// The debt a person accepted in the config, as prior entries for one gate. An entry must carry
+/// every value the gate ratchets, or it would hold a site at any value it grows to.
+pub fn accepted(config: &Config, gate: &str, accepts: &Accepts) -> Result<Vec<Values>, Error> {
     let section = config::file::ACCEPTED.name;
     let Some(listed) = config.pinned(section) else {
         return Ok(Vec::new());
@@ -121,7 +132,7 @@ pub fn accepted_leaving_out(
         if named != gate {
             continue;
         }
-        names_every_value(config, gate, &entry, metrics, optional)?;
+        names_every_value(config, gate, &entry, accepts)?;
         entry.remove(BODY);
         entry.remove(config::file::ACCEPTED_REASON);
         entry.insert(ACCEPTED.into(), true.into());
@@ -130,17 +141,19 @@ pub fn accepted_leaving_out(
     Ok(out)
 }
 
-fn names_every_value(
+/// Refuses an accepted entry that leaves out a number its gate ratchets, as the config error of
+/// spec B.4.8.
+pub fn names_every_value(
     config: &Config,
     gate: &str,
     entry: &Values,
-    metrics: &[&str],
-    optional: &[&str],
+    accepts: &Accepts,
 ) -> Result<(), Error> {
-    let missing: Vec<&str> = metrics
+    let missing: Vec<&str> = accepts
+        .ratchets
         .iter()
         .copied()
-        .filter(|metric| entry.contains_key(*metric) || !optional.contains(metric))
+        .filter(|metric| entry.contains_key(*metric) || !accepts.optional.contains(metric))
         .filter(|metric| entry.get(*metric).and_then(Value::as_f64).is_none())
         .collect();
     if missing.is_empty() {

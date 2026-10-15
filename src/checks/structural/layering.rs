@@ -63,6 +63,7 @@ pub const ASKS: &[&str] = &[LAYERS.name, ACYCLIC.name];
 
 const CAN_USE: &str = "can_use";
 const EDGE: &str = "edge";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(&[EDGE]);
 const KIND: &str = "kind";
 const SITES: &str = "sites";
 const PATH: &str = "path";
@@ -1026,7 +1027,7 @@ fn judged(
     Ok(evaluator.evaluate(
         findings,
         prior,
-        ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
+        ratchet::accepted(&at.project.config, at.gate, &ACCEPTS)?,
         at,
         Line::new(state, said),
         out,
@@ -1096,7 +1097,7 @@ fn attachment(graph: &ModuleGraph) -> contract::check::Layering {
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        metrics: &[EDGE],
+        metrics: ACCEPTS.ratchets,
         unit: "dependency edge(s)",
         condition: "where a dependency crosses a layer the policy forbids or closes a cycle",
         fix_advice: Remedy::Fixed(REMEDY),

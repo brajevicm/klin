@@ -25,6 +25,11 @@ use crate::window::base;
 use crate::{facts::survey, sys::changed};
 
 pub const SECTION: &str = "complexity";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
+    ratchets: &[CC.name, LINES.name, TEST_LINES.name],
+    optional: &[LINES.name, TEST_LINES.name],
+    by_entry: false,
+};
 const CC_FLOOR: u64 = 10;
 const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
@@ -395,12 +400,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = evaluator(&spec).evaluate(
         now,
         before.found,
-        ratchet::accepted_leaving_out(
-            &project.config,
-            at.gate,
-            evaluator(&spec).metrics,
-            &[LINES.name, TEST_LINES.name],
-        )?,
+        ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
         at,
         Line::new(
             contract::check::Measured::Complexity(contract::check::Complexity {
@@ -517,7 +517,7 @@ fn scoped<'a>(files: impl Iterator<Item = &'a String>, at: &Context) -> usize {
 
 fn evaluator(spec: &Spec) -> Evaluator<'_> {
     Evaluator {
-        metrics: &[CC.name, LINES.name, TEST_LINES.name],
+        metrics: ACCEPTS.ratchets,
         unit: "function(s)",
         condition: &spec.gate_text,
         ceiling: Some(&spec.ceiling_text),

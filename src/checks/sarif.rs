@@ -56,6 +56,7 @@ const DIFFERENTIAL: Key = Key {
 };
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(METRICS);
 /// How many `originalUriBaseIds` entries one location is resolved through, so a report whose
 /// ids point at each other resolves rather than recurring forever.
 const DEPTH: usize = 4;
@@ -84,7 +85,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     };
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
-    let accepted = ratchet::accepted(config, at.gate, METRICS)?;
+    let accepted = ratchet::accepted(config, at.gate, &ACCEPTS)?;
     let state = Measured::Sarif {
         judged: judged.judged,
         held: judged.held,

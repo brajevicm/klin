@@ -69,7 +69,7 @@ pub const BUILD: Key = Key {
 
 pub const ACCEPTED: Key = Key {
     name: "accepted",
-    holds: "the debt a person accepted, each entry a site and a reason. Only a person writes it",
+    holds: "the debt a person accepted, each entry a site, a number for each value its gate ratchets and a reason. A person decides each entry, and an agent writes one only when the person asks for it",
     required: false,
     rule: None,
     default: "nothing is accepted",
