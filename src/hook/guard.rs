@@ -256,10 +256,10 @@ impl Entry {
         Some(Entry(parent.join(name)))
     }
 
-    /// Whether this entry is `other`: the same path, or in the same directory a spelling the
-    /// directory does not list that reaches the same file, which a case-insensitive file system
-    /// accepts under any case folding it does. A hard link is listed under its own name, so it
-    /// is its own entry.
+    /// Whether this entry is `other`: the same path, or in the same directory another spelling
+    /// that reaches the same file, which a case-insensitive file system accepts under any case
+    /// folding it does. Two names the directory both lists are two hard links, each its own
+    /// entry.
     fn is(&self, other: &Entry) -> bool {
         let (one, other) = (&self.0, &other.0);
         if one == other {
@@ -271,7 +271,7 @@ impl Entry {
         };
         one.parent() == other.parent()
             && matches!((file(one), file(other)), (Ok(one), Ok(other)) if one == other)
-            && !listed(one)
+            && !(listed(one) && listed(other))
     }
 }
 

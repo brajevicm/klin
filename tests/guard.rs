@@ -183,6 +183,14 @@ fn asks_before_a_command_removes_the_configuration_under_another_case() {
             command,
         );
     }
+
+    let stored = Tree::new();
+    stored.write("Klin.json", "{}\n");
+    asked(
+        &bash_in(&stored, "rm Klin.json"),
+        "Klin.json",
+        "rm the stored spelling",
+    );
 }
 
 #[test]
