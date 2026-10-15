@@ -101,6 +101,38 @@ is visible in the diff a person reviews.
 - `klin update`. It replaces the binary that judges this work; a person
   runs it.
 
+## Tailoring klin.json
+
+A request to tailor, tune or set up `klin.json` is a request to propose a
+change. The rule for `klin.json` above still holds, and this section applies
+it.
+
+1. When the repository has no `klin.json`, say that creating it turns klin on
+   for this repository. Create it only after the person says yes.
+2. Run `klin policy --suggest`. It prints a starter policy computed from the
+   tree, and writes nothing.
+3. Explain each suggested value from the `derived:` and `held:` lines under
+   the JSON. Say what pinning the value changes compared with the value klin
+   derives without it: a pinned value stays fixed, and a derived value moves
+   with the tree. A suggested `layering` section has no derived value. Its
+   `held:` line names the findings that section holds today.
+4. Write a suggestion the person picks unchanged, because that is their exact
+   change. A value you chose or edited is yours, and the rule above applies.
+5. When the person asks to accept a finding, build the `accepted` entry with
+   its reason, in the shape `klin policy --schema` gives. The entry also
+   needs a number for each value its gate ratchets, such as `cc` and `lines`
+   for `complexity`. Take them from the finding. The entry, its numbers and
+   its reason are values you chose.
+6. After the write, show `git diff klin.json`, or the whole file when it is
+   new, and `klin policy`, which marks each value pinned, derived or
+   built-in. Tell the person to commit the file.
+
+When a write needs a value that the person did not see, do not add it
+yourself. Show the new value and wait for a yes again.
+
+`klin check` judges under the edited file, so it cannot show that the edit
+is sound.
+
 ## Installation ownership
 
 The native Claude Code, Codex CLI and Cursor plugins already carry this skill.
