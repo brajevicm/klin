@@ -244,7 +244,7 @@ fn local_text(document: &Value, out: &mut String) {
     if let Some(verdict) = stop["verdict"].as_str() {
         let _ = writeln!(
             out,
-            "last stop (historical): {verdict}, {}",
+            "last stop (historical): {verdict}{}",
             when(&stop["time"])
         );
     }
@@ -253,20 +253,23 @@ fn local_text(document: &Value, out: &mut String) {
 /// The stamp's verdict and age, and what keeps the window red: "nothing judged" for an
 /// unjudged window, never green. Spec 6.6, 11.4.
 fn window_text(window: &Value, out: &mut String) {
-    let age = turn::age(window["age_seconds"].as_u64().unwrap_or_default());
+    let stamped = window["age_seconds"]
+        .as_u64()
+        .map(|age| format!(", stamped {}", turn::age(age)))
+        .unwrap_or_default();
     let _ = match window["verdict"].as_str() {
         Some("unjudged") => writeln!(
             out,
-            "window: nothing judged, stamped {age} — {}",
+            "window: nothing judged{stamped} — {}",
             word(window, "error")
         ),
         Some("aborted") => writeln!(
             out,
-            "window: aborted {}, stamped {age} — klin failed during a stop, and \
+            "window: aborted{}{stamped} — klin failed during a stop, and \
              the next stop that measures replaces it",
             when(&window["aborted_since"])
         ),
-        Some(verdict) => writeln!(out, "window: {verdict}, stamped {age}"),
+        Some(verdict) => writeln!(out, "window: {verdict}{stamped}"),
         None => writeln!(out, "window: none, no session has opened one"),
     };
     history_text(window, out);
@@ -292,14 +295,17 @@ fn history_text(window: &Value, out: &mut String) {
     if let Some(reason) = advisory["reason"].as_str() {
         let _ = writeln!(
             out,
-            "  last advisory stop: {reason}, {}",
+            "  last advisory stop: {reason}{}",
             when(&advisory["time"])
         );
     }
 }
 
+/// How long ago a journal time was, after a comma, and nothing where the time is unknown.
 fn when(time: &Value) -> String {
-    turn::age(now().saturating_sub(time.as_u64().unwrap_or_default()))
+    time.as_u64()
+        .map(|time| format!(", {}", turn::age(now().saturating_sub(time))))
+        .unwrap_or_default()
 }
 
 fn word<'a>(value: &'a Value, key: &str) -> &'a str {
