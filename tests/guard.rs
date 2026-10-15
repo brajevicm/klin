@@ -165,6 +165,21 @@ fn a_link_to_the_configuration_is_its_own_file() {
 }
 
 /// A case-insensitive file system removes `klin.json` under any spelling of its name. ADR 0074.
+/// On a case-sensitive file system a hard link that differs from `klin.json` in case alone is
+/// its own entry, so removing it leaves klin on. ADR 0074.
+#[test]
+fn a_hard_link_under_another_case_is_its_own_entry() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    if tree.path("KLIN.json").exists() {
+        return;
+    }
+    std::fs::hard_link(tree.path("klin.json"), tree.path("KLIN.json")).unwrap();
+    for command in ["rm KLIN.json", "mv KLIN.json backup.json"] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}
+
 #[test]
 fn asks_before_a_command_removes_the_configuration_under_another_case() {
     let tree = Tree::new();
