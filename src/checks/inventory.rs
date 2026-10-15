@@ -273,22 +273,27 @@ fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Erro
     })
 }
 
-/// Which of the base's test functions the working tree still holds: by site first, then by
-/// body hash across files, and one to one on both passes. A site matches with its skip or focus
-/// marker taken off, so a skipped test is held and only `escapes` judges the skip. Spec 4.4,
+/// Which of the base's test functions the working tree still holds: by site first, then by site
+/// with its skip or focus marker taken off, then by body hash across files, and one to one on
+/// every pass. An exact site claims first, so a marked test is never taken for an unmarked one
+/// that shares its line. A skipped test is held, and only `escapes` judges the skip. Spec 4.4,
 /// 8.2, 16.4.
 fn still_there(before: &[Test], after: &[Test]) -> Vec<bool> {
     let mut taken = vec![false; after.len()];
     let mut found = vec![false; before.len()];
-    for (at, site) in before.iter().enumerate() {
-        found[at] = claimed(after, &mut taken, |other| {
+    let passes: [fn(&Test, &Test) -> bool; 3] = [
+        |site, other| other.file == site.file && other.text == site.text,
+        |site, other| {
             other.file == site.file
                 && convention::unmarked(&other.text) == convention::unmarked(&site.text)
-        });
-    }
-    for (at, site) in before.iter().enumerate() {
-        if !found[at] {
-            found[at] = claimed(after, &mut taken, |other| other.body == site.body);
+        },
+        |site, other| other.body == site.body,
+    ];
+    for matches in passes {
+        for (at, site) in before.iter().enumerate() {
+            if !found[at] {
+                found[at] = claimed(after, &mut taken, |other| matches(site, other));
+            }
         }
     }
     found

@@ -971,18 +971,15 @@ fn hook(
         GateBlock::Passed(why) => return not_blocked(args, doc, report, event, &why),
     };
     let numbered = budget::gate_numbered(number);
+    let asks = match (doc.failed_on_findings(), doc.errored()) {
+        (0, _) => "a test the base holds went — answer each ASK",
+        (_, 0) => "a quality gate failed — fix what each names",
+        _ => "a quality gate failed — fix what each FAIL names",
+    };
     let lead = match doc.errored() {
-        0 if doc.failed() == doc.asked() => format!(
-            "klin: a test the base holds went — answer each ASK, then stop again \
-             ({numbered}):"
-        ),
-        0 => format!(
-            "klin: a quality gate failed — fix what each names, then stop again \
-             ({numbered}):"
-        ),
+        0 => format!("klin: {asks}, then stop again ({numbered}):"),
         _ => format!(
-            "klin: a quality gate failed — fix what each FAIL names, then stop again \
-             ({numbered}). A capability that could not run is a \
+            "klin: {asks}, then stop again ({numbered}). A capability that could not run is a \
              limitation of this stop and asks for no change to the source:"
         ),
     };

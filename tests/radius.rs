@@ -101,6 +101,35 @@ fn the_stop_of_a_wide_turn_tells_the_person_the_spread() {
     );
 }
 
+const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
+
+/// Cursor has no person channel at the Stop, so the note is a notice the journal holds, which
+/// `klin status` and `klin report` show while its window is open. Spec 10.3, 10.7.
+#[test]
+fn on_cursor_the_radius_note_is_a_notice_the_journal_holds() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_CURSOR_SESSION).code, 0);
+    a_wide_turn(&tree);
+
+    let run = radius(&tree, A_CURSOR_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("followup_message"), "{}", run.out);
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["notice"]["delivered"], false, "{line}");
+    let message = line["notice"]["message"].as_str().unwrap_or_default();
+    assert!(message.contains("wider than"), "{line}");
+    let status = tree.run(&["status", "--json"]).json();
+    assert_eq!(
+        status["window"]["notices"][0]["message"], message,
+        "{status}"
+    );
+}
+
 /// The radius note and the state notes ask the agent nothing, so a prompt prints neither.
 #[test]
 fn a_prompt_after_a_wide_turn_prints_nothing() {

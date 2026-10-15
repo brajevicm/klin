@@ -1348,10 +1348,14 @@ At the Stop:
    and each row names the site and its text. It never prints as `FAIL` or
    as a value that got worse. When the question is all the Stop holds, the
    lead line asks the agent to answer each `ASK`, and the summary line
-   counts the gate as `asked` and not as `failed`. A Stop that also holds a
-   FAIL keeps the FAIL lead. Pinned by
-   `deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`
-   and `a_stop_with_a_fail_and_a_question_keeps_the_fail_lead` in
+   counts the gate as `asked` and not as `failed`. A capability that could
+   not run adds its sentence to that lead and does not change it. A Stop
+   that also holds a FAIL keeps the FAIL lead. A question is no failure, so
+   it never brings a ride-along finding (9.6) into the Stop. Pinned by
+   `deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`,
+   `a_stop_with_a_fail_and_a_question_keeps_the_fail_lead`,
+   `a_question_beside_a_tool_error_is_still_a_question` and
+   `a_question_does_not_bring_in_a_ride_along_finding` in
    `tests/inventory.rs`.
 5. An asked deletion is a review item, which the Stop shows as a note. It is
    no reason for a gate block. Any Stop after a gate block, whether it holds a
@@ -1526,9 +1530,14 @@ the journal `prompt` line.
 The radius note asks for nothing. A Stop that blocks nothing tells it to the
 person, through the host's person channel, as the `radius` part of its
 notice (10.7). It measures the turn from the prompt mark to the working tree,
-so it names the turn that this Stop ends. Pinned by
-`a_prompt_after_a_wide_turn_prints_nothing` and
-`the_stop_of_a_wide_turn_tells_the_person_the_spread` in `tests/radius.rs`,
+so it names the turn that this Stop ends. Cursor has no person channel at
+the Stop, so there the note is a notice that only the journal holds, and
+`klin status` and `klin report` show it while its window is open (10.7).
+When the Stop of a wide turn blocks, the note waits for the next Stop that
+blocks nothing. Pinned by
+`a_prompt_after_a_wide_turn_prints_nothing`,
+`the_stop_of_a_wide_turn_tells_the_person_the_spread` and
+`on_cursor_the_radius_note_is_a_notice_the_journal_holds` in `tests/radius.rs`,
 and `a_stamp_that_stays_gone_is_noted_on_every_prompt` in `tests/turn.rs`.
 
 The adapters, the event identity, the claims that let one copy act per event,
@@ -5527,11 +5536,13 @@ is not a test. Where the grammar holds the annotation inside the function's
 own node, as it does for Java, the declaration line is the first line of
 that node that carries more than an attribute or an annotation, so the site
 names the method and the body hash of 4.4 leaves the name out. Its
-`missing` is 1 when no function in the working tree takes it, by site first
-and then by body hash, one to one on each pass. The site pass compares the
-declaration line with its skip or focus marker taken off, so a test that
-gains `.skip` or `.only` is held, and `escapes` alone judges the marker: a
-new skip is one finding. `in` and `except` narrow
+`missing` is 1 when no function in the working tree takes it, by site, then
+by site with the skip or focus marker taken off, then by body hash, one to
+one on each pass. The exact site claims first, so a marked test is never
+taken for an unmarked one whose declaration line it shares. The body hash
+also leaves the marker out of the declaration line, so a one-line test that
+moves and gains `.skip` is held. A test that gains `.skip` or `.only` is
+held, and `escapes` alone judges the marker: a new skip is one finding. `in` and `except` narrow
 both identities the same way, and both trees are read under the scope the
 base commit records, and under today's when the base records none (8.6), so a
 narrowing lets a deletion through only once it is committed. A file the working tree's grammar refuses holds no function site,
@@ -5547,6 +5558,8 @@ not a grammar rejection. Pinned by
 `a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
 `a_skipped_or_focused_test_is_still_a_test_site`,
 `a_new_skip_at_the_stop_is_one_escapes_finding`,
+`a_deleted_test_beside_a_skipped_twin_is_the_one_that_went`,
+`a_one_line_test_moved_and_skipped_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,
 `deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site`,

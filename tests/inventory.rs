@@ -390,6 +390,100 @@ fn a_new_skip_at_the_stop_is_one_escapes_finding() {
     assert!(!run.says(QUESTION), "{}", run.out);
 }
 
+/// An exact site claims first, so a skipped test that shares its unmarked line with a deleted
+/// one is held, and the question names the test that went.
+#[test]
+fn a_deleted_test_beside_a_skipped_twin_is_the_one_that_went() {
+    let tree = Tree::new();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"same\", () => {\n  expect(1).toBe(1);\n});\n\ntest.skip(\"same\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        "test.skip(\"same\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    let run = tree.run(&["check", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("tests/a.test.ts:1  test(\"same\""), "{}", run.out);
+    assert!(!run.says("tests/a.test.ts:5"), "{}", run.out);
+}
+
+/// A one-line test that moves and gains `.skip` keeps its body key, so only `escapes` judges it.
+#[test]
+fn a_one_line_test_moved_and_skipped_is_held() {
+    let tree = Tree::new();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"keep\", () => expect(0).toBe(0));\ntest(\"a\", () => expect(1).toBe(1));\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"keep\", () => expect(0).toBe(0));\n",
+    );
+    tree.write(
+        "tests/b.test.ts",
+        "test.skip(\"a\", () => expect(1).toBe(1));\n",
+    );
+    let run = tree.run(&["check", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("went in this window"), "{}", run.out);
+}
+
+/// A question is no failure, so a ride-along finding beside it stays out of the Stop.
+/// Spec 9.2, 9.6.
+#[test]
+fn a_question_does_not_bring_in_a_ride_along_finding() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"a\", () => {\n  expect(1).toBe(1);\n});\n\ntest(\"b\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    tree.write("web/src/env.ts", "export const url = process.env.URL;\n");
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"a\", () => {\n  expect(1).toBe(1);\n});\n",
+    );
+    tree.write(
+        "web/src/env.ts",
+        "// biome-ignore lint/style/noProcessEnv: read once at boot\nexport const url = process.env.URL;\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("  ASK   inventory"), "{}", run.out);
+    assert!(!run.says("biome-ignore"), "{}", run.out);
+    assert!(run.says(", 1 asked."), "{}", run.out);
+    assert!(!run.says("failed"), "{}", run.out);
+}
+
+/// A question beside a capability that could not run keeps the question's lead, with the
+/// sentence about the capability. Spec 9.2, 10.4.
+#[test]
+fn a_question_beside_a_tool_error_is_still_a_question() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"escapes": {"in": "README.md"}}"#);
+    tree.words("README.md", 5);
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"a\", () => {\n  expect(1).toBe(1);\n});\n\ntest(\"b\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"a\", () => {\n  expect(1).toBe(1);\n});\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("ERR   escapes"), "{}", run.out);
+    assert!(run.says("answer each ASK"), "{}", run.out);
+    assert!(run.says("A capability that could not run"), "{}", run.out);
+    assert!(!run.says("a quality gate failed"), "{}", run.out);
+}
+
 /// A question beside a FAIL keeps the FAIL lead, and the summary counts each apart.
 #[test]
 fn a_stop_with_a_fail_and_a_question_keeps_the_fail_lead() {

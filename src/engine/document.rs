@@ -851,10 +851,15 @@ impl CheckDocument {
     /// where any gate failed, each gate whose only failures ride along. A gate that failed only
     /// on a question counts as asked. Spec 9.2, 9.6.
     pub fn failed_in_report(&self) -> usize {
-        match self.failed() {
+        match self.failed_on_findings() {
             0 => 0,
-            failed => failed - self.asked + self.riding.len(),
+            failed => failed + self.riding.len(),
         }
+    }
+
+    /// How many gates failed on a finding, and not only on a question. Spec 9.2.
+    pub fn failed_on_findings(&self) -> usize {
+        self.failed() - self.asked
     }
 
     /// How many gates could not run, and how many run-scope errors there were. Spec 10.4.
@@ -944,7 +949,7 @@ impl CheckDocument {
         if args.gates.is_empty() {
             self.not_applicable(plan);
         }
-        if self.failed() > 0 {
+        if self.failed_on_findings() > 0 {
             out.extend(self.riding.iter().map(String::as_str));
         }
     }

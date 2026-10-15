@@ -78,12 +78,26 @@ fn declared(file: &ParsedFile, node: Node, lines: &[&str]) -> Option<Test> {
     let from = node.start_position().row;
     let end = node.end_position().row.min(lines.len().saturating_sub(1));
     let row = declaration_row(lines, from, end);
-    marks_a_test(node, file.bytes(), lines, row).then(|| Test {
-        file: path.to_string(),
-        line: row as u64 + 1,
-        text: line_at(lines, row),
-        body: record::body_hash(&lines[row..=end.max(row)].join("\n")),
+    marks_a_test(node, file.bytes(), lines, row).then(|| {
+        let text = line_at(lines, row);
+        Test {
+            file: path.to_string(),
+            line: row as u64 + 1,
+            body: body_hash(&text, &lines[row + 1..=end.max(row)]),
+            text,
+        }
     })
+}
+
+/// The body hash of 4.4 over a declaration and the lines `below` it, with the declaration's
+/// skip or focus marker taken off, so a one-line test that gains `.skip` as it moves keeps its
+/// key. Spec 4.4, 8.2.
+fn body_hash(declaration: &str, below: &[&str]) -> u64 {
+    let unmarked = unmarked(declaration);
+    let whole: Vec<&str> = std::iter::once(unmarked.as_ref())
+        .chain(below.iter().copied())
+        .collect();
+    record::body_hash(&whole.join("\n"))
 }
 
 /// The row the declaration of a test sits on. A language that writes the test marker as an
