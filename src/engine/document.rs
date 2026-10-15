@@ -173,6 +173,21 @@ impl Axes {
         }
     }
 
+    /// Whether the Stop asks this gate's question and judges nothing else of it: its only
+    /// failure is a question. Spec 9.2.
+    fn only_asks(self, view: View, asks: bool) -> bool {
+        asks && matches!((self.worst(), view), (Worst::Fail, View::Stop))
+    }
+
+    /// The row word the report prints: `state`, and `ASK` in place of `FAIL` for a gate that
+    /// only asks. Spec 9.2.
+    fn row(self, view: View, asks: bool) -> &'static str {
+        match self.only_asks(view, asks) {
+            true => "ASK ",
+            false => self.state(view),
+        }
+    }
+
     /// The word a gate's diagnostics row carries, which names only what an agent acts on.
     fn status(self) -> &'static str {
         self.state(View::Stop).trim_end()
@@ -312,7 +327,9 @@ fn beside(mut told: Vec<Told>, failed: &[&str]) -> Vec<Told> {
     let kept = kept_beside(&told, failed);
     for item in &mut told {
         if let Told::Ratchet(
-            Ratchet::New { failed: found, .. } | Ratchet::Worse { failed: found, .. },
+            Ratchet::New { failed: found, .. }
+            | Ratchet::Worse { failed: found, .. }
+            | Ratchet::Asked { failed: found, .. },
         ) = item
         {
             joined(found, &kept);
@@ -334,7 +351,9 @@ fn kept_beside(told: &[Told], failed: &[&str]) -> Vec<(&'static str, &'static st
     let fails = |key: &str| {
         told.iter().any(|item| match item {
             Told::Ratchet(
-                Ratchet::New { failed: found, .. } | Ratchet::Worse { failed: found, .. },
+                Ratchet::New { failed: found, .. }
+                | Ratchet::Worse { failed: found, .. }
+                | Ratchet::Asked { failed: found, .. },
             ) => found.iter().any(|finding| finding.values.contains_key(key)),
             _ => false,
         })
@@ -383,7 +402,7 @@ fn reviewed(told: Vec<Told>) -> Vec<Told> {
     let blocks = split.iter().any(|item| {
         matches!(
             item,
-            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. } | Ratchet::Asked { .. })
         )
     });
     split
@@ -398,7 +417,7 @@ fn riding(told: Vec<Told>) -> (Vec<Told>, Vec<Told>) {
     told.into_iter().partition(|item| {
         !matches!(
             item,
-            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. } | Ratchet::Asked { .. })
                 | Told::Plain(Plain::Remedy(_))
         )
     })
@@ -695,6 +714,9 @@ pub struct CheckDocument {
     /// The Stop text of each gate whose only failures are of ride-along rows, which the Stop
     /// prints only when another finding blocks it. Spec 9.6.
     riding: Vec<String>,
+    /// How many gates failed only on a question, which the Stop asks and does not judge.
+    /// Spec 9.2.
+    asked: usize,
 }
 
 /// The findings a capability's ratchet passed that are debt, as its check counts debt.
@@ -825,13 +847,19 @@ impl CheckDocument {
         self.capabilities.iter().filter(failed).count()
     }
 
-    /// How many gates a Stop's report prints as failed: the gates that failed and, where any
-    /// did, each gate whose only failures ride along. Spec 9.6.
+    /// How many gates a Stop's report prints as failed: the gates that failed on a finding and,
+    /// where any gate failed, each gate whose only failures ride along. A gate that failed only
+    /// on a question counts as asked. Spec 9.2, 9.6.
     pub fn failed_in_report(&self) -> usize {
-        match self.failed() {
+        match self.failed_on_findings() {
             0 => 0,
             failed => failed + self.riding.len(),
         }
+    }
+
+    /// How many gates failed on a finding, and not only on a question. Spec 9.2.
+    pub fn failed_on_findings(&self) -> usize {
+        self.failed() - self.asked
     }
 
     /// How many gates could not run, and how many run-scope errors there were. Spec 10.4.
@@ -842,6 +870,11 @@ impl CheckDocument {
 
     pub fn told(&self) -> usize {
         self.told
+    }
+
+    /// How many failed gates failed only on a question. Spec 9.2.
+    pub fn asked(&self) -> usize {
+        self.asked
     }
 
     pub fn grammar_lag(&self) -> bool {
@@ -916,7 +949,7 @@ impl CheckDocument {
         if args.gates.is_empty() {
             self.not_applicable(plan);
         }
-        if self.failed() > 0 {
+        if self.failed_on_findings() > 0 {
             out.extend(self.riding.iter().map(String::as_str));
         }
     }
@@ -1031,12 +1064,19 @@ impl CheckDocument {
         let axes = axes_of(code, &shown);
         self.axes = self.axes.and(axes);
         let told = self.held_back(args, &gate.name, axes, told);
+        let asks = render::asks_only(&told);
+        self.asked += usize::from(axes.only_asks(args.view, asks));
         if shows(args, code, &shown) {
             let (provenance, text) = match args.view {
                 View::Stop => (render::pinned(&told), render::stop(&told, code == 0)),
                 View::Text | View::Json => (render::provenance(&told), render::text(&told)),
             };
-            printed(&gate.name, axes.state(args.view), (&provenance, &text), out);
+            printed(
+                &gate.name,
+                axes.row(args.view, asks),
+                (&provenance, &text),
+                out,
+            );
         }
         self.told += shown.notes.iter().filter(|note| note.told()).count();
         let erred = usize::from(code == 2 && !records.errors.is_empty());
@@ -1071,7 +1111,7 @@ impl CheckDocument {
         let failed = told.iter().any(|item| {
             matches!(
                 item,
-                Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+                Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. } | Ratchet::Asked { .. })
             )
         });
         if !args.at_stop() || !failed || axes.judgement == Judgement::Fail {
@@ -1753,6 +1793,7 @@ mod tests {
         format_metrics: |_| "count 1".to_string(),
         nested: None,
         rides_along: |values| values.get("kind").and_then(Value::as_str) == Some(RIDER),
+        worsened: ratchet::Worsened::Fails,
     };
 
     fn site(kind: &str) -> ratchet::Finding {

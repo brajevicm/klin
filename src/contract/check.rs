@@ -701,6 +701,12 @@ pub enum Ratchet {
         condition: String,
         failed: Vec<Failed>,
     },
+    /// What the Stop asks about and does not judge: the deleted tests of spec 9.2.
+    Asked {
+        unit: String,
+        condition: String,
+        failed: Vec<Failed>,
+    },
     /// The findings of ride-along rows at `klin check`: review items. Spec 9.6.
     RidesAlong {
         unit: String,
@@ -730,6 +736,11 @@ impl Ratchet {
             unit,
             condition,
             failed,
+        }
+        | Ratchet::Asked {
+            unit,
+            condition,
+            failed,
         }) = self
         else {
             return None;
@@ -748,7 +759,11 @@ impl Ratchet {
 
     /// Whether this is a new or worsened result with no finding left in it.
     pub fn emptied(&self) -> bool {
-        matches!(self, Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. } if failed.is_empty())
+        matches!(
+            self,
+            Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. } | Ratchet::Asked { failed, .. }
+                if failed.is_empty()
+        )
     }
 }
 

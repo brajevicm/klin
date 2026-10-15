@@ -39,20 +39,49 @@ fn stamped(tree: &Tree) -> Run {
     run
 }
 
+/// The prompt that ends the turn, with what it tells the person through the host's
+/// `systemMessage` as its `out`. Nothing it prints is plain text, which the host would put in
+/// the agent's context.
+fn told(tree: &Tree) -> Run {
+    told_in(tree.root())
+}
+
+fn told_in(at: &std::path::Path) -> Run {
+    let run = harness::feed(at, harness::AGENT, A_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let messages: Vec<serde_json::Value> = run
+        .printed
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap_or_default())
+        .collect();
+    assert!(
+        messages
+            .iter()
+            .all(|held| held.get("systemMessage").is_some()),
+        "the prompt printed into the agent's context: {}",
+        run.printed
+    );
+    let told = messages
+        .iter()
+        .filter_map(|held| held["systemMessage"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    Run { out: told, ..run }
+}
+
 fn a_wide_turn(tree: &Tree) {
-    tree.write("src/wide.rs", &lines(40, "fn f"));
+    tree.write("src/wide.rs", &lines(40, "// f"));
     tree.write("docs/wide.md", &lines(50, "line "));
     tree.write("src/a.rs", &lines(10, "    // held "));
 }
 
 #[test]
-fn a_prompt_after_a_wide_turn_reports_the_spread() {
+fn a_prompt_after_a_wide_turn_tells_the_person_the_spread() {
     let tree = tree();
     stamped(&tree);
     a_wide_turn(&tree);
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(
         run.says("wider than this project's usual change"),
         "{}",
@@ -80,6 +109,26 @@ fn a_prompt_after_a_wide_turn_reports_the_spread() {
     );
 }
 
+/// Cursor has no person channel, so the note goes to stderr and the journal's prompt line
+/// records the turn as wide. Spec 10.3.
+#[test]
+fn on_cursor_the_prompt_tells_the_agent_nothing_and_the_journal_records_the_wide_turn() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_CURSOR_SESSION).code, 0);
+    a_wide_turn(&tree);
+
+    let run = radius(&tree, A_CURSOR_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.printed.contains("wider"), "{}", run.printed);
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"prompt""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["radius"]["wide"], true, "{line}");
+}
+
 /// Either value alone is enough, so a turn that spread over more directories than usual
 /// reports even though its line count is ordinary.
 #[test]
@@ -87,11 +136,10 @@ fn the_directories_alone_carry_the_report() {
     let tree = tree();
     stamped(&tree);
     for at in 0..3 {
-        tree.write(&format!("d{at}/f.rs"), &lines(2, "fn f"));
+        tree.write(&format!("d{at}/f.rs"), &lines(2, "// f"));
     }
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(run.says("wider than"), "{}", run.out);
     assert!(
         run.says("6 lines in 3 files, under d0/, d1/, d2/."),
@@ -106,8 +154,7 @@ fn a_turn_within_both_values_reports_nothing() {
     stamped(&tree);
     tree.write("src/a.rs", &lines(10, "// touched "));
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
@@ -120,23 +167,21 @@ fn a_config_with_no_radius_section_reports_nothing() {
     stamped(&tree);
     a_wide_turn(&tree);
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
 #[test]
 fn a_user_diff_setting_does_not_change_the_numbers() {
     let tree = tree();
-    tree.write("src/moved.rs", &lines(60, "fn f"));
+    tree.write("src/moved.rs", &lines(60, "// f"));
     tree.commit("a file to move");
     stamped(&tree);
     tree.git(&["config", "diff.renames", "false"]);
     tree.git(&["config", "diff.algorithm", "myers"]);
     tree.git(&["mv", "src/moved.rs", "src/elsewhere.rs"]);
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(run.says("120 lines in 2 files, under src/."), "{}", run.out);
     assert!(
         run.says("0 of those lines are formatting only, and 120 are code that moved."),
@@ -152,8 +197,7 @@ fn a_diff_setting_and_a_subdirectory_do_not_change_the_numbers() {
     tree.git(&["config", "diff.relative", "true"]);
     a_wide_turn(&tree);
 
-    let run = harness::feed(&tree.path("src"), harness::AGENT, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told_in(&tree.path("src"));
     assert!(
         run.says("110 lines in 3 files, under docs/, src/."),
         "{}",
@@ -166,11 +210,10 @@ fn the_report_names_directories_up_to_a_point() {
     let tree = tree();
     stamped(&tree);
     for at in 0..8 {
-        tree.write(&format!("d{at}/f.rs"), &lines(10, "fn f"));
+        tree.write(&format!("d{at}/f.rs"), &lines(10, "// f"));
     }
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(
         run.says("80 lines in 8 files, under d0/, d1/, d2/, d3/, d4/, d5/, and 2 more."),
         "{}",
@@ -178,22 +221,24 @@ fn the_report_names_directories_up_to_a_point() {
     );
 }
 
-/// The stamp waits for a green stop, and the mark does not, so a second prompt after a red
-/// stop measures its own turn rather than the window the first one left. ADR 0024.
+/// The stamp waits for a green stop, and the mark does not, so a second prompt measures its own
+/// turn rather than the window the stamp left. ADR 0024.
 #[test]
-fn a_red_stop_does_not_widen_the_next_turn() {
+fn a_prompt_moves_the_mark_the_next_prompt_measures_from() {
     let tree = tree();
     stamped(&tree);
     a_wide_turn(&tree);
-    let first = radius(&tree, A_PROMPT);
-    assert!(first.says("wider than"), "{}", first.out);
     let stamp = tree.field("commit");
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    assert_eq!(
+        tree.field("commit"),
+        stamp,
+        "a prompt with no stop moved the stamp"
+    );
 
     tree.write("src/a.rs", &lines(10, "// touched "));
-    let second = radius(&tree, A_PROMPT);
-    assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("wider than"), "{}", second.out);
-    assert_eq!(tree.field("commit"), stamp, "a red stop moved the stamp");
+    let run = told(&tree);
+    assert!(!run.says("wider than"), "{}", run.out);
 }
 
 /// A session start ends no turn, and it still opens one, so the work before it belongs to no
@@ -205,8 +250,7 @@ fn a_session_start_moves_the_mark() {
     a_wide_turn(&tree);
     assert_eq!(radius(&tree, A_SESSION).code, 0);
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
 }
 
@@ -242,10 +286,11 @@ fn codex_session_start_and_prompt_use_the_radius_events() {
     a_wide_turn(&tree);
     assert_eq!(radius(&tree, A_CODEX_SESSION).code, 0);
 
+    let mark = tree.field("mark");
     tree.write("docs/wider.md", &lines(60, "line "));
     let run = radius(&tree, A_CODEX_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("wider than"), "{}", run.out);
+    assert_ne!(tree.field("mark"), mark, "the prompt left the mark behind");
 }
 
 /// Cursor runs a user-scope hook from `~/.cursor`, so the prompt that opens the window names the
@@ -264,10 +309,12 @@ fn a_cursor_prompt_moves_the_stamp_of_the_workspace_the_event_names() {
         "prompt": "go on"
     });
 
+    let mark = tree.field("mark");
+
     let run = harness::feed(elsewhere.root(), harness::AGENT, &event.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("wider than"), "{}", run.out);
+    assert_ne!(tree.field("mark"), mark, "the prompt left the mark behind");
 }
 
 /// A person's words are never a protocol marker. An expected stop follow-up is matched against
@@ -288,7 +335,6 @@ fn a_cursor_prompt_starting_with_klin_still_opens_a_turn() {
     let run = radius(&tree, &event.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("wider than"), "{}", run.out);
     assert_ne!(tree.field("prompts"), prompts, "the prompt was not counted");
 }
 
@@ -299,10 +345,11 @@ fn cursor_session_start_and_prompt_use_the_radius_events() {
     a_wide_turn(&tree);
     assert_eq!(radius(&tree, A_CURSOR_SESSION).code, 0);
 
+    let mark = tree.field("mark");
     tree.write("docs/wider.md", &lines(60, "line "));
     let run = radius(&tree, A_CURSOR_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("wider than"), "{}", run.out);
+    assert_ne!(tree.field("mark"), mark, "the prompt left the mark behind");
 }
 
 #[test]
@@ -329,9 +376,7 @@ fn usual(tree: &Tree, tag: &str) -> Run {
     for at in 0..5 {
         tree.write(&format!("{tag}{at}/f.txt"), &lines(200, "line "));
     }
-    let run = radius(tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
-    run
+    told(tree)
 }
 
 fn reported(tree: &Tree) -> Run {
@@ -423,8 +468,7 @@ fn below_fifty_commits_the_hook_says_nothing() {
     stamped(&tree);
     a_wide_turn(&tree);
 
-    let run = radius(&tree, A_PROMPT);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = told(&tree);
     assert!(!run.says("wider than"), "{}", run.out);
     assert!(!run.says("derived:"), "{}", run.out);
 }
@@ -543,7 +587,7 @@ fn a_commit_inside_the_turn_does_not_move_the_derivation_commit() {
         tree.write(&format!("d{at}/f.txt"), &lines(200, "line "));
     }
     tree.commit("a commit inside the turn");
-    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    assert!(told(&tree).says("usually change about 30 lines"));
 
     assert_eq!(cache(&tree), first, "the derivation commit moved");
 }

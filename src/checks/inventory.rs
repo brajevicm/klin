@@ -273,22 +273,35 @@ fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Erro
     })
 }
 
-/// Which of the base's test functions the working tree still holds: by site first, then by
-/// body hash across files, and one to one on both passes. Spec 4.4, 16.4.
+/// Which of the base's test functions the working tree still holds: by site first, then by site
+/// with its skip or focus marker taken off and the same body, then by that site alone, then by
+/// body hash across files, and one to one on every pass. An exact site claims first, so a marked
+/// test is never taken for an unmarked one that shares its line, and the body settles which of
+/// two tests that share an unmarked line stayed. A skipped test is held, and only `escapes`
+/// judges the skip. Spec 4.4, 8.2, 16.4.
 fn still_there(before: &[Test], after: &[Test]) -> Vec<bool> {
     let mut taken = vec![false; after.len()];
     let mut found = vec![false; before.len()];
-    for (at, site) in before.iter().enumerate() {
-        found[at] = claimed(after, &mut taken, |other| {
-            other.file == site.file && other.text == site.text
-        });
-    }
-    for (at, site) in before.iter().enumerate() {
-        if !found[at] {
-            found[at] = claimed(after, &mut taken, |other| other.body == site.body);
+    let passes: [fn(&Test, &Test) -> bool; 4] = [
+        |site, other| other.file == site.file && other.text == site.text,
+        |site, other| unmarked_site(site, other) && other.body == site.body,
+        unmarked_site,
+        |site, other| other.body == site.body,
+    ];
+    for matches in passes {
+        for (at, site) in before.iter().enumerate() {
+            if !found[at] {
+                found[at] = claimed(after, &mut taken, |other| matches(site, other));
+            }
         }
     }
     found
+}
+
+/// Whether two tests sit in one file on the same declaration line once their skip or focus
+/// markers are taken off.
+fn unmarked_site(site: &Test, other: &Test) -> bool {
+    other.file == site.file && convention::unmarked(&other.text) == convention::unmarked(&site.text)
 }
 
 /// Whether the working tree holds a test function this rule names that no earlier site has
@@ -362,6 +375,7 @@ fn evaluator() -> Evaluator<'static> {
         format_metrics: show,
         nested: None,
         rides_along: ratchet::every_row_blocks,
+        worsened: ratchet::Worsened::Asks,
     }
 }
 

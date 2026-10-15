@@ -58,40 +58,53 @@ struct Spread {
     largest: Option<(String, u64)>,
 }
 
-/// The report on a prompt: the facts, and only when the turn passed a value. It asks for
-/// nothing, and anything it cannot measure it says nothing about. ADR 0014. The facts measured,
-/// for the journal's prompt line (spec 11.4), and `None` for a turn nothing here could measure.
-/// Takes the config the caller already loaded for the same event.
+impl Spread {
+    /// Either value exceeded is enough, because a turn can spread by line count or by
+    /// directory alone.
+    fn wider_than(&self, usual: &Usual) -> bool {
+        self.lines > usual.lines || self.directories.len() as u64 > usual.directories
+    }
+}
+
+/// The turn a prompt ends, measured from the prompt mark it `opened` at to the `tree` the prompt
+/// captured: the facts for the journal's prompt line (spec 11.4), and the note for the person
+/// when the turn passed a value. The note asks for nothing, and anything it cannot measure it
+/// says nothing about. `None` for a turn nothing here could measure. Takes the config the
+/// caller already loaded for the same event. ADR 0014, spec 10.3.
 pub fn spread(
     config: &Config,
     root: &Path,
     at: &Path,
     opened: Option<&str>,
     tree: Option<&str>,
-    out: &mut String,
-) -> Option<Value> {
-    let (Some(opened), Some(tree)) = (opened, tree) else {
-        return None;
-    };
-    let Ok(usual) = usual(config, root, Some(at)) else {
-        return None;
-    };
+) -> Option<Turn> {
+    let (opened, tree) = (opened?, tree?);
+    let usual = usual(config, root, Some(at)).ok()?;
     let spread = measured(root, opened, tree)?;
-    let wide = spread.lines > usual.lines || spread.directories.len() as u64 > usual.directories;
-    if wide {
-        let _ = writeln!(
-            out,
-            "klin: the previous turn was wider than this project's usual change."
-        );
-        describe(&spread, &usual, out);
-    }
-    Some(serde_json::json!({
-        "lines": spread.lines,
-        "formatting": spread.formatting,
-        "moved": spread.moved,
-        "directories": spread.directories.len(),
-        "wide": wide,
-    }))
+    let wide = spread.wider_than(&usual);
+    let note = wide.then(|| {
+        let mut out =
+            String::from("klin: the previous turn was wider than this project's usual change.\n");
+        describe(&spread, &usual, &mut out);
+        out.trim_end().to_string()
+    });
+    Some(Turn {
+        facts: serde_json::json!({
+            "lines": spread.lines,
+            "formatting": spread.formatting,
+            "moved": spread.moved,
+            "directories": spread.directories.len(),
+            "wide": wide,
+        }),
+        note,
+    })
+}
+
+/// What a prompt measured of the turn it ends: the facts the journal records, and the note the
+/// person hears when the turn was wide.
+pub struct Turn {
+    pub facts: Value,
+    pub note: Option<String>,
 }
 
 /// One derived value as a run prints it: the section, the key, the number and the rule that
@@ -127,8 +140,8 @@ fn describe(spread: &Spread, usual: &Usual, out: &mut String) {
     );
 }
 
-/// The directories, named up to a point. The report goes into the model's context on every
-/// prompt, and a repository-wide reformat would otherwise list every directory it touched.
+/// The directories, named up to a point, so a repository-wide reformat does not list every
+/// directory it touched.
 fn under(directories: &[String]) -> String {
     let named = directories
         .iter()

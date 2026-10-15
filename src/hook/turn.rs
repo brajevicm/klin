@@ -2,8 +2,6 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use serde_json::Value;
-
 use crate::config::file::{self, Config};
 use crate::config::key::Section;
 use crate::hook::handoff;
@@ -22,9 +20,27 @@ use crate::window::stamp::{self, Here, History, Stamp, Verdict};
 /// the exceptions, so each worktree keeps its own stamp. The ref is never pushed. Spec 6.5.
 const REFERENCE: &str = "refs/worktree/klin/turn";
 /// A `session` or `prompt` event of the agent ingress, over the tree the event names, after the
-/// opt-in walk found the worktree root's `klin.json`. Spec 10.3.
+/// opt-in walk found the worktree root's `klin.json`. The notes of the turn state go to the
+/// journal only, and the radius note goes to the person through the host, because neither asks
+/// the agent anything. Spec 10.3.
 pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String) -> u8 {
-    let Some((at, _claim)) = opening(&event, start, out) else {
+    let kind = event.kind.map(adapter::Kind::name);
+    let mut noted = String::new();
+    let code = turned(event, start, sections, out, &mut noted);
+    for line in noted.lines() {
+        journal::note(start, kind, line);
+    }
+    code
+}
+
+fn turned(
+    event: Event,
+    start: &Path,
+    sections: &[Section],
+    out: &mut String,
+    noted: &mut String,
+) -> u8 {
+    let Some((at, _claim)) = opening(&event, start, noted) else {
         return 0;
     };
     let prompted = event.kind == Some(adapter::Kind::Prompt);
@@ -34,25 +50,29 @@ pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String
     let opened = stamp::mark(start, &at);
     let capture = stamp::capture(start, &at.join(stamp::INDEX));
     let tree = capture.as_ref().map(|capture| capture.tree.as_str());
-    let facts = prompted.then(|| prompt_facts(start, &at, opened.as_deref(), tree, sections, out));
+    let facts = prompted.then(|| prompt_facts(start, &at, opened.as_deref(), tree, sections));
     let Some(_lock) = state::lock(&at, Duration::from_secs(30)) else {
         note(
-            out,
+            noted,
             "the state directory could not be locked, so this prompt changed no turn state",
         );
         return 0;
     };
     let never = !at.join(stamp::INDEX).exists();
-    let held = held(start, &at, &mut Vec::new(), out);
+    let held = held(start, &at, &mut Vec::new(), noted);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     handoff::clear(start, &event.session);
-    if let Some((enabled, facts)) = facts {
+    if let Some((enabled, turn)) = facts {
+        let (facts, note) = turn.map_or((None, None), |turn| (Some(turn.facts), turn.note));
         journal::prompt(start, prompts, Some(&event), enabled, facts);
+        if let Some(note) = note {
+            event.host.tell(&note);
+        }
     }
     let mark = tree.and_then(|tree| marked(start, tree));
-    if let Some(stamp) = next(start, &at, tree, never, held, prompts, out) {
+    if let Some(stamp) = next(start, &at, tree, never, held, prompts, noted) {
         let mark = mark.or(stamp.mark);
-        if write(&at, &Stamp { mark, ..stamp }, out)
+        if write(&at, &Stamp { mark, ..stamp }, noted)
             && let Some(capture) = capture
         {
             let _ = capture.retain(&at.join(stamp::INDEX));
@@ -92,12 +112,11 @@ fn prompt_facts(
     opened: Option<&str>,
     tree: Option<&str>,
     sections: &[Section],
-    out: &mut String,
-) -> (bool, Option<Value>) {
+) -> (bool, Option<radius::Turn>) {
     match Config::load(None, start, sections) {
         Ok(config) => (
             journal::prompt_enabled(&config),
-            radius::spread(&config, start, at, opened, tree, out),
+            radius::spread(&config, start, at, opened, tree),
         ),
         Err(_) => (false, None),
     }

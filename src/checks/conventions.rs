@@ -131,6 +131,7 @@ fn judged(
         format_metrics: show,
         nested: None,
         rides_along: ratchet::every_row_blocks,
+        worsened: ratchet::Worsened::Fails,
     };
     Ok(evaluator.evaluate(
         now,

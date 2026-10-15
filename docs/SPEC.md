@@ -149,7 +149,7 @@ when the roadmap ticket that implements them lands.
 | 0010 | `--strict` and the meaning of naming a gate. | No `--strict`. Every `klin check` judges the holes 0.x added under `--strict` (section 11.3). | #452. |
 | 0012 | The build is a config key, and klin runs it. | The build is local Stop feedback only. `klin check` never runs it. | #452, #453. |
 | 0013 | A base equal to HEAD is refused when work is hidden. | Section 6.5. A refusal is INCOMPLETE, exit 3. | `--strict` is gone, and the case is an unproven comparison. |
-| 0014, 0024 | `klin radius --report` is a person's command. | No public radius command. The radius note reaches the person at prompt time. | #452. |
+| 0014, 0024 | `klin radius --report` is a person's command. | No public radius command. The radius note reaches the person at the next prompt, through the host's person channel and never the agent's context. | #452, #579. |
 | 0017, 0032 | `klin turn reset` moves the stamp to the current tree. | No `turn reset`. A history move makes one Stop advisory, and that Stop takes a fresh stamp. The 0.x branch fallback stays only in a repository with no remote. | Owner. Section 6.6. |
 | 0028 | `klin gate` without `klin.json` is exit 2. | `klin check` runs under `{}`. The file stays the hooks' opt-in marker. | A person or CI ran `klin check` on purpose. |
 | 0031 | A deleted test is asked about once, and CI only notes it. | It is asked about once at Stop, and it stays a review item at `klin check`. | #475 section 11. |
@@ -307,7 +307,7 @@ One binary holds these components.
 
 ```text
 LOCAL (Feedback)
-  session / prompt event  -> stamp, prompt counter, radius note
+  session / prompt event  -> stamp, prompt counter, radius note to the person
   pre_tool event          -> guard
   agent works
   stop event              -> optional build feedback
@@ -1342,10 +1342,24 @@ At the Stop:
 3. When no gate block remains, the deletion is reported, the Stop records no
    `asked` entry, and the stamp stays red (section 6.6). The question comes
    under a later prompt.
-4. An asked deletion is a review item, which the Stop shows as a note. It is
+4. The question is labeled as a question. The gate's row word is `ASK`, its
+   heading is `ASK: N test site(s) the base holds went in this window:`,
+   and each row names the site and its text. It never prints as `FAIL` or
+   as a value that got worse. When the question is all the Stop holds, the
+   lead line asks the agent to answer each `ASK`, and the summary line
+   counts the gate as `asked` and not as `failed`. A capability that could
+   not run adds its sentence to that lead and does not change it. A Stop
+   that also holds a FAIL keeps the FAIL lead. A question is no failure, so
+   it never brings a ride-along finding (9.6) into the Stop. Pinned by
+   `deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`,
+   `a_stop_with_a_fail_and_a_question_keeps_the_fail_lead`,
+   `a_question_beside_a_tool_error_is_still_a_question` and
+   `a_question_does_not_bring_in_a_ride_along_finding` in
+   `tests/inventory.rs`.
+5. An asked deletion is a review item, which the Stop shows as a note. It is
    no reason for a gate block. Any Stop after a gate block, whether it holds a
    question, a FAIL or both, spends gate block 2 only over a changed tree.
-5. The review item stays in the Stop's result until the stamp moves past the
+6. The review item stays in the Stop's result until the stamp moves past the
    deletion.
 
 At `klin check`, the deletion is a review item. It never fails the run and
@@ -1501,10 +1515,28 @@ loads configuration, builds facts, resolves a base or walks the tree.
 
 | Kind | Does | Blocks | Writes |
 | --- | --- | --- | --- |
-| `session` | moves the stamp per B.6.2, raises the prompt counter, moves the prompt mark | never | stamp, mark, counter |
-| `prompt` | the same as `session`, consumes a matching handoff record, and tells the radius note when the window passed its value (B.6.2.1, ADR 0024) | never | stamp, mark, counter, journal `prompt` line |
+| `session` | moves the stamp per B.6.2, raises the prompt counter, moves the prompt mark | never | stamp, mark, counter, journal `note` line |
+| `prompt` | the same as `session`, consumes a matching handoff record, and tells the person the radius note when the window passed its value (B.6.2.1, ADR 0024) | never | stamp, mark, counter, journal `prompt` and `note` lines |
 | `pre_tool` | the guard (section 10.8) | `deny` or `ask` | journal line for `ask` and `deny` |
 | `stop` | build feedback, then the engine at placement `stop`, then the Stop policy | per section 10.4 | verdict, build stamp, handoff record, journal `stop` line |
+
+A `session` or `prompt` event prints nothing into the agent's context except
+the release notice of 11.9. A note about the turn state, such as a stamp
+restored from its ref or a stamp that is gone, asks the agent nothing, so it
+goes to a journal `note` line only (13.1). The radius prompt facts stay on
+the journal `prompt` line.
+
+The radius note asks for nothing. The prompt measures the turn it ends from
+the prompt mark to the tree it captures for the stamp, so the measurement
+adds no work to any event, and the Stop does none. The prompt tells the note
+to the person through the host's person channel: a JSON `systemMessage` on
+Claude Code and Codex, never plain text, which the host would put in the
+agent's context. Cursor has no person channel, so there the note goes to
+stderr, and the journal's `prompt` line records the turn as `wide`. Pinned by
+`a_prompt_after_a_wide_turn_tells_the_person_the_spread` and
+`on_cursor_the_prompt_tells_the_agent_nothing_and_the_journal_records_the_wide_turn`
+in `tests/radius.rs`, where every prompt checks that it printed no plain text,
+and `a_stamp_that_stays_gone_is_noted_on_every_prompt` in `tests/turn.rs`.
 
 The adapters, the event identity, the claims that let one copy act per event,
 and the handoff records carry forward from B.9.1 and B.9.8.
@@ -1912,7 +1944,8 @@ Text output:
 - a `derived:` or `pinned:` line per value a gate used, above its row;
 - one row per gate: `ok`, `FAIL`, `REVIEW`, `INCOMPLETE` or `ERR`, then the
   gate name. A gate with more than one state takes the first of `ERR`,
-  `FAIL`, `INCOMPLETE`, `REVIEW`, `ok`;
+  `FAIL`, `INCOMPLETE`, `REVIEW`, `ok`. At the Stop, a gate whose only
+  failure is the question of 9.2 prints `ASK` in place of `FAIL`;
 - `FAIL:` with its remedy, `REVIEW:`, `HOLE:` with its reason, `NOTE:`, and
   `ERR:` lines under the row, as B.11.1 shapes `FAIL:` and `NOTE:`. A
   coverage note is a `NOTE:` line that names the file, its reason and the
@@ -2494,7 +2527,8 @@ vNext writes journal `schema` 2:
   fallback Stop.
 - `prompt` and `guard` lines keep their 0.x fields.
 - A `note` line records an ingress that failed without a decision (section
-  10.10): `event`, the kind klin placed or null, and `message`.
+  10.10), or a note about the turn state that a `session` or `prompt` event
+  leaves (10.3): `event`, the kind klin placed or null, and `message`.
 
 In the `result` of a `stop` line, `tree` is null, because the Stop starts no
 git process to describe the working tree, and `window.kind` names the window
@@ -5481,7 +5515,9 @@ test function is a site of ADR 0008 inside such a file, in both trees, read
 off each tree's file list and kept only where the
 language's test convention marks it: a `fn`, `def` or `func` declaration
 whose name starts with `test_`, a `func Test` declaration, an `it(` or a
-`test(` call at the start of the declaration line, an `@Test` annotation on
+`test(` call at the start of the declaration line, with or without a skip
+or focus marker (`it.skip(`, `it.only(`, `xit(`, `fit(`, `test.skip(`,
+`test.only(`, `xtest(`), an `@Test` annotation on
 the declaration line or on the run of marker lines directly above it, and a
 Rust attribute whose path ends in the segment `test`, with or without
 arguments, such as `#[test]`, `#[tokio::test]`,
@@ -5498,8 +5534,15 @@ is not a test. Where the grammar holds the annotation inside the function's
 own node, as it does for Java, the declaration line is the first line of
 that node that carries more than an attribute or an annotation, so the site
 names the method and the body hash of 4.4 leaves the name out. Its
-`missing` is 1 when no function in the working tree takes it, by site first
-and then by body hash, one to one on each pass. `in` and `except` narrow
+`missing` is 1 when no function in the working tree takes it, by site, then
+by site with the skip or focus marker taken off and the same body hash, then
+by that site alone, then by body hash, one to one on each pass. The exact
+site claims first, so a marked test is never taken for an unmarked one whose
+declaration line it shares, and the body settles which of two tests that
+share an unmarked line stayed. The body hash
+also leaves the marker out of the declaration line, so a one-line test that
+moves and gains `.skip` is held. A test that gains `.skip` or `.only` is
+held, and `escapes` alone judges the marker: a new skip is one finding. `in` and `except` narrow
 both identities the same way, and both trees are read under the scope the
 base commit records, and under today's when the base records none (8.6), so a
 narrowing lets a deletion through only once it is committed. A file the working tree's grammar refuses holds no function site,
@@ -5513,6 +5556,11 @@ not a grammar rejection. Pinned by
 `a_prompt_between_two_stops_does_not_ask_about_the_same_test_again`,
 `a_stop_whose_stamp_was_deleted_still_asks_about_a_deleted_test`,
 `a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
+`a_skipped_or_focused_test_is_still_a_test_site`,
+`a_new_skip_at_the_stop_is_one_escapes_finding`,
+`a_deleted_test_beside_a_skipped_twin_is_the_one_that_went`,
+`colliding_marked_tests_keep_the_survivor_by_its_body`,
+`a_one_line_test_moved_and_skipped_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,
 `deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site`,

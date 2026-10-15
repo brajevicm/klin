@@ -211,6 +211,7 @@ fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
             new_sites(&heading, failed, detail, out);
         }
         Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
+        Ratchet::Asked { unit, failed, .. } => asked(unit, failed, out),
         Ratchet::RidesAlong {
             unit,
             condition,
@@ -326,6 +327,34 @@ fn worse(unit: &str, failed: &[Failed], out: &mut String) {
             against(finding, Detail::Whole)
         );
     }
+}
+
+/// The deleted tests a Stop asks about: a question, never a failure. Spec 9.2.
+fn asked(unit: &str, failed: &[Failed], out: &mut String) {
+    block(
+        out,
+        &format!(
+            "ASK: {} {unit} the base holds went in this window:",
+            failed.len()
+        ),
+        failed
+            .iter()
+            .map(|finding| format!("{}:{}  {}", finding.file, finding.line, clip(&finding.text))),
+    );
+}
+
+/// Whether a gate told a question and no failure, so its row says `ASK` and not `FAIL`.
+/// Spec 9.2.
+pub fn asks_only(told: &[Told]) -> bool {
+    let asks = |item: &Told| matches!(item, Told::Ratchet(Ratchet::Asked { .. }));
+    let fails = |item: &Told| {
+        matches!(
+            item,
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
+                | Told::Plain(Plain::PathMissing(_))
+        )
+    };
+    told.iter().any(asks) && !told.iter().any(fails)
 }
 
 fn at(site: &Located) -> String {
@@ -1134,6 +1163,9 @@ fn ratchet_records(said: &Ratchet, out: &mut GateRecords) {
             condition, failed, ..
         } => failed_findings(Outcome::New, condition, failed, out),
         Ratchet::Worse {
+            condition, failed, ..
+        }
+        | Ratchet::Asked {
             condition, failed, ..
         } => failed_findings(Outcome::Worsened, condition, failed, out),
         Ratchet::RidesAlong {

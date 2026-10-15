@@ -250,9 +250,10 @@ pub struct Dated {
 }
 
 /// The note of an ingress that failed without a decision: a usage error, an event klin cannot
-/// read, or a panic. `kind` is the event's kind where klin placed one. Best-effort like every
-/// line, and only where the state directory allows one. Spec 10.10.
-pub fn failed(root: &Path, kind: Option<&'static str>, message: &str) {
+/// read, or a panic, or a note of the turn state a session or prompt event leaves. `kind` is
+/// the event's kind where klin placed one. Best-effort like every line, and only where the
+/// state directory allows one. Spec 10.3, 10.10.
+pub fn note(root: &Path, kind: Option<&'static str>, message: &str) {
     let Ok(at) = state::ready(root) else {
         return;
     };

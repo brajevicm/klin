@@ -921,7 +921,7 @@ fn summary_line(plan: &Plan, gates: usize, doc: &CheckDocument, out: &mut String
     };
     let line = format!(
         "klin: {gates} gate(s), {excluded}{}",
-        summary(doc.failed_in_report(), doc.errored())
+        summary(doc.failed_in_report(), doc.asked(), doc.errored())
     );
     let _ = writeln!(out, "{line}");
 }
@@ -958,14 +958,15 @@ fn hook(
         GateBlock::Passed(why) => return not_blocked(args, doc, report, event, &why),
     };
     let numbered = budget::gate_numbered(number);
+    let asks = match (doc.failed_on_findings(), doc.errored()) {
+        (0, _) => "a test the base holds went — answer each ASK",
+        (_, 0) => "a quality gate failed — fix what each names",
+        _ => "a quality gate failed — fix what each FAIL names",
+    };
     let lead = match doc.errored() {
-        0 => format!(
-            "klin: a quality gate failed — fix what each names, then stop again \
-             ({numbered}):"
-        ),
+        0 => format!("klin: {asks}, then stop again ({numbered}):"),
         _ => format!(
-            "klin: a quality gate failed — fix what each FAIL names, then stop again \
-             ({numbered}). A capability that could not run is a \
+            "klin: {asks}, then stop again ({numbered}). A capability that could not run is a \
              limitation of this stop and asks for no change to the source:"
         ),
     };
@@ -1089,10 +1090,13 @@ fn lead(errored: usize) -> &'static str {
     }
 }
 
-fn summary(failed: usize, errored: usize) -> String {
+fn summary(failed: usize, asked: usize, errored: usize) -> String {
     let mut parts = Vec::new();
     if failed > 0 {
         parts.push(format!("{failed} failed"));
+    }
+    if asked > 0 {
+        parts.push(format!("{asked} asked"));
     }
     if errored > 0 {
         let plural = if errored == 1 { "" } else { "s" };

@@ -483,6 +483,17 @@ pub struct Evaluator<'a> {
     /// Whether a finding's row is in the ride-along tier of ADR 0073, read from its values.
     /// Spec 9.6.
     pub rides_along: fn(&Values) -> bool,
+    /// What a finding whose value rose is: a failure, or a question the Stop asks and does
+    /// not judge. Spec 9.2.
+    pub worsened: Worsened,
+}
+
+/// What a gate makes of a finding whose value rose. Spec 9.2.
+#[derive(Clone, Copy)]
+pub enum Worsened {
+    Fails,
+    /// The deleted tests of spec 9.2, which the Stop asks about.
+    Asks,
 }
 
 /// The tier of a gate whose every row blocks.
@@ -604,14 +615,24 @@ fn failures(
         });
     }
     if !comparison.rose.is_empty() {
-        out.tell(Ratchet::Worse {
-            unit: evaluator.unit.to_string(),
-            condition: evaluator.condition.to_string(),
-            failed: comparison
-                .rose
-                .iter()
-                .map(|(finding, entry)| failed(gate, finding, Some(entry), evaluator))
-                .collect(),
+        let unit = evaluator.unit.to_string();
+        let condition = evaluator.condition.to_string();
+        let failed = comparison
+            .rose
+            .iter()
+            .map(|(finding, entry)| failed(gate, finding, Some(entry), evaluator))
+            .collect();
+        out.tell(match evaluator.worsened {
+            Worsened::Fails => Ratchet::Worse {
+                unit,
+                condition,
+                failed,
+            },
+            Worsened::Asks => Ratchet::Asked {
+                unit,
+                condition,
+                failed,
+            },
         });
     }
     out.tell(Plain::Remedy(remedy(comparison, evaluator)));

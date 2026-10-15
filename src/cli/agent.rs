@@ -123,7 +123,7 @@ fn noted(start: Option<&Path>, kind: Option<Kind>, message: &str) {
     };
     let found = Discovered::from(start);
     if let (Some(root), Some(_)) = (&found.root, &found.config) {
-        journal::failed(root, kind.map(Kind::name), message);
+        journal::note(root, kind.map(Kind::name), message);
     }
 }
 

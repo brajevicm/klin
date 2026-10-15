@@ -3,6 +3,8 @@
 //! `syntax`, and both are shared — `inventory` ratchets the tests, `stubs` reports the shapes —
 //! so neither lives inside a check that would then own syntax for the other. Spec 8.2.
 
+use std::borrow::Cow;
+
 use tree_sitter::Node;
 
 use crate::syntax::{
@@ -19,6 +21,18 @@ const TEST_NAMES: &[&str] = &["fn test_", "def test_", "func test_", "func Test"
 /// The calls a convention declares a test by, at the start of the declaration line, so a call
 /// to one of these names inside a body is not a declaration.
 const TEST_CALLS: &[&str] = &["it(", "test("];
+
+/// The same calls with a skip or a focus marker, each with the plain call it declares. A
+/// skipped or focused test is still a test, which `escapes` judges. Spec 8.2.
+const MARKED_CALLS: &[(&str, &str)] = &[
+    ("it.skip(", "it("),
+    ("it.only(", "it("),
+    ("xit(", "it("),
+    ("fit(", "it("),
+    ("test.skip(", "test("),
+    ("test.only(", "test("),
+    ("xtest(", "test("),
+];
 
 /// The markers it writes as an annotation, on the declaration line or on the run of marker lines
 /// above it. A Rust attribute marks a test by its path, which `test_attribute` reads.
@@ -64,12 +78,26 @@ fn declared(file: &ParsedFile, node: Node, lines: &[&str]) -> Option<Test> {
     let from = node.start_position().row;
     let end = node.end_position().row.min(lines.len().saturating_sub(1));
     let row = declaration_row(lines, from, end);
-    marks_a_test(node, file.bytes(), lines, row).then(|| Test {
-        file: path.to_string(),
-        line: row as u64 + 1,
-        text: line_at(lines, row),
-        body: record::body_hash(&lines[row..=end.max(row)].join("\n")),
+    marks_a_test(node, file.bytes(), lines, row).then(|| {
+        let text = line_at(lines, row);
+        Test {
+            file: path.to_string(),
+            line: row as u64 + 1,
+            body: body_hash(&text, &lines[row + 1..=end.max(row)]),
+            text,
+        }
     })
+}
+
+/// The body hash of 4.4 over a declaration and the lines `below` it, with the declaration's
+/// skip or focus marker taken off, so a one-line test that gains `.skip` as it moves keeps its
+/// key. Spec 4.4, 8.2.
+fn body_hash(declaration: &str, below: &[&str]) -> u64 {
+    let unmarked = unmarked(declaration);
+    let whole: Vec<&str> = std::iter::once(unmarked.as_ref())
+        .chain(below.iter().copied())
+        .collect();
+    record::body_hash(&whole.join("\n"))
 }
 
 /// The row the declaration of a test sits on. A language that writes the test marker as an
@@ -102,10 +130,23 @@ fn marks_a_test(node: Node, source: &[u8], lines: &[&str], row: usize) -> bool {
         .any(|marker| mentions(&declaration, marker))
         || TEST_CALLS
             .iter()
-            .any(|marker| declaration.starts_with(marker))
+            .any(|marker| unmarked(&declaration).starts_with(marker))
         || annotated(&declaration)
         || attributed(lines, row)
         || test_attribute(node, source)
+}
+
+/// A declaration line with its skip or focus marker taken off, so `test.skip("a"` names the
+/// same test as `test("a"`. Spec 8.2.
+pub fn unmarked(declaration: &str) -> Cow<'_, str> {
+    MARKED_CALLS
+        .iter()
+        .find_map(|(marked, plain)| {
+            declaration
+                .strip_prefix(marked)
+                .map(|rest| Cow::Owned(format!("{plain}{rest}")))
+        })
+        .unwrap_or(Cow::Borrowed(declaration))
 }
 
 fn attributed(lines: &[&str], row: usize) -> bool {

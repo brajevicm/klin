@@ -21,6 +21,17 @@ fn radius(tree: &Tree, event: &str) -> Run {
     harness::feed(tree.root(), harness::AGENT, event)
 }
 
+/// The messages of the journal's `note` lines, where a prompt leaves the notes of the turn
+/// state that ask the agent nothing.
+fn noted(tree: &Tree) -> Vec<String> {
+    let text = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    text.lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|line| line["kind"] == "note")
+        .filter_map(|line| line["message"].as_str().map(str::to_string))
+        .collect()
+}
+
 fn stamp(tree: &Tree) -> serde_json::Value {
     let text = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
     serde_json::from_str(&text).unwrap_or_default()
@@ -249,8 +260,12 @@ fn a_turn_file_that_is_gone_is_restored_red_from_the_ref() {
 
     let run = radius(&tree, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("NOTE"), "{}", run.out);
-    assert!(run.says("restored"), "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
+    assert!(
+        noted(&tree).iter().any(|note| note.contains("restored")),
+        "{:?}",
+        noted(&tree)
+    );
     assert_eq!(tree.field("commit"), held, "the restored stamp moved");
     assert_eq!(tree.field("verdict"), "red");
 }
@@ -264,7 +279,12 @@ fn a_stamp_and_a_ref_that_are_both_gone_get_no_fresh_stamp() {
 
     let run = radius(&tree, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("NOTE"), "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
+    assert!(
+        noted(&tree).iter().any(|note| note.contains("both gone")),
+        "{:?}",
+        noted(&tree)
+    );
     assert_eq!(
         tree.revision("refs/worktree/klin/turn"),
         "",
@@ -298,7 +318,11 @@ fn a_state_directory_that_is_gone_reads_the_ref_before_it_stamps_afresh() {
 
     let run = radius(&tree, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("restored"), "{}", run.out);
+    assert!(
+        noted(&tree).iter().any(|note| note.contains("restored")),
+        "{:?}",
+        noted(&tree)
+    );
     assert_eq!(
         tree.field("commit"),
         held,
@@ -307,15 +331,20 @@ fn a_state_directory_that_is_gone_reads_the_ref_before_it_stamps_afresh() {
 }
 
 #[test]
-fn a_stamp_that_stays_gone_says_so_on_every_prompt() {
+fn a_stamp_that_stays_gone_is_noted_on_every_prompt() {
     let tree = tree();
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
     tree.remove(".git/klin/turn");
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
-    assert!(radius(&tree, A_PROMPT).says("both gone"));
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
 
     let run = radius(&tree, A_PROMPT);
-    assert!(run.says("both gone"), "{}", run.out);
+    assert_eq!(run.out, "", "the prompt printed into the agent's context");
+    let gone = noted(&tree)
+        .iter()
+        .filter(|note| note.contains("both gone"))
+        .count();
+    assert_eq!(gone, 2, "{:?}", noted(&tree));
     assert_eq!(tree.field("prompts"), "2");
     assert_eq!(tree.field("commit"), "");
 }
