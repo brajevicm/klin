@@ -5535,9 +5535,11 @@ own node, as it does for Java, the declaration line is the first line of
 that node that carries more than an attribute or an annotation, so the site
 names the method and the body hash of 4.4 leaves the name out. Its
 `missing` is 1 when no function in the working tree takes it, by site, then
-by site with the skip or focus marker taken off, then by body hash, one to
-one on each pass. The exact site claims first, so a marked test is never
-taken for an unmarked one whose declaration line it shares. The body hash
+by site with the skip or focus marker taken off and the same body hash, then
+by that site alone, then by body hash, one to one on each pass. The exact
+site claims first, so a marked test is never taken for an unmarked one whose
+declaration line it shares, and the body settles which of two tests that
+share an unmarked line stayed. The body hash
 also leaves the marker out of the declaration line, so a one-line test that
 moves and gains `.skip` is held. A test that gains `.skip` or `.only` is
 held, and `escapes` alone judges the marker: a new skip is one finding. `in` and `except` narrow
@@ -5557,6 +5559,7 @@ not a grammar rejection. Pinned by
 `a_skipped_or_focused_test_is_still_a_test_site`,
 `a_new_skip_at_the_stop_is_one_escapes_finding`,
 `a_deleted_test_beside_a_skipped_twin_is_the_one_that_went`,
+`colliding_marked_tests_keep_the_survivor_by_its_body`,
 `a_one_line_test_moved_and_skipped_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,

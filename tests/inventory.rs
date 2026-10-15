@@ -410,6 +410,30 @@ fn a_deleted_test_beside_a_skipped_twin_is_the_one_that_went() {
     assert!(!run.says("tests/a.test.ts:5"), "{}", run.out);
 }
 
+/// Two differently marked tests share one unmarked line. When one goes and the other loses its
+/// marker, the body decides which one stayed, so the question names the test that went.
+#[test]
+fn colliding_marked_tests_keep_the_survivor_by_its_body() {
+    let tree = Tree::new();
+    tree.write(
+        "tests/a.test.ts",
+        "test.skip(\"same\", () => {\n  expect(1).toBe(1);\n});\n\ntest.only(\"same\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"same\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    let run = tree.run(&["check", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("tests/a.test.ts:1  test.skip(\"same\""),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("tests/a.test.ts:5"), "{}", run.out);
+}
+
 /// A one-line test that moves and gains `.skip` keeps its body key, so only `escapes` judges it.
 #[test]
 fn a_one_line_test_moved_and_skipped_is_held() {
