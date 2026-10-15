@@ -214,6 +214,38 @@ fn a_green_job_still_annotates_its_review_items() {
 }
 
 #[test]
+fn a_green_job_warns_of_a_klin_json_change_klin_could_not_judge() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        r#"{"complexity": {"in": "src"},
+            "accepted": [{"gate": "complexity", "file": "src/lib.rs", "text": "x",
+                          "reason": "no values"}]}"#,
+    );
+    tree.base();
+    tree.write("klin.json", "{}");
+
+    let gated = gated(&tree, "");
+
+    assert_eq!(gated.code, 0, "{}", gated.printed);
+    let warnings = gated.annotations("warning");
+    assert_eq!(warnings.len(), 1, "{}", gated.printed);
+    assert!(
+        warnings[0].starts_with(
+            "::warning title=klin%3A config-loosened::klin.json changed, and the base's policy \
+             could not be judged"
+        ),
+        "{}",
+        gated.printed
+    );
+    assert!(
+        gated.summary.contains("### Unjudged klin.json changes (1)"),
+        "{}",
+        gated.summary
+    );
+}
+
+#[test]
 fn the_action_annotates_failing_findings_before_review_items_and_counts_the_rest() {
     let tree = tree();
     let complex: String = (0..12).map(|at| format!("pub fn f{at}{COMPLEX}")).collect();

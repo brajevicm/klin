@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::json;
 
-use crate::config::file::{Config, FILENAME, ignored, located, notes};
+use crate::config::file::{Config, FILENAME, MEASUREMENT_LOST, ignored, located, notes};
 use crate::contract::check::{Activation, CONFIG_LOOSENED};
 use crate::contract::project::Project;
 use crate::engine::against::against;
@@ -153,8 +153,10 @@ fn loosened(
     let Some(window) = window else {
         return;
     };
-    let Some(judged) = under_base(args, project, window) else {
-        return;
+    let judged = match under_base(args, project, window) {
+        Ok(Some(judged)) => judged,
+        Ok(None) => return,
+        Err(why) => return unjudged(args, &why, report, out),
     };
     let failing: HashSet<(&str, Option<u64>)> = report.failing_sites().collect();
     let Partial { found, erred } = hidden_by_gate(args, (project, &judged), window, &failing);
@@ -173,27 +175,39 @@ struct Hidden {
 
 /// The run under the `klin.json` the base holds at the worktree root, read as the tree's file,
 /// where the change altered that file. A missing file on either side reads as `{}`. A run under
-/// a `--config` names no such file.
-fn under_base(args: &Args, project: &Project, window: &Window) -> Option<Project> {
+/// a `--config` names no such file. A base git could not read is an error, so the run does not
+/// take it for a missing file.
+fn under_base(args: &Args, project: &Project, window: &Window) -> Result<Option<Project>, Error> {
     if args.config.is_some() {
-        return None;
+        return Ok(None);
     }
-    let bytes = at_base(project, window);
+    let bytes = at_base(project, window).ok_or_else(|| {
+        Error(format!(
+            "git could not read {FILENAME} at the base {}",
+            window.before
+        ))
+    })?;
     if bytes == std::fs::read(&project.config.file).ok() {
-        return None;
+        return Ok(None);
     }
     let text = match &bytes {
-        Some(bytes) => std::str::from_utf8(bytes).ok()?,
-        None => "{}",
+        Some(bytes) => std::str::from_utf8(bytes).ok(),
+        None => Some("{}"),
     };
-    let base = Config::read(&project.config.file, text, &catalogue::sections()).ok()?;
+    let Some(base) =
+        text.and_then(|text| Config::read(&project.config.file, text, &catalogue::sections()).ok())
+    else {
+        return Ok(None);
+    };
     let mut judged = Project::of(base, project.start());
     judged.bind(window);
-    Some(judged)
+    Ok(Some(judged))
 }
 
-/// Each changed gate that hides a finding, in the base plan's order, with what it hides, and the
-/// error that kept the base's policy from being judged whole.
+/// Each changed gate that hides a finding, in the base plan's order, then the lost files the
+/// change hides, with what it hides, and the error that kept the base's policy from being judged
+/// whole. A change to the accepted lost files runs every gate the run selects, since any of them
+/// can lose a file.
 fn hidden_by_gate(
     args: &Args,
     (project, judged): (&Project, &Project),
@@ -204,13 +218,44 @@ fn hidden_by_gate(
         Ok(plan) => plan,
         Err(why) => return Partial::stopped(why),
     };
-    let changed = changed_gates(args, (&judged.config, &project.config), &plan);
-    let gates: Vec<&Gate> = changed.iter().map(|(gate, _)| *gate).collect();
-    let Partial {
-        found: mut hidden,
+    let (base, tree) = (&judged.config, &project.config);
+    let changed: Vec<(&Gate, String)> = selected(args, &plan)
+        .filter_map(|gate| Some((gate, change(base, tree, gate)?)))
+        .collect();
+    let lost = accepted_change(base, tree, MEASUREMENT_LOST);
+    let gates: Vec<&Gate> = match lost {
+        Some(_) => selected(args, &plan).collect(),
+        None => changed.iter().map(|(gate, _)| *gate).collect(),
+    };
+    let Partial { found, erred } = hidden(args, (judged, &gates), window, failing);
+    Partial {
+        found: grouped(changed, lost, found),
         erred,
-    } = hidden(args, (judged, &gates), window, failing);
-    let found = changed
+    }
+}
+
+/// The gates of the base's plan the run selects.
+fn selected<'a>(args: &Args, plan: &'a Plan) -> impl Iterator<Item = &'a Gate> {
+    plan.gates
+        .iter()
+        .filter(|gate| named(&args.gates, gate) && !left_alone(args, gate))
+}
+
+/// The hidden findings of each changed gate, then the hidden lost files, under the change to
+/// the accepted lost files or else every change the run judged.
+fn grouped(
+    changed: Vec<(&Gate, String)>,
+    lost: Option<String>,
+    mut hidden: Vec<Finding>,
+) -> Vec<Hidden> {
+    let lost_files: Vec<Finding> = hidden
+        .extract_if(.., |finding| finding.kind == MEASUREMENT_LOST)
+        .collect();
+    let lost_change = lost.unwrap_or_else(|| {
+        let changes: Vec<&str> = changed.iter().map(|(_, change)| change.as_str()).collect();
+        changes.join("; ")
+    });
+    let mut found: Vec<Hidden> = changed
         .into_iter()
         .filter_map(|(gate, change)| {
             let found: Vec<Finding> = hidden
@@ -223,21 +268,14 @@ fn hidden_by_gate(
             })
         })
         .collect();
-    Partial { found, erred }
-}
-
-/// The gates of the base's plan the run selects whose policy the change altered, each with
-/// what the change did to it.
-fn changed_gates<'a>(
-    args: &Args,
-    (base, tree): (&Config, &Config),
-    plan: &'a Plan,
-) -> Vec<(&'a Gate, String)> {
-    plan.gates
-        .iter()
-        .filter(|gate| named(&args.gates, gate) && !left_alone(args, gate))
-        .filter_map(|gate| Some((gate, change(base, tree, gate)?)))
-        .collect()
+    if !lost_files.is_empty() {
+        found.push(Hidden {
+            gate: MEASUREMENT_LOST.to_string(),
+            change: lost_change,
+            found: lost_files,
+        });
+    }
+    found
 }
 
 /// The findings `gates` fail under the base's policy, over the run's window, at a site the run
@@ -279,7 +317,7 @@ fn told(args: &Args, hidden: Vec<Hidden>, report: &mut CheckDocument, out: &mut 
     } in hidden
     {
         if args.text() {
-            let sites: Vec<String> = found.iter().map(Finding::site).collect();
+            let sites: Vec<String> = found.iter().map(site).collect();
             let noun = match found.len() {
                 1 => "finding",
                 _ => "findings",
@@ -297,7 +335,7 @@ fn told(args: &Args, hidden: Vec<Hidden>, report: &mut CheckDocument, out: &mut 
                 kind: CONFIG_LOOSENED,
                 text: format!(
                     "{FILENAME} loosens the policy: {change} hides {}",
-                    finding.site()
+                    site(&finding)
                 ),
                 line: finding.line.map_or(Slot::Null, Slot::Is),
                 file: finding.file,
@@ -305,6 +343,15 @@ fn told(args: &Args, hidden: Vec<Hidden>, report: &mut CheckDocument, out: &mut 
                 values: None,
             });
         }
+    }
+}
+
+/// Where a hidden finding is: its file, line and text, or the file alone for a finding of a
+/// whole file, such as a lost one.
+fn site(finding: &Finding) -> String {
+    match finding.line {
+        Some(_) => finding.site(),
+        None => finding.file.clone(),
     }
 }
 
@@ -332,8 +379,13 @@ fn change(base: &Config, tree: &Config, gate: &Gate) -> Option<String> {
             None => format!("{section} removed"),
         });
     }
-    (base.accepted_for(&gate.name) != tree.accepted_for(&gate.name))
-        .then(|| format!("the accepted list of {}", gate.name))
+    accepted_change(base, tree, &gate.name)
+}
+
+/// The change to the `accepted` entries that name `gate`, where the change altered them.
+fn accepted_change(base: &Config, tree: &Config, gate: &str) -> Option<String> {
+    (base.accepted_for(gate) != tree.accepted_for(gate))
+        .then(|| format!("the accepted list of {gate}"))
 }
 
 /// The note of a run under `{}` whose base still holds the worktree root's `klin.json`, so the
@@ -342,7 +394,7 @@ fn deleted_config(args: &Args, project: &Project, window: Option<&Window>) -> Op
     if args.config.is_some() || project.config.written() {
         return None;
     }
-    at_base(project, window?)?;
+    at_base(project, window?).flatten()?;
     Some(Note {
         check: None,
         kind: "config-deleted",
@@ -402,7 +454,12 @@ fn left_alone(args: &Args, gate: &Gate) -> bool {
     args.without_integrations && gate.check.activation == Activation::Integration
 }
 
-/// The worktree root's `klin.json` as the window's base holds it.
-fn at_base(project: &Project, window: &Window) -> Option<Vec<u8>> {
-    crate::sys::git::Repo::at(project.root()).blob(&window.before, FILENAME)
+/// The worktree root's `klin.json` as the window's base holds it, `Some(None)` where the base
+/// holds none, and `None` where git could not read the base.
+fn at_base(project: &Project, window: &Window) -> Option<Option<Vec<u8>>> {
+    let mut held = None;
+    crate::sys::git::Repo::at(project.root()).blobs(&window.before, &[FILENAME], |_, bytes| {
+        held = Some(bytes.map(<[u8]>::to_vec));
+    })?;
+    held
 }

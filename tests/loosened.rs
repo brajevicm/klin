@@ -255,3 +255,128 @@ fn a_gate_that_errs_under_the_base_policy_adds_a_note_beside_the_items_of_the_ot
     let said = unjudged[0]["message"].as_str().unwrap_or_default();
     assert!(said.contains("does not give a number"), "{said}");
 }
+
+const ONLY_COMPLEXITY: &str = r#""escapes": false, "stubs": false, "secrets": false,
+    "dead_symbols": false, "reachability": false, "public_api": false"#;
+const VALID: &str = "pub fn a() -> i32 {\n    1\n}\n";
+const BROKEN: &str = "pub fn a( -> i32 {{{\n";
+
+fn loosened_of<'a>(report: &'a Value, check: &str) -> Vec<&'a Value> {
+    loosened(report)
+        .into_iter()
+        .filter(|review| review["check"] == check)
+        .collect()
+}
+
+fn unjudged(report: &Value) -> Vec<&Value> {
+    report["notes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|note| note["kind"] == "config-loosened")
+        .collect()
+}
+
+#[test]
+fn an_accepted_lost_file_the_change_adds_is_named() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"in": "src"}}"#);
+    tree.write("src/lib.rs", VALID);
+    tree.base();
+    tree.write("src/lib.rs", BROKEN);
+    tree.write(
+        "klin.json",
+        r#"{"complexity": {"in": "src"},
+            "accepted": [{"gate": "measurement-lost", "file": "src/lib.rs", "reason": "x"}]}"#,
+    );
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let hidden = loosened_of(&report, "measurement-lost");
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "src/lib.rs", "{report}");
+    let said = hidden[0]["text"].as_str().unwrap_or_default();
+    assert!(
+        said.contains("the accepted list of measurement-lost"),
+        "{said}"
+    );
+}
+
+#[test]
+fn a_scope_that_leaves_out_a_file_the_change_breaks_names_the_lost_file() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        &format!(r#"{{"complexity": {{"in": "src"}}, {ONLY_COMPLEXITY}}}"#),
+    );
+    tree.write("src/lib.rs", VALID);
+    tree.write("src/b.rs", VALID);
+    tree.base();
+    tree.write("src/b.rs", BROKEN);
+    tree.write(
+        "klin.json",
+        &format!(r#"{{"complexity": {{"in": "src", "except": "src/b.rs"}}, {ONLY_COMPLEXITY}}}"#),
+    );
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let hidden = loosened_of(&report, "measurement-lost");
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "src/b.rs", "{report}");
+}
+
+#[test]
+fn an_integration_that_cannot_measure_under_the_base_policy_adds_a_note() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "eslint", "report": "missing.sarif"}]}"#,
+    );
+    tree.write("src/a.ts", CLEAN);
+    tree.base();
+    tree.write("klin.json", "{}");
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let notes = unjudged(&report);
+    assert_eq!(notes.len(), 1, "{report}");
+    let said = notes[0]["message"].as_str().unwrap_or_default();
+    assert!(said.contains("eslint"), "{said}");
+}
+
+#[test]
+fn a_local_check_runs_the_command_of_an_integration_the_change_removed() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "touch ran"}]}"#,
+    );
+    tree.write(".gitignore", "ran\neslint.sarif\n");
+    tree.write("src/a.ts", CLEAN);
+    tree.base();
+    tree.write("klin.json", "{}");
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path("ran").exists(), "{}", run.out);
+}
+
+#[test]
+fn the_setup_baseline_never_runs_an_integration_the_change_removed() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "touch ran"}]}"#,
+    );
+    tree.write(".gitignore", "ran\neslint.sarif\n");
+    tree.write("src/a.ts", CLEAN);
+    tree.base();
+    tree.write("klin.json", "{}");
+
+    let run = tree.run(&["setup"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!tree.path("ran").exists(), "{}", run.out);
+}

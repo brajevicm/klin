@@ -5,6 +5,8 @@ def per_level: 10;
 
 def failing: [.findings[] | select(.outcome != "held")];
 
+def unjudged: [(.notes // [])[] | select(.kind == "config-loosened")];
+
 def flat: tostring | gsub("[\r\n]+"; " ");
 
 def command_data: tostring | gsub("%"; "%25") | gsub("\r"; "%0D") | gsub("\n"; "%0A");
@@ -31,7 +33,8 @@ def annotation(level; title; said):
 
 def annotations:
   (failing[:per_level][] | annotation("error"; "klin: \(.check // .kind)"; finding_said)),
-  (.reviews[:per_level][] | annotation("warning"; "klin review: \(.kind)"; review_said));
+  (.reviews[:per_level][] | annotation("warning"; "klin review: \(.kind)"; review_said)),
+  (unjudged[] | "::warning title=\("klin: \(.kind)" | command_property)::\(.message | command_data)");
 
 def summary_budget: 900000;
 
@@ -61,6 +64,7 @@ def summary:
   ([section("Errors"; [.errors[] | "\(.check // "run") \(.kind): \(.message)"]),
     section("Holes"; holes),
     section("Failing findings"; [failing[] | "`\(site)` \(.check // .kind): \(finding_said)"]),
-    section("Review items"; [.reviews[] | "`\(site)` \(.kind): \(review_said)"])] | capped(summary_budget));
+    section("Review items"; [.reviews[] | "`\(site)` \(.kind): \(review_said)"]),
+    section("Unjudged klin.json changes"; [unjudged[] | .message])] | capped(summary_budget));
 
 if $part == "annotations" then annotations else summary end

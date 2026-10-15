@@ -803,21 +803,38 @@ impl CheckDocument {
         self.reviews.push(review);
     }
 
-    /// The findings `wanted` fail under `project`'s policy, run apart from any document a
-    /// person reads, and the first error of a gate that could not run. Spec 16.2.
+    /// The findings `wanted` fail under `project`'s policy, the lost files among them, run apart
+    /// from any document a person reads, and why the run could not judge everything: its first
+    /// error, or else the gates it left incomplete. Spec 16.2.
     pub fn failing_under(
         args: &Args,
         (project, wanted): (&Project, &[&Gate]),
         against: &Against,
     ) -> Partial<Finding> {
         let mut apart = CheckDocument::default();
-        apart.gates(args, (project, wanted), against, &mut String::new());
-        let erred = apart.first_problem();
+        apart.judged(args, (project, wanted), against, &mut String::new());
+        let erred = apart.first_problem().or_else(|| apart.first_incomplete());
         apart.findings.retain(Finding::failing);
         Partial {
             found: apart.findings,
             erred,
         }
+    }
+
+    /// The gates whose measurement is incomplete, named in one error.
+    fn first_incomplete(&self) -> Option<Error> {
+        let incomplete: Vec<&str> = self
+            .capabilities
+            .iter()
+            .filter(|row| row.incomplete == Some(true))
+            .map(|row| row.name.as_str())
+            .collect();
+        (!incomplete.is_empty()).then(|| {
+            Error(format!(
+                "{} could not measure everything it found",
+                incomplete.join(", ")
+            ))
+        })
     }
 
     /// The first error of the run, a check's included.
@@ -982,11 +999,7 @@ impl CheckDocument {
         out: &mut String,
     ) {
         self.windowed(args, (project, wanted), against.base.as_ref(), out);
-        self.gates(args, (project, wanted), against, out);
-        let base = against.base.as_ref().map(|base| base.before.as_str());
-        let seen = std::mem::take(&mut self.seen);
-        let sorted = holes::sorted(project, base, seen);
-        self.settled(args, (project, wanted, against), &sorted, out);
+        self.judged(args, (project, wanted), against, out);
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
         {
@@ -1001,6 +1014,22 @@ impl CheckDocument {
         if self.failed_on_findings() > 0 {
             out.extend(self.riding.iter().map(String::as_str));
         }
+    }
+
+    /// Every selected gate's result, and what the gates together could not measure, sorted once
+    /// into the `measurement-lost` row, review items and coverage notes. Spec 7.2, 10.6.
+    fn judged(
+        &mut self,
+        args: &Args,
+        (project, wanted): (&Project, &[&Gate]),
+        against: &Against,
+        out: &mut String,
+    ) {
+        self.gates(args, (project, wanted), against, out);
+        let base = against.base.as_ref().map(|base| base.before.as_str());
+        let seen = std::mem::take(&mut self.seen);
+        let sorted = holes::sorted(project, base, seen);
+        self.settled(args, (project, wanted, against), &sorted, out);
     }
 
     /// Every selected gate runs first, and then each one's result goes into the document, so a
