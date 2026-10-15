@@ -20,9 +20,9 @@ use crate::window::stamp::{self, Here, History, Stamp, Verdict};
 /// the exceptions, so each worktree keeps its own stamp. The ref is never pushed. Spec 6.5.
 const REFERENCE: &str = "refs/worktree/klin/turn";
 /// A `session` or `prompt` event of the agent ingress, over the tree the event names, after the
-/// opt-in walk found the worktree root's `klin.json`. Spec 10.3.
-/// The notes of the turn state go to the journal only, and the radius note goes to the person
-/// through the host, because neither asks the agent anything. Spec 10.3.
+/// opt-in walk found the worktree root's `klin.json`. The notes of the turn state go to the
+/// journal only, and the radius note goes to the person through the host, because neither asks
+/// the agent anything. Spec 10.3.
 pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String) -> u8 {
     let kind = event.kind.map(adapter::Kind::name);
     let mut noted = String::new();

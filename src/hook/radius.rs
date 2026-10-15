@@ -78,8 +78,9 @@ pub fn spread(
     opened: Option<&str>,
     tree: Option<&str>,
 ) -> Option<Turn> {
+    let (opened, tree) = (opened?, tree?);
     let usual = usual(config, root, Some(at)).ok()?;
-    let spread = measured(root, opened?, tree?)?;
+    let spread = measured(root, opened, tree)?;
     let wide = spread.wider_than(&usual);
     let note = wide.then(|| {
         let mut out =
