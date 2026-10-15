@@ -94,6 +94,8 @@ impl Finding {
 pub struct Accepts {
     pub ratchets: &'static [&'static str],
     pub optional: &'static [&'static str],
+    /// Whether the check judges its entries under `<gate>/<name>` and never under its own name.
+    pub by_entry: bool,
 }
 
 impl Accepts {
@@ -101,6 +103,7 @@ impl Accepts {
         Accepts {
             ratchets,
             optional: &[],
+            by_entry: false,
         }
     }
 }

@@ -28,6 +28,7 @@ pub const SECTION: &str = "complexity";
 pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
     ratchets: &[CC.name, LINES.name, TEST_LINES.name],
     optional: &[LINES.name, TEST_LINES.name],
+    by_entry: false,
 };
 const CC_FLOOR: u64 = 10;
 const LINES_FLOOR: u64 = 25;

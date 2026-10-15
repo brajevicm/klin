@@ -29,7 +29,10 @@ use rules::{
     REMEDY, Rule, at_the_base, conventions, holes, measure, resolved, walked,
 };
 
-pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(METRICS);
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
+    by_entry: true,
+    ..ratchet::Accepts::all(METRICS)
+};
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();

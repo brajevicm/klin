@@ -82,11 +82,11 @@ pub struct Row {
     pub judges: Judges,
     pub needs: Needs,
     pub takes_scope: bool,
-    /// Whether the section is a list of entries a person writes, each its own gate under its
-    /// own `name`, rather than one section the whole check runs under. Spec 8.3.
     /// The values an accepted entry for this check gives a number for, which `klin policy`
     /// judges each entry by without a run. Spec B.4.8.
     pub accepts: Accepts,
+    /// Whether the section is a list of entries a person writes, each its own gate under its
+    /// own `name`, rather than one section the whole check runs under. Spec 8.3.
     pub gate_per_entry: bool,
     pub shape: SectionShape,
     /// What a report calls this check's findings when it writes for a person. Spec 11.5.

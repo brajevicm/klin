@@ -124,7 +124,7 @@ fn loaded(args: &Policy, start: &Path) -> Result<Project, Fault> {
 /// no gate runs, no base is laid out and no file is measured. Spec 11.6.
 fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Fault> {
     let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
-    names_every_value(project, &plan).map_err(fault(ErrorKind::Configuration))?;
+    every_accepted_entry_complete(project, &plan).map_err(fault(ErrorKind::Configuration))?;
     let wanted = asked(args, project, &plan).map_err(fault(ErrorKind::Invocation))?;
     let mut capabilities = wanted
         .into_iter()
@@ -141,7 +141,7 @@ fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Faul
 
 /// Refuses an accepted entry that leaves out a number its gate ratchets, the config error a run
 /// of that gate raises, so `policy` does not list a file `klin check` rejects. Spec B.4.8, 11.6.
-fn names_every_value(project: &Project, plan: &Plan) -> Result<(), Error> {
+fn every_accepted_entry_complete(project: &Project, plan: &Plan) -> Result<(), Error> {
     let listed = project
         .config
         .pinned(config::file::ACCEPTED.name)
@@ -153,9 +153,13 @@ fn names_every_value(project: &Project, plan: &Plan) -> Result<(), Error> {
         let Some(named) = entry.get("gate").and_then(Value::as_str) else {
             continue;
         };
-        let gate = plan.gates.iter().find(|gate| {
-            gate.name == named || config::key::entry_named(&gate.name, named).is_some()
-        });
+        let gate = plan
+            .gates
+            .iter()
+            .find(|gate| match gate.check.accepts.by_entry {
+                true => config::key::entry_named(&gate.name, named).is_some(),
+                false => gate.name == named,
+            });
         if let Some(gate) = gate {
             ratchet::names_every_value(&project.config, named, entry, &gate.check.accepts)?;
         }

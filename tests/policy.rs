@@ -191,6 +191,28 @@ fn policy_loads_an_accepted_entry_that_leaves_out_only_the_optional_values() {
 }
 
 #[test]
+fn policy_judges_a_convention_entry_under_its_entry_gate_alone() {
+    let tree = tree(
+        r#"{"conventions": {
+            "no-flags": {"text": "config::Flags", "in": "src", "remedy": "Use the context."}
+        },
+        "accepted": [{"gate": "conventions", "file": "src/lib.rs", "text": "x"}]}"#,
+    );
+    assert_eq!(tree.run(&["policy"]).code, 0);
+
+    tree.write(
+        "klin.json",
+        r#"{"conventions": {
+            "no-flags": {"text": "config::Flags", "in": "src", "remedy": "Use the context."}
+        },
+        "accepted": [{"gate": "conventions/no-flags", "file": "src/lib.rs", "text": "x"}]}"#,
+    );
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("does not give a number for count"), "{}", run.out);
+}
+
+#[test]
 fn policy_prints_the_build_the_manifests_derive() {
     let tree = tree("{}");
     tree.write(

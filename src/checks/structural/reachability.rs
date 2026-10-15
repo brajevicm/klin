@@ -44,6 +44,7 @@ const UNUSED: &str = "unused-export";
 pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
     ratchets: &[UNREACHED, UNUSED],
     optional: &[UNREACHED, UNUSED],
+    by_entry: false,
 };
 const SIBLING: &str = "sibling";
 const LABEL: &str = "file";
