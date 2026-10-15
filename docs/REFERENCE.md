@@ -11,7 +11,7 @@
 | `$schema` | the JSON Schema an editor completes and checks the file against, such as the one `klin policy --schema` prints. klin reads nothing from it | no | pinned only | — | — |
 | `klin` | the lowest klin the repository expects, as `>=` and a version such as `>=0.5.4`. An older klin says so in `klin status` and at a Stop, and the GitHub Action fails | no | pinned only | — | any klin |
 | `build` | a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing | no | derived when absent | one command per standard manifest, from the fixed table of ADR 0012 | — |
-| `accepted` | the debt a person accepted, each entry a site and a reason. Only a person writes it | no | pinned only | — | nothing is accepted |
+| `accepted` | the debt a person accepted, each entry a site, a number for each value its gate ratchets and a reason. A person decides each entry, and an agent writes one only when the person asks for it | no | pinned only | — | nothing is accepted |
 | `radius` | the change radius a turn may not pass, as `lines` and `directories` | no | derived when absent | the 90th percentile over the last 200 non-merge commits, and no section below 50 commits | — |
 | `journal` | how the journal records a turn, as `prompt`, `false` to record no prompt excerpt | no | pinned only | — | the prompt excerpt is recorded |
 

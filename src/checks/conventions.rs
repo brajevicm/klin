@@ -29,6 +29,8 @@ use rules::{
     REMEDY, Rule, at_the_base, conventions, holes, measure, resolved, walked,
 };
 
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(METRICS);
+
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();
     let conventions = conventions(config, at.project.moves())?;
@@ -130,7 +132,7 @@ fn judged(
     Ok(evaluator.evaluate(
         now,
         described(rule, &gate, before.take(name)),
-        ratchet::accepted(config, &gate, METRICS)?,
+        ratchet::accepted(config, &gate, &ACCEPTS)?,
         &Context { gate: &gate, ..*at },
         Line::new(
             Counted::Convention {

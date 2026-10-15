@@ -40,6 +40,7 @@ pub const POLICY: &str = "public surfaces are derived from Cargo library targets
 pub const REFERENCE_TEXT: &str = "A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050).";
 
 const BREAK: &str = "break";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(&[BREAK]);
 const KIND: &str = "kind";
 const ORIGIN: &str = "origin";
 const WAS: &str = "was";
@@ -302,7 +303,7 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
     Ok(evaluator.evaluate(
         findings,
         Vec::new(),
-        ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
+        ratchet::accepted(&at.project.config, at.gate, &ACCEPTS)?,
         at,
         Line::new(state, said),
         out,
@@ -330,7 +331,7 @@ fn discovered(derived: &Derived, cost: &surface::SurfaceCost) -> contract::check
 
 fn evaluator(hook: bool) -> Evaluator<'static> {
     Evaluator {
-        metrics: &[BREAK],
+        metrics: ACCEPTS.ratchets,
         unit: "compatibility break(s)",
         condition: "where an external surface or item the base exposed is gone or its declared contract changed",
         fix_advice: Remedy::Fixed(if hook { HOOK_REMEDY } else { REMEDY }),

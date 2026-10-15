@@ -7,6 +7,7 @@ use crate::config;
 use crate::contract;
 use crate::contract::check::{Activation, Count, Derivation, Told, Unit};
 use crate::contract::project::Project;
+use crate::contract::ratchet;
 use crate::engine::plan::{Gate, Plan, State};
 use crate::engine::{catalogue, render};
 use crate::sys::error::{Error, ErrorKind, Fault, fault};
@@ -123,6 +124,7 @@ fn loaded(args: &Policy, start: &Path) -> Result<Project, Fault> {
 /// no gate runs, no base is laid out and no file is measured. Spec 11.6.
 fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Fault> {
     let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
+    names_every_value(project, &plan).map_err(fault(ErrorKind::Configuration))?;
     let wanted = asked(args, project, &plan).map_err(fault(ErrorKind::Invocation))?;
     let mut capabilities = wanted
         .into_iter()
@@ -133,6 +135,30 @@ fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Faul
     match args.json {
         true => policy_json(project, &capabilities, &shared, out),
         false => policy_text(&capabilities, args.section.is_none(), &shared, out),
+    }
+    Ok(())
+}
+
+/// Refuses an accepted entry that leaves out a number its gate ratchets, the config error a run
+/// of that gate raises, so `policy` does not list a file `klin check` rejects. Spec B.4.8, 11.6.
+fn names_every_value(project: &Project, plan: &Plan) -> Result<(), Error> {
+    let listed = project
+        .config
+        .pinned(config::file::ACCEPTED.name)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_object);
+    for entry in listed {
+        let Some(named) = entry.get("gate").and_then(Value::as_str) else {
+            continue;
+        };
+        let gate = plan.gates.iter().find(|gate| {
+            gate.name == named || config::key::entry_named(&gate.name, named).is_some()
+        });
+        if let Some(gate) = gate {
+            ratchet::names_every_value(&project.config, named, entry, &gate.check.accepts)?;
+        }
     }
     Ok(())
 }

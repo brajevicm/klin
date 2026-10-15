@@ -8,6 +8,7 @@ use crate::contract::check::{
     Activation, Count, Debt, Derivation, Judges, Needs, Placement, Run, Unit,
 };
 use crate::contract::project::Project;
+use crate::contract::ratchet::Accepts;
 use crate::{
     checks::{
         complexity, conventions, doc_citations, doc_size, escapes, inventory, lockfile, sarif,
@@ -83,6 +84,9 @@ pub struct Row {
     pub takes_scope: bool,
     /// Whether the section is a list of entries a person writes, each its own gate under its
     /// own `name`, rather than one section the whole check runs under. Spec 8.3.
+    /// The values an accepted entry for this check gives a number for, which `klin policy`
+    /// judges each entry by without a run. Spec B.4.8.
+    pub accepts: Accepts,
     pub gate_per_entry: bool,
     pub shape: SectionShape,
     /// What a report calls this check's findings when it writes for a person. Spec 11.5.
@@ -114,6 +118,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "long document",
             many: "long documents",
         },
+        accepts: Accepts::all(&[]),
         gate_per_entry: false,
         shape: SectionShape::DocumentMap(&doc_size::DOCUMENT),
     },
@@ -141,6 +146,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "broken citation",
             many: "broken citations",
         },
+        accepts: doc_citations::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::FalseOnly(doc_citations::POLICY),
     },
@@ -168,6 +174,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "unlocked dependency",
             many: "unlocked dependencies",
         },
+        accepts: lockfile::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -195,6 +202,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "escape hatch",
             many: "escape hatches",
         },
+        accepts: escapes::KIND.accepts(),
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -222,6 +230,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "stub",
             many: "stubs",
         },
+        accepts: stubs::KIND.accepts(),
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -249,6 +258,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "hardcoded secret",
             many: "hardcoded secrets",
         },
+        accepts: secrets::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -276,6 +286,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "missing test",
             many: "missing tests",
         },
+        accepts: inventory::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -303,6 +314,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "tangled function",
             many: "tangled functions",
         },
+        accepts: complexity::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -330,6 +342,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "dead symbol",
             many: "dead symbols",
         },
+        accepts: dead_symbols::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -357,6 +370,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "unreferenced file",
             many: "unreferenced files",
         },
+        accepts: reachability::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Object,
     },
@@ -384,6 +398,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "layering breach",
             many: "layering breaches",
         },
+        accepts: layering::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Asks(layering::ASKS),
     },
@@ -411,6 +426,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "broken public contract",
             many: "broken public contracts",
         },
+        accepts: public_api::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::FalseOnly(public_api::POLICY),
     },
@@ -438,6 +454,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "convention breach",
             many: "convention breaches",
         },
+        accepts: conventions::ACCEPTS,
         gate_per_entry: false,
         shape: SectionShape::Conventions(conventions::rules::read),
     },
@@ -465,6 +482,7 @@ pub const CATALOGUE: &[Row] = &[
             one: "scanner finding",
             many: "scanner findings",
         },
+        accepts: sarif::ACCEPTS,
         gate_per_entry: true,
         shape: SectionShape::Sarif,
     },

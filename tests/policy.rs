@@ -158,6 +158,39 @@ fn policy_prints_the_build_and_the_accepted_list() {
 }
 
 #[test]
+fn policy_refuses_an_accepted_entry_that_leaves_out_a_number_its_gate_ratchets() {
+    let tree = tree(
+        r#"{"accepted": [{"gate": "complexity", "file": "src/lib.rs",
+                          "text": "pub fn simple(a: i32) -> i32 {", "reason": "x"}]}"#,
+    );
+
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("the accepted entry for pub fn simple(a: i32) -> i32 { in src/lib.rs"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("does not give a number for cc"), "{}", run.out);
+
+    let json = tree.run(&["policy", "--json"]);
+    assert_eq!(json.code, 2, "{}", json.out);
+    assert_eq!(json.json()["errors"][0]["kind"], "configuration");
+}
+
+#[test]
+fn policy_loads_an_accepted_entry_that_leaves_out_only_the_optional_values() {
+    let tree = tree(
+        r#"{"accepted": [{"gate": "complexity", "file": "src/lib.rs",
+                          "text": "pub fn simple(a: i32) -> i32 {", "cc": 1, "reason": "x"}]}"#,
+    );
+
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("accepted — 1 entry"), "{}", run.out);
+}
+
+#[test]
 fn policy_prints_the_build_the_manifests_derive() {
     let tree = tree("{}");
     tree.write(
