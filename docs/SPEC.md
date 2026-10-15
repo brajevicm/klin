@@ -981,7 +981,7 @@ the exit code.
 never makes the measurement incomplete, never blocks and never keeps the
 stamp. The coverage counts and the summary still count its file as not
 measured, except a file that a capability still measured under a form an
-attribute gives it. That note, or the review item of such an opened gap,
+attribute gives it and that is not lost. That note, or the review item of such an opened gap,
 holds `values: {"measured": true}`, the check document's `not_measured`
 leaves the file out, and `klin report` does not list it as not measured.
 
@@ -2001,10 +2001,12 @@ Text output:
   - the last Stop, labeled as historical.
 - The text names each open finding by file and line, from the newest Stop
   in the journal that recorded its id, and by its id where no such Stop
-  remains. It prints each time as an age, such as "5 minute(s) ago", and
+  remains. Findings that share an id take that Stop's sites in order, so
+  each keeps its own line. It prints each time as an age, such as "5 minute(s) ago", and
   leaves out a time the stamp or the journal does not hold. Pinned by
   `status_names_an_open_finding_by_its_site_and_each_time_by_its_age` and
-  `status_prints_no_age_for_a_stamp_without_a_time`.
+  `status_prints_no_age_for_a_stamp_without_a_time` and
+  `status_names_each_line_of_open_findings_that_share_an_id`.
 - It never claims that the current working tree passes.
 - Integration states:
 

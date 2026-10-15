@@ -136,28 +136,45 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
 }
 
 /// Where the newest Stop that recorded each open finding id found it, as file and line, or the
-/// id where no Stop the journal holds recorded it. One pass from the newest line, which stops once
-/// every id has its site. Spec 11.4.
+/// id where no Stop the journal holds recorded it. Findings that share an id take that Stop's
+/// sites in order, so each keeps its own line. Spec 11.4.
 fn sites_of(lines: &[Value], open: &[String]) -> Vec<String> {
-    let wanted: HashSet<&str> = open.iter().map(String::as_str).collect();
-    let mut found: HashMap<&str, String> = HashMap::new();
-    let findings = lines
-        .iter()
-        .rev()
-        .filter(|line| line["kind"] == "stop")
-        .filter_map(|line| line["result"]["findings"].as_array())
-        .flatten();
-    for finding in findings {
+    let found = newest_sites(lines, open.iter().map(String::as_str).collect());
+    let mut taken: HashMap<&str, usize> = HashMap::new();
+    open.iter()
+        .map(|id| {
+            let nth = taken.entry(id.as_str()).or_default();
+            let sites = found
+                .get(id.as_str())
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            let site = sites.get(*nth).or(sites.last()).cloned();
+            *nth += 1;
+            site.unwrap_or_else(|| id.clone())
+        })
+        .collect()
+}
+
+/// Every site of each wanted id in the newest Stop that recorded it. One pass from the newest
+/// line, which stops once every id has its sites.
+fn newest_sites<'a>(lines: &'a [Value], wanted: HashSet<&str>) -> HashMap<&'a str, Vec<String>> {
+    let mut found: HashMap<&str, Vec<String>> = HashMap::new();
+    let stops = lines.iter().rev().filter(|line| line["kind"] == "stop");
+    for findings in stops.filter_map(|line| line["result"]["findings"].as_array()) {
         if found.len() == wanted.len() {
             break;
         }
-        if let Some(id) = finding["id"].as_str().filter(|id| wanted.contains(id)) {
-            found.entry(id).or_insert_with(|| site(finding, id));
+        let mut here: HashMap<&str, Vec<String>> = HashMap::new();
+        for finding in findings {
+            if let Some(id) = finding["id"].as_str().filter(|id| wanted.contains(id)) {
+                here.entry(id).or_default().push(site(finding, id));
+            }
+        }
+        for (id, sites) in here {
+            found.entry(id).or_insert(sites);
         }
     }
-    open.iter()
-        .map(|id| found.remove(id.as_str()).unwrap_or_else(|| id.clone()))
-        .collect()
+    found
 }
 
 fn site(finding: &Value, id: &str) -> String {

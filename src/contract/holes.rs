@@ -251,13 +251,14 @@ pub fn sorted(
         .map(|(file, seen)| {
             let mut gates: Vec<String> = seen.iter().map(|(gate, _)| gate.clone()).collect();
             gates.dedup();
-            let measured = seen.iter().any(|(_, seen)| matches!(seen, Seen::Form(..)));
             let Sorted {
                 class,
                 reason,
                 at,
                 text,
             } = one(project, against, &file, &seen);
+            let measured =
+                class != Class::Lost && seen.iter().any(|(_, seen)| matches!(seen, Seen::Form(..)));
             Unmeasured {
                 language: syntax::language_of(&file).map(|language| language.name),
                 file,

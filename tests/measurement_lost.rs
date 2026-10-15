@@ -363,6 +363,11 @@ fn a_binary_attribute_the_change_gives_a_measured_file_is_a_lost_form() {
 
     assert_eq!(code, 1, "{report}");
     assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+    assert_eq!(report["not_measured"], 1, "{report}");
+
+    assert_eq!(stop(&tree).code, 2);
+    let since = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(since["counts"]["not_measured"], 1, "{since}");
 }
 
 #[test]
