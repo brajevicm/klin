@@ -237,23 +237,35 @@ fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
     Some(real(&plain(&joined(base, token)?)))
 }
 
-/// The directory entry a token names from `base`: its parent resolved, the name itself kept,
-/// because `rm` and `mv` act on a link and never on what it points to.
+/// The directory entry a token names from `base`: its parent resolved by the file system, so a
+/// `..` after a link climbs out of where the link points, and the name itself kept, because
+/// `rm` and `mv` act on a link and never on what it points to.
 fn entry(base: Option<&Path>, token: &str) -> Option<PathBuf> {
     if token.is_empty() || token.contains(WILDCARDS) {
         return None;
     }
-    let at = plain(&joined(base, token)?);
-    Some(real(at.parent()?).join(at.file_name()?))
+    let at = joined(base, token)?;
+    let (parent, name) = (at.parent()?, at.file_name()?);
+    let parent = parent
+        .canonicalize()
+        .unwrap_or_else(|_| real(&plain(parent)));
+    Some(parent.join(name))
 }
 
-/// Whether two existing paths name one file without following a final link, so a spelling a
-/// case-insensitive file system accepts still matches. A hard link matches too.
+/// Whether two entries in one directory are one entry under names that differ in case alone,
+/// which a case-insensitive file system accepts. A hard link under another name is its own
+/// entry.
 fn same_entry(one: &Path, other: &Path) -> bool {
-    match (one.symlink_metadata(), other.symlink_metadata()) {
-        (Ok(one), Ok(other)) => (one.dev(), one.ino()) == (other.dev(), other.ino()),
-        _ => false,
-    }
+    let named = one.parent() == other.parent()
+        && one
+            .file_name()
+            .zip(other.file_name())
+            .is_some_and(|(one, other)| one.eq_ignore_ascii_case(other));
+    named
+        && match (one.symlink_metadata(), other.symlink_metadata()) {
+            (Ok(one), Ok(other)) => (one.dev(), one.ino()) == (other.dev(), other.ino()),
+            _ => false,
+        }
 }
 
 /// The path a token names from `base`, and `None` for a relative one with no `base`.

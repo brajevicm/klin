@@ -115,7 +115,12 @@ fn asks_before_a_command_deletes_or_moves_the_configuration() {
     ] {
         asked(&bash_in(&tree, command), quoted, command);
     }
-    for command in ["mv new.json klin.json", "mv -f new.json klin.json"] {
+    for command in [
+        "mv new.json klin.json",
+        "mv -f new.json klin.json",
+        "mv -h new.json klin.json",
+        "mv --no-copy new.json klin.json",
+    ] {
         allowed(&bash_in(&tree, command), command);
     }
     tree.write("sub/klin.json", "{}\n");
@@ -129,8 +134,24 @@ fn a_link_to_the_configuration_is_its_own_file() {
     let tree = Tree::new();
     tree.write("klin.json", "{}\n");
     std::os::unix::fs::symlink(tree.path("klin.json"), tree.path("alias.json")).unwrap();
-    for command in ["rm alias.json", "mv alias.json backup.json"] {
+    std::fs::hard_link(tree.path("klin.json"), tree.path("hard.json")).unwrap();
+    for command in [
+        "rm alias.json",
+        "mv alias.json backup.json",
+        "rm hard.json",
+        "mv hard.json backup.json",
+    ] {
         allowed(&bash_in(&tree, command), command);
+    }
+
+    tree.write("inner/notes.md", "one\n");
+    tree.write("sub/notes.md", "one\n");
+    std::os::unix::fs::symlink("../inner", tree.path("sub/alias")).unwrap();
+    for command in [
+        "rm sub/alias/../klin.json",
+        "mv sub/alias/../klin.json backup.json",
+    ] {
+        asked(&bash_in(&tree, command), "sub/alias/../klin.json", command);
     }
 
     let linked = Tree::new();

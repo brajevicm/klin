@@ -1687,7 +1687,9 @@ an option of `mv`, it takes every word as a source. A command acts on a link
 itself, so removing a link to `klin.json` is `allow`, and removing a
 `klin.json` that is a link is `ask`. A spelling of the name that the file
 system resolves to the same file, such as `KLIN.json` on a case-insensitive
-file system, is `ask` too. Inside an update hunk of a Codex patch,
+file system, is `ask` too. A hard link to `klin.json` under another name is
+its own file, and removing it is `allow`. A `..` in the path climbs from where
+a link before it points, as the file system climbs. Inside an update hunk of a Codex patch,
 a line that starts with a space is context, never a header.
 
 The `deny` list of commands is:

@@ -77,7 +77,7 @@ pub const INSTALL: Spec = Spec {
 };
 
 pub const MV: Spec = Spec {
-    flags: "bfinTuvZ",
+    flags: "bfhinTuvZ",
     valued: "St",
     long: &[
         "backup",
@@ -90,6 +90,7 @@ pub const MV: Spec = Spec {
         "verbose",
         "context",
         "debug",
+        "no-copy",
     ],
     long_valued: &["suffix", "target-directory"],
     directories: None,
