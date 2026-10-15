@@ -38,6 +38,7 @@ const TEST_ROOTS: &str = "test roots";
 const ROOTS_RULE: &str = "the roots that match a language's test convention";
 const LABEL: &str = "test file";
 const MISSING: &str = "missing";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(&[MISSING]);
 /// The question the hook's block puts to the agent. Removing a test is ordinary work, and
 /// deleting a failing one is the cheapest route to green, so klin asks once and does not judge
 /// the answer. Spec 8.2.
@@ -131,7 +132,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let now = findings(&judged, &functions);
     let (before, went) = let_through(&now, at, config.root());
     let held = ratchet::scoped(&now, at.only);
-    let accepted = ratchet::accepted(config, at.gate, evaluator().metrics)?;
+    let accepted = ratchet::accepted(config, at.gate, &ACCEPTS)?;
     let said = out.covered(&covered(&judged, &paired, &measured.unparsed, at));
     let state = Counted::Tests {
         held,
@@ -353,7 +354,7 @@ fn covered(judged: &[Site], paired: &[Site], unparsed: &[Unparsed], at: &Context
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        metrics: &[MISSING],
+        metrics: ACCEPTS.ratchets,
         unit: "test site(s)",
         condition: "where the base holds a test site the working tree no longer has",
         fix_advice: Remedy::Fixed(REMEDY),

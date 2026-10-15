@@ -98,6 +98,12 @@ pub struct Kind {
     pub evaluator: Evaluator<'static>,
 }
 
+impl Kind {
+    pub const fn accepts(&self) -> ratchet::Accepts {
+        ratchet::Accepts::all(self.evaluator.metrics)
+    }
+}
+
 /// The key only a kind whose languages name test idioms reads. A stub in a test is the case the
 /// spec names, so `stubs` names none and does not read the key.
 pub const SKIP_TEST_IDIOMS: Key = Key {
@@ -309,7 +315,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = kind.evaluator.evaluate(
         named(read.findings, &read.marks, &before.marks),
         before.findings,
-        ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
+        ratchet::accepted(&project.config, at.gate, &kind.accepts())?,
         at,
         Line::new(
             Counted::Markers {

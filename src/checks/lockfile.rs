@@ -30,6 +30,7 @@ pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 const RULE: &str = "the manifests the survey found that klin can read a lockfile for";
 const UNLOCKED: &str = "unlocked";
 const UNPINNED: &str = "unpinned";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(&[UNLOCKED, UNPINNED]);
 const STALE: &str = "stale";
 const METRICS: &[&str] = &[UNLOCKED, UNPINNED, STALE];
 const REMEDIES: &[(&str, &str)] = &[
@@ -216,7 +217,7 @@ pub fn applies(project: &Project) -> bool {
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let sites = surveyed(at, out)?;
-    let mut accepted = ratchet::accepted(at.config(), at.gate, &[UNLOCKED, UNPINNED])?;
+    let mut accepted = ratchet::accepted(at.config(), at.gate, &ACCEPTS)?;
     for entry in &mut accepted {
         if !entry.get(STALE).is_some_and(Value::is_number) {
             entry.insert(STALE.into(), 0.into());

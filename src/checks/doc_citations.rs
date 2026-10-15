@@ -25,6 +25,7 @@ use crate::sys::git::Repo;
 use crate::sys::record::Values;
 
 pub const SECTION: &str = "doc_citations";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(&["count"]);
 
 /// What a person may write instead of a policy, which this section does not read. Spec 5.4.
 pub const POLICY: &str =
@@ -91,7 +92,7 @@ fn evaluate(
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = now.len();
     let accepted = match &listing.config {
-        Some(config) => ratchet::accepted(config, at.gate, evaluator().metrics)?,
+        Some(config) => ratchet::accepted(config, at.gate, &ACCEPTS)?,
         None => Vec::new(),
     };
     let said = out.covered(&covered(&listing));
@@ -183,7 +184,7 @@ fn sides(
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        metrics: &["count"],
+        metrics: ACCEPTS.ratchets,
         unit: "citation(s)",
         condition: "where a document cites a file that resolves nowhere",
         fix_advice: Remedy::Fixed(REMEDY),

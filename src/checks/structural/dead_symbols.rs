@@ -30,6 +30,7 @@ pub const SECTION: &str = "dead_symbols";
 
 const IGNORE_NAME: &str = "ignore";
 const DEAD: &str = "dead";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(&[DEAD]);
 const LOST_REFERENCE: &str = "lost_reference";
 const REMEDY: &str =
     "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.";
@@ -125,7 +126,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let code = evaluator.evaluate(
         now,
         prior,
-        ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
+        ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
         at,
         Line::new(Measured::DeadSymbols { judged, dead }, said),
         out,
@@ -494,7 +495,7 @@ fn lost_reference(
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        metrics: &[DEAD],
+        metrics: ACCEPTS.ratchets,
         unit: "dead symbol(s)",
         condition: "where no reference named the declaration exists outside its own declaration",
         fix_advice: Remedy::Fixed(REMEDY),

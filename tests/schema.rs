@@ -128,6 +128,15 @@ fn accepted_schema(properties: &serde_json::Map<String, Value>) {
             .as_array()
             .is_some_and(|required| !required.contains(&Value::from("reason")))
     );
+    let said = properties["accepted"]["description"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(
+        said.contains("a number for each value its gate ratchets"),
+        "{said}"
+    );
+    assert!(said.contains("A person decides each entry"), "{said}");
+    assert!(!said.contains("Only a person writes"), "{said}");
 }
 
 #[test]

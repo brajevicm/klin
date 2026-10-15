@@ -41,6 +41,11 @@ pub const SECTION: &str = "reachability";
 
 const UNREACHED: &str = "unreached";
 const UNUSED: &str = "unused-export";
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
+    ratchets: &[UNREACHED, UNUSED],
+    optional: &[UNREACHED, UNUSED],
+    by_entry: false,
+};
 const SIBLING: &str = "sibling";
 const LABEL: &str = "file";
 /// The fewest members a family may be derived from. Spec 5.4.
@@ -176,7 +181,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = evaluator.evaluate(
         found,
         prior,
-        ratchet::accepted_leaving_out(config, at.gate, evaluator.metrics, &[UNREACHED, UNUSED])?,
+        ratchet::accepted(config, at.gate, &ACCEPTS)?,
         at,
         Line::new(measured, said),
         out,
@@ -782,7 +787,7 @@ fn coverage_result(at: &Context, (before, after): (&Swept, &Swept), out: &mut Si
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        metrics: &[UNREACHED, UNUSED],
+        metrics: ACCEPTS.ratchets,
         unit: "unreached file(s) or unused export(s)",
         condition: "where no other file references a declaration of the file, or no reached \
                     file of an app imports the file or the export",

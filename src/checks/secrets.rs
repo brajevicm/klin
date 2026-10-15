@@ -116,6 +116,8 @@ fn token() -> Result<Regex, Error> {
     })
 }
 
+pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts::all(EVALUATOR.metrics);
+
 const EVALUATOR: Evaluator = Evaluator {
     metrics: &["count"],
     unit: "secret(s)",
@@ -174,7 +176,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = EVALUATOR.evaluate(
         read.findings,
         before.findings,
-        ratchet::accepted(&project.config, at.gate, EVALUATOR.metrics)?,
+        ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
         at,
         Line::new(
             Counted::Markers {

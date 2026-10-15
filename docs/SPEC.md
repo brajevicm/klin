@@ -486,8 +486,9 @@ retires no key. A configuration that 0.x accepted is valid in vNext.
 
 - `build` is local Stop feedback policy (section 6.4). It never affects
   `klin check`.
-- `accepted` holds person-authored debt (B.4.8). Only a person writes it,
-  in a reviewed commit.
+- `accepted` holds person-authored debt (B.4.8). A person decides each
+  entry, in a reviewed commit. An agent writes one only when the person asks
+  for it (section 10.8).
 - A `sarif` entry whose `name` equals a capability name, or equals another
   entry's name, is a configuration error.
 
@@ -3416,11 +3417,14 @@ pinned number, or a pinned dated schedule. Section 7.3.
 #### B.4.8 Accepted entry
 
 Debt a person allows, keyed like a site, with every value the gate ratchets
-and the amount of each they allow. Only a person writes one, in a reviewed
-commit (ADR 0009). An entry that does not give a number for each of those
-values is a config error, because a value it leaves out would grow unjudged
-at that site. The one exception is a value a site of that gate may carry
-or not: `lines` and `test_lines` of `complexity`, of which a function carries
+and the amount of each they allow. A person decides each entry, in a
+reviewed commit (ADR 0009). An agent writes one only when the person asks for
+it, after the person says yes to the entry and its reason (section 10.8). An
+entry that does not give a number for each of those values is a config error,
+because a value it leaves out would grow unjudged at that site. `klin check`
+raises it when the entry's gate runs. `klin policy` raises it for an entry of
+any gate the plan runs, and exits 2 (section 11.6). The one exception is a
+value a site of that gate may carry or not: `lines` and `test_lines` of `complexity`, of which a function carries
 at most one (8.2.1). An entry may leave either out. It then holds only a
 finding that does not carry the value it left out, because a value a finding
 carries and its entry does not is a rise (7.1). An entry that names `lines`
@@ -3430,7 +3434,11 @@ nothing. Pinned by
 `an_accepted_entry_without_lines_holds_a_test_function_on_its_cc`,
 `an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function`
 and `an_accepted_entry_that_names_some_of_the_values_is_a_tool_error` in
-`tests/complexity.rs`. An entry that matches nothing is a NOTE at the Stop, and a
+`tests/complexity.rs`, and by
+`policy_refuses_an_accepted_entry_that_leaves_out_a_number_its_gate_ratchets`,
+`policy_loads_an_accepted_entry_that_leaves_out_only_the_optional_values`
+and `policy_judges_a_convention_entry_under_its_entry_gate_alone` in
+`tests/policy.rs`. An entry that matches nothing is a NOTE at the Stop, and a
 review item under `klin check` (section 7.6).
 
 An entry may carry a `reason`, a string in which the person says why they
