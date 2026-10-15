@@ -1168,10 +1168,13 @@ impl CheckDocument {
     /// not measured but one a gate still measured under a form an attribute gives it, and each
     /// gate's gap and limit counts. Spec 7.2, 11.7.
     fn reviewed(&mut self, sorted: &[Unmeasured]) {
+        self.not_measured.extend(
+            sorted
+                .iter()
+                .filter(|item| !item.measured)
+                .map(|item| item.file.clone()),
+        );
         for item in sorted {
-            if !item.measured {
-                self.not_measured.insert(item.file.clone());
-            }
             match item.class {
                 Class::Lost => (),
                 Class::Opened if item.reason == Cause::LeftScope && self.fails_at(&item.file) => (),
