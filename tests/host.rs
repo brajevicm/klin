@@ -13,7 +13,7 @@ const A_GUARDED_EDIT: &str = r#"{
   "hook_event_name": "PreToolUse",
   "session_id": "s1",
   "tool_name": "Write",
-  "tool_input": {"file_path": "klin.json"}
+  "tool_input": {"file_path": ".git/klin/turn"}
 }"#;
 
 const AN_ORDINARY_EDIT: &str = r#"{
@@ -27,13 +27,13 @@ const AN_AMBIGUOUS_COMMAND: &str = r#"{
   "hook_event_name": "PreToolUse",
   "session_id": "s1",
   "tool_name": "Bash",
-  "tool_input": {"command": "rm klin.json"}
+  "tool_input": {"command": "rm .git/klin/turn"}
 }"#;
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 /// Claude Code sends `permission_mode` on most events, and so does Codex. Only `turn_id` is Codex's.
-const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm klin.json"}}"#;
+const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm .git/klin/turn"}}"#;
 /// Codex CLI's event shape, from its hooks reference. `docs/HOST_COMPATIBILITY.md` records
 /// which Codex version last carried it.
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
@@ -43,9 +43,9 @@ const A_CODEX_THIRD_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1",
 /// Cursor's event shape, measured on Cursor 3.20.21 on 2026-09-16; the payloads carry that
 /// version. `docs/cursor-compatibility.md` holds the measurements, `docs/HOST_COMPATIBILITY.md`
 /// the support row.
-const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm klin.json"}}"#;
-const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
-const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;
+const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm .git/klin/turn"}}"#;
+const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm .git/klin/turn"}"#;
+const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm .git/klin/turn"}"#;
 const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
 
 fn codex(name: &str, command: &str) -> String {
@@ -97,12 +97,12 @@ fn an_ambiguous_call_asks_claude_and_denies_a_host_without_ask() {
     let asked = guard(&["--host", "claude"], AN_AMBIGUOUS_COMMAND);
     assert_eq!(asked.code, 0, "{}", asked.out);
     assert!(asked.says(r#""permissionDecision":"ask""#), "{}", asked.out);
-    assert!(asked.says("klin.json"), "{}", asked.out);
+    assert!(asked.says(".git/klin/turn"), "{}", asked.out);
 
     let denied = guard(&["--host", "borg"], AN_AMBIGUOUS_COMMAND);
     assert_eq!(denied.code, 2, "{}", denied.out);
     assert!(!denied.says("permissionDecision"), "{}", denied.out);
-    assert!(denied.says("klin.json"), "{}", denied.out);
+    assert!(denied.says(".git/klin/turn"), "{}", denied.out);
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn cursor_events_use_native_permission_decisions() {
         refused.out
     );
 
-    let denied = guard(&[], &cursor("Write", r#"{"file_path":"klin.json"}"#));
+    let denied = guard(&[], &cursor("Write", r#"{"file_path":".git/klin/turn"}"#));
     assert_eq!(denied.code, 2, "{}", denied.out);
     assert!(denied.says(r#""permission":"deny""#), "{}", denied.out);
 
@@ -174,7 +174,7 @@ fn cursor_mcp_events_ignore_the_server_launch_command() {
     let run = guard(&[], A_CURSOR_MCP_CALL);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("permission"), "{}", run.out);
-    assert!(!run.says("klin.json"), "{}", run.out);
+    assert!(!run.says(".git/klin/turn"), "{}", run.out);
 }
 
 /// A Cursor guard in a tree that never wrote `klin.json` prints nothing on an allow, on every
@@ -185,7 +185,7 @@ fn cursor_guard_is_silent_in_a_tree_without_klin_json() {
         cursor("Write", r#"{"file_path":"src/main.rs"}"#),
         A_CURSOR_SHELL_EVENT
             .to_string()
-            .replace("rm klin.json", "ls"),
+            .replace("rm .git/klin/turn", "ls"),
         A_CURSOR_MCP_CALL.to_string(),
     ] {
         let run = guard(&[], &event);
@@ -207,7 +207,7 @@ fn cursor_guard_measures_the_tree_the_event_names() {
         "workspace_roots": [tree.root()],
         "cwd": tree.root(),
         "tool_name": "Write",
-        "tool_input": {"file_path": "klin.json"}
+        "tool_input": {"file_path": ".git/klin/turn"}
     });
 
     let run = feed(elsewhere.root(), harness::AGENT, &event.to_string());
@@ -242,7 +242,7 @@ fn cursor_reads_a_shell_command_off_the_event_itself() {
     let run = guard(&[], A_CURSOR_SHELL_EVENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(r#""permission":"deny""#), "{}", run.out);
-    assert!(run.says("klin.json"), "{}", run.out);
+    assert!(run.says(".git/klin/turn"), "{}", run.out);
 }
 
 /// Cursor 3.21.18 did not submit the `followup_message` of a stop hook that exited 2, and did
@@ -761,7 +761,7 @@ fn a_named_host_it_does_not_know_is_read_as_claude_and_says_so() {
 #[test]
 fn a_codex_event_uses_codex_decisions_for_shell_and_mcp_calls() {
     for name in ["Bash", "mcp__server__tool"] {
-        let run = guard(&[], &codex(name, "rm klin.json"));
+        let run = guard(&[], &codex(name, "rm .git/klin/turn"));
         assert_eq!(run.code, 2, "{name}: {}", run.out);
         assert!(run.says("no question to ask"), "{name}: {}", run.out);
     }
@@ -771,15 +771,23 @@ fn a_codex_event_uses_codex_decisions_for_shell_and_mcp_calls() {
 fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     let allowed = codex(
         "apply_patch",
-        "*** Begin Patch\n*** Update File: src/main.rs\n@@\n+mention klin.json here\n*** End Patch",
+        "*** Begin Patch\n*** Update File: src/main.rs\n@@\n+mention .git/klin/turn here\n*** End Patch",
     );
     let run = guard(&[], &allowed);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("permissionDecision"), "{}", run.out);
+    let context = codex(
+        "apply_patch",
+        "*** Begin Patch\n*** Update File: docs/example.md\n@@\n *** Update File: .git/klin/turn\n*** End Patch",
+    );
+    let run = guard(&[], &context);
+    assert_eq!(run.code, 0, "{}", run.out);
 
     for headers in [
-        "*** Update File: src/main.rs\n*** Update File: klin.json",
-        "*** Update File: a.json\n*** Move to: klin.json",
+        "*** Update File: src/main.rs\n*** Update File: .git/klin/turn",
+        "*** Update File: a.json\n*** Move to: .git/klin/turn",
+        "  *** Update File: .git/klin/turn",
+        "*** Add File: a.md\n+one\n  *** Update File: .git/klin/turn",
     ] {
         let denied = codex(
             "apply_patch",
@@ -788,6 +796,38 @@ fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
         let run = guard(&[], &denied);
         assert_eq!(run.code, 2, "{headers}: {}", run.out);
         assert!(run.says("refused"), "{headers}: {}", run.out);
+    }
+}
+
+/// A patch that deletes `klin.json` or moves it away switches klin off, so Codex, which cannot
+/// ask, refuses it. An update of it, or a move onto it, keeps klin on and passes. ADR 0074.
+#[test]
+fn a_codex_patch_that_deletes_or_moves_the_configuration_away_is_refused() {
+    for headers in [
+        "*** Delete File: klin.json",
+        "*** Update File: klin.json\n*** Move to: old.json",
+    ] {
+        let patch = codex(
+            "apply_patch",
+            &format!("*** Begin Patch\n{headers}\n*** End Patch"),
+        );
+        let run = guard(&[], &patch);
+        assert_eq!(run.code, 2, "{headers}: {}", run.out);
+        assert!(run.says("deletes or moves"), "{headers}: {}", run.out);
+    }
+    for headers in [
+        "*** Update File: klin.json\n@@\n-{}\n+{ \"escapes\": false }",
+        "*** Update File: docs/example.md\n@@\n *** Delete File: klin.json\n+one",
+        "*** Update File: docs/a.md\n*** Move to: docs/b.md\n@@\n *** Delete File: klin.json",
+        "*** Update File: new.json\n*** Move to: klin.json",
+    ] {
+        let patch = codex(
+            "apply_patch",
+            &format!("*** Begin Patch\n{headers}\n*** End Patch"),
+        );
+        let run = guard(&[], &patch);
+        assert_eq!(run.code, 0, "{headers}: {}", run.out);
+        assert!(!run.says("refused"), "{headers}: {}", run.out);
     }
 }
 

@@ -70,8 +70,8 @@ pub fn stop(event: Event, start: &Path, behind: Behind, out: &mut String) -> u8 
 /// `unjudged`, and tells the person once per stamp. Spec 6.6, 10.7, 15.
 fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
     let said = format!(
-        "klin: nothing judged — {problem}. Only a person edits that file, so this stop blocks \
-         nothing."
+        "klin: nothing judged — {problem}. The person decides what that file holds, so this stop \
+         blocks nothing."
     );
     let mut log = journal::Stop::begun(Some(event), "invalid".to_string());
     let lock = state::ready(root)

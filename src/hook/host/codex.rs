@@ -9,12 +9,10 @@ use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, r
 const TURN: &str = "turn_id";
 const PATCH: &str = "apply_patch";
 /// The headers of the patch language that name a file. The text below them is data.
-const HEADERS: &[&str] = &[
-    "*** Add File: ",
-    "*** Delete File: ",
-    "*** Update File: ",
-    "*** Move to: ",
-];
+const HEADERS: &[&str] = &["*** Add File: ", DELETE, UPDATE, MOVE];
+const DELETE: &str = "*** Delete File: ";
+const MOVE: &str = "*** Move to: ";
+const UPDATE: &str = "*** Update File: ";
 
 /// The file Codex lists its enabled plugins in, beside the hook file. Each plugin is a table
 /// named `[plugins."name@marketplace"]`, on by default and off under `enabled = false`.
@@ -67,13 +65,14 @@ impl Adapter for Codex {
     fn event(&'static self, payload: &Value) -> Event {
         let tool = text(payload.get("tool_name"));
         let command = input(payload, "command");
-        let (file_paths, command) = match tool == PATCH {
-            true => (patch_paths(&command), String::new()),
-            false => (Vec::new(), command),
+        let (patch, command) = match tool == PATCH {
+            true => (Patch::of(&command), String::new()),
+            false => (Patch::default(), command),
         };
         Event {
             tool,
-            file_paths,
+            file_paths: patch.named,
+            removed: patch.removed,
             command,
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
@@ -129,12 +128,41 @@ fn disabled(line: &str) -> bool {
     key.trim() == "enabled" && value.trim().starts_with("false")
 }
 
-fn patch_paths(patch: &str) -> Vec<String> {
-    patch
-        .lines()
-        .filter_map(|line| HEADERS.iter().find_map(|header| line.strip_prefix(header)))
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(str::to_string)
-        .collect()
+/// The paths a patch names in its headers, and the ones among them it deletes or moves away.
+#[derive(Default)]
+struct Patch {
+    named: Vec<String>,
+    removed: Vec<String>,
+}
+
+impl Patch {
+    /// Every path a patch's headers name, and the paths it deletes or moves away: a `*** Delete
+    /// File:` path, and the `*** Update File:` path a `*** Move to:` follows. Codex finds a
+    /// header after it trims the line, so klin does too, except inside an update hunk, where
+    /// Codex keeps a line that starts with a space as context.
+    fn of(patch: &str) -> Patch {
+        let mut read = Patch::default();
+        let mut updating = false;
+        for line in patch.lines() {
+            if updating && line.starts_with(' ') {
+                continue;
+            }
+            let line = line.trim();
+            let Some((header, path)) = HEADERS
+                .iter()
+                .find_map(|header| Some((*header, line.strip_prefix(header)?.trim())))
+            else {
+                continue;
+            };
+            updating = matches!(header, UPDATE | MOVE);
+            match header {
+                _ if path.is_empty() => continue,
+                DELETE => read.removed.push(path.to_string()),
+                MOVE => read.removed.extend(read.named.last().cloned()),
+                _ => {}
+            }
+            read.named.push(path.to_string());
+        }
+        read
+    }
 }

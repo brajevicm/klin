@@ -251,7 +251,7 @@ fn two_copies_of_one_refused_call_both_refuse_and_journal_once() {
         claude("PreToolUse", "s1", "p1"),
         json!({
             "tool_name": "Write",
-            "tool_input": {"file_path": tree.at("klin.json"), "content": "{}"},
+            "tool_input": {"file_path": tree.state("turn"), "content": "{}"},
             "tool_use_id": "toolu_1",
         }),
     );
@@ -274,7 +274,7 @@ fn two_refused_calls_each_journal_a_refusal() {
             claude("PreToolUse", "s1", "p1"),
             json!({
                 "tool_name": "Write",
-                "tool_input": {"file_path": tree.at("klin.json"), "content": "{}"},
+                "tool_input": {"file_path": tree.state("turn"), "content": "{}"},
                 "tool_use_id": id,
             }),
         )
@@ -363,7 +363,7 @@ fn a_cursor_shell_call_seen_by_a_native_and_an_imported_copy_journals_once() {
         json!({
             "hook_event_name": "preToolUse",
             "tool_name": "Shell",
-            "tool_input": {"command": "rm klin.json", "cwd": "", "timeout": 30000},
+            "tool_input": {"command": "rm .git/klin/turn", "cwd": "", "timeout": 30000},
             "tool_use_id": "tool_1",
             "cwd": "",
         }),
@@ -372,7 +372,7 @@ fn a_cursor_shell_call_seen_by_a_native_and_an_imported_copy_journals_once() {
         common,
         json!({
             "hook_event_name": "beforeShellExecution",
-            "command": "rm klin.json",
+            "command": "rm .git/klin/turn",
             "cwd": "",
             "sandbox": false,
         }),

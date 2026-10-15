@@ -1149,8 +1149,8 @@ the exit code. A review item never changes the exit code.
 
 An accepted entry that matches nothing is a review item at `klin check`
 and a note at the Stop. It never fails a run and never asks the agent for a
-change. The guard refuses the agent's edits to `klin.json`, so only a person
-can act on it.
+change. An agent changes `klin.json` only when the person asks for the
+change (section 10.8), so the person decides what to do about the entry.
 
 ## 8. Evidence and Comparison
 
@@ -1666,8 +1666,31 @@ them."), a configuration error, the turn-end line or the weekly line.
 
 The guard of B.9.4 carries forward: `deny`, `ask` and `allow`, the proof
 rule, path resolution, shell parsing and the 50 ms budget. The guarded set
-stays this tree's `klin.json` and this tree's state directory. In a tree that
-holds no `klin.json`, the guard answers nothing (section 5.1).
+is this tree's state directory. In a tree that holds no `klin.json`, the
+guard answers nothing (section 5.1).
+
+`klin.json` is not in the guarded set (ADR 0074). Every agent on every host
+may edit it. The klin skill tells the agent to change it only when the person
+explicitly asks for that change. The agent makes an exact change the person
+gave and shows the diff, and it shows a value it chose itself and writes it
+only after the person says yes. klin does not enforce this rule. The Stop and `klin
+check` judge under the `klin.json` in the tree, so only a person who reads
+its diff catches a `klin.json` that an agent weakened.
+
+`klin.json` is also the opt-in file. A proven `rm`, `rmdir`, `unlink`,
+`shred` or `truncate` of the `klin.json` at the tree root, an `mv` that moves
+it away, and a Codex patch that deletes it or moves it away are `ask`, with
+the reason `config-mention`, because without it klin answers nothing. An `mv`
+or a patch that moves another file onto it keeps klin on and is `allow`. The
+copy reader of 10.8.1 finds the sources of `mv`. When the reader does not know
+an option of `mv`, it takes every word as a source. A command acts on a link
+itself, so removing a link to `klin.json` is `allow`, and removing a
+`klin.json` that is a link is `ask`. A spelling of the name that the file
+system resolves to the same file, such as `KLIN.json` on a case-insensitive
+file system, is `ask` too. A hard link to `klin.json` under another name is
+its own file, and removing it is `allow`. A `..` in the path climbs from where
+a link before it points, as the file system climbs. Inside an update hunk of a Codex patch,
+a line that starts with a space is context, never a header.
 
 The `deny` list of commands is:
 
@@ -1677,8 +1700,8 @@ The `deny` list of commands is:
   event could refresh a block budget. The host runs the hook lines itself, so
   the guard never sees them.
 
-A deny reason says that a person changes the file in a reviewed commit, or
-names the command a person runs instead. It never names a command that
+A deny reason says what the guarded file holds, or names the command a
+person runs instead. It never names a command that
 accepts debt. The guard's journal line names the matched command.
 
 #### 10.8.1 Write targets the guard proves
@@ -7001,29 +7024,28 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 #### B.9.4 The guard's three decisions
 
-The guarded set is this tree's `klin.json` and this tree's own state
-directory. The guard resolves both: the configuration beside the tree root
-`git rev-parse --show-toplevel` names, and the state directory of 7.4. A
-host's hook file, CODEOWNERS, `refs/worktree/klin`, every verification file,
-another project's `klin.json` inside the tree, and another worktree's state
-directory are ordinary files, and an edit to one of them is `allow`. ADR
-0027, ADR 0032 and ADR 0033 record why.
+The guarded set is this tree's own state directory, the state directory of
+7.4. Section 10.8 takes `klin.json` out of the set (ADR 0074). `klin.json`, a
+host's hook file, CODEOWNERS, `refs/worktree/klin`, every verification file
+and another worktree's state directory are ordinary files, and an edit to one
+of them is `allow`. ADR 0027, ADR 0032, ADR 0033 and ADR 0074 record why.
 
 The guard answers only where it can prove that a tool call writes a guarded
 path. Everything else is `allow`, and a write the guard misses costs nothing,
 because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 
-- `deny`: an edit tool whose path is the configuration or reaches inside the
-  state directory, a redirect onto either, and `klin setup`, `klin update`
-  or `klin __agent` in any form. The reason names the file and says a person
-  changes it in a reviewed commit, or says that only a person, or only the
-  host, runs the command. Nothing else denies.
+- `deny`: an edit tool whose path reaches inside the state directory, a
+  redirect into it, and `klin setup`, `klin update` or `klin __agent` in any
+  form. The reason says the file is klin's own record of the turn, or says
+  that only a person, or only the host, runs the command. Nothing else
+  denies.
 - `ask`: a command that writes every argument it takes, with a guarded path
   among its arguments. The writers are `rm`, `rmdir`, `unlink`, `shred`,
   `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
   `install` are not writers here, because each reads its first argument.
   Section 10.8.1 makes each a writer of its destination. The reason quotes
-  the token that matched. The person decides.
+  the token that matched. The person decides. Section 10.8 adds a delete or
+  move of `klin.json` to this decision.
 - `allow`: everything else, including every command that only names a guarded
   path.
 
@@ -7048,11 +7070,12 @@ MUST honor single and double quotes (issue #90). A redirect is an unquoted
 redirect. A writer and klin's own name are read by the basename of the
 command word, and each is found behind the same prefixes: an assignment,
 `env`, `npx`, `pnpm`, `bunx`, `time`, `nice` and `sudo`. So a script of the
-tree's own named `rm` is read as `rm`, and `sudo rm klin.json` asks.
+tree's own named `rm` is read as `rm`, and `sudo rm .git/klin/turn` asks.
 
 For Codex CLI, an `apply_patch` call is judged by every path in its `*** Add
 File:`, `*** Delete File:`, `*** Update File:` or `*** Move to:` headers.
-Patch body text is data. A deny for any path wins; otherwise an ask wins over
+The guard finds a header after it trims the line, as Codex does. Patch body
+text is data. A deny for any path wins; otherwise an ask wins over
 allow.
 
 The guard MUST NOT read the configuration. It runs before the config loads.
@@ -7278,11 +7301,13 @@ tells a reader nothing.
   the guard reached. A host with no question to ask refuses instead (9.1), so
   an ask that reached the agent as a refusal is recorded as `"deny"`.
 - `reason`, a hyphenated tag naming why the guard decided as it did:
-  `config-write` and `state-write` for a proven write an edit tool's path or
-  a redirect names, `config-mention` and `state-mention` for a command that
-  only names a guarded path as a writer's argument, which klin cannot prove
-  the way it proves the first two (ADR 0033), and `setup`, `update` and `agent`
-  for one of klin's own subcommands that only a person or the host runs.
+  `state-write` for a proven write an edit tool's path or a redirect names,
+  `state-mention` for a command that only names a guarded path as a writer's
+  argument, which klin cannot prove the way it proves the first (ADR 0033),
+  and `setup`, `update` and `agent` for one of klin's own subcommands that
+  only a person or the host runs. `config-mention` names a delete or move of
+  `klin.json` (section 10.8). A journal from before ADR 0074 also holds
+  `config-write`, and `klin report` still reads it.
 
 The `reset` line is what the 0.x reset command wrote. vNext writes none:
 

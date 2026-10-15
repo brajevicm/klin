@@ -2,6 +2,9 @@
 
 > Amends ADR 0011 and ADR 0020. The reader rule and the three decisions stay.
 > The guarded set shrinks to one file.
+>
+> Amended 2026-10-14 by ADR 0074: `klin.json` leaves the guarded set, and the
+> klin skill holds the rule that an agent changes it only when the person asks.
 
 The guarded set had grown to five things: the configuration, each host's hook
 file, the code owners, klin's state directory, and `refs/worktree/klin`. A

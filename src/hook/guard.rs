@@ -1,4 +1,5 @@
 use std::cell::OnceCell;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Component, Path, PathBuf};
 
 use crate::hook::copy;
@@ -29,9 +30,6 @@ const NESTING: u8 = 4;
 /// The shells whose `-c` text, or whose heredoc, the guard reads as the command they run.
 const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
 
-const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json). Fix \
-    the code the gate names instead. Only a person changes it, in a reviewed commit.";
-
 const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the turn, under \
     .git/klin. It holds the window a gate failed in and the questions this turn already put to \
     you. No command moves it: fix what the gate names.";
@@ -58,11 +56,13 @@ const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
 const HOST_REFUSAL: &str = "host-refusal";
 
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
-/// The one file klin guards, beside klin's own state directory. A check's own configuration, a
-/// host's hook file and the code owners are ordinary files: klin cannot tell a loosening from a
-/// fix in any of them, and refusing a whole settings file refuses the work that has nothing to
-/// do with klin. ADR 0027, ADR 0032.
+/// The opt-in file. An agent may edit it when the person asks, but deleting or moving it
+/// switches klin off for the session, so a proven delete or move of it is put to the person.
+/// ADR 0074.
 const NAME: &str = "klin.json";
+/// The writers that delete or empty a file. `mv` moves its sources away, which the copy reader
+/// finds.
+const REMOVERS: &[&str] = &["rm", "rmdir", "unlink", "shred", "truncate"];
 /// The commands that write every argument they take, so a guarded path among the arguments is a
 /// write under any reading. `cp` and `install` write their destination alone, which the copy
 /// reader finds. ADR 0033, ADR 0068.
@@ -80,7 +80,7 @@ pub fn run(event: &Event, root: &Path) -> u8 {
     let delivered = event.host.decide(&decision);
     let refused = !matches!(decision, Decision::Allow);
     if (refused || delivered != 0)
-        && let Some(at) = guarded.paths().state.as_deref()
+        && let Some(at) = guarded.state()
         && let Some(_claim) = state::claim(at, &event.identity)
     {
         let named = match refused {
@@ -102,7 +102,13 @@ fn decided(guarded: &Guarded, event: &Event) -> (Decision, &'static str) {
             event
                 .file_paths
                 .iter()
-                .flat_map(|path| guarded.denied(guarded.here(), path)),
+                .flat_map(|path| guarded.denied(guarded.here(), path))
+                .chain(
+                    event
+                        .removed
+                        .iter()
+                        .flat_map(|path| guarded.removed(guarded.here(), path)),
+                ),
         )
     });
     match paths {
@@ -131,9 +137,10 @@ fn strictest(
     asked.unwrap_or((Decision::Allow, ""))
 }
 
-/// What klin guards in this tree: the configuration beside the tree root, and the state
-/// directory `state::dir` resolves. Both are found when the first path needs proving and not
-/// before, so a tool call that names none never reaches for git. Section 9.4.
+/// What klin guards in this tree: the state directory `state::dir` resolves. It is found when
+/// the first path needs proving and not before, so a tool call that names none never reaches
+/// for git. `klin.json` is not guarded: the klin skill tells the agent to change it only when
+/// the person asks. Section 9.4, ADR 0074.
 struct Guarded {
     /// The tree the host's event named, for a host that does not run its hooks in it.
     named: Option<PathBuf>,
@@ -141,18 +148,7 @@ struct Guarded {
     root: PathBuf,
     /// Where the guard runs, which is what a relative path in a command names from.
     here: OnceCell<Option<PathBuf>>,
-    paths: OnceCell<Paths>,
-}
-
-struct Paths {
-    config: PathBuf,
-    state: Option<PathBuf>,
-}
-
-/// Which guarded thing a path names.
-enum Which {
-    Config,
-    State,
+    state: OnceCell<Option<PathBuf>>,
 }
 
 impl Guarded {
@@ -161,7 +157,7 @@ impl Guarded {
             named,
             root,
             here: OnceCell::new(),
-            paths: OnceCell::new(),
+            state: OnceCell::new(),
         }
     }
 
@@ -178,54 +174,56 @@ impl Guarded {
             .as_deref()
     }
 
-    fn paths(&self) -> &Paths {
-        self.paths.get_or_init(|| Paths::at(&self.root))
+    /// klin's own state directory, found when the first path needs proving and not before.
+    fn state(&self) -> Option<&Path> {
+        self.state
+            .get_or_init(|| state::dir(&self.root).map(|at| real(&at)))
+            .as_deref()
     }
 
-    /// Which guarded thing a path names from `base`, where a relative path needs a `base` the
-    /// guard can place.
-    fn which(&self, base: Option<&Path>, path: &str) -> Option<Which> {
-        let at = resolved(base, path)?;
-        let paths = self.paths();
-        if at == paths.config {
-            return Some(Which::Config);
-        }
-        let state = paths.state.as_ref()?;
-        at.starts_with(state).then_some(Which::State)
-    }
-
-    /// What one path an edit tool or a redirect names is worth: a deny for the one file only a
-    /// person changes, a deny for klin's own record of the turn, and nothing otherwise. Paired
-    /// with the hyphenated reason a journal line names the deny by. Spec 9.6.
-    fn denied(&self, base: Option<&Path>, path: &str) -> Option<(Decision, &'static str)> {
-        let (why, reason) = match self.which(base, path)? {
-            Which::Config => (REFUSAL, "config-write"),
-            Which::State => (STATE_REFUSAL, "state-write"),
+    /// Whether a path names klin's own state from `base`, where a relative path needs a `base`
+    /// the guard can place.
+    fn guards(&self, base: Option<&Path>, path: &str) -> bool {
+        let Some(at) = resolved(base, path) else {
+            return false;
         };
-        Some((Decision::Deny(why.to_string()), reason))
+        self.state().is_some_and(|state| at.starts_with(state))
     }
 
-    /// The guarded path a writer takes as an argument. klin can prove the write, and a person
+    /// What one path an edit tool or a redirect names is worth: a deny for klin's own record of
+    /// the turn, and nothing otherwise. Paired with the hyphenated reason a journal line names
+    /// the deny by. Spec 9.6.
+    fn denied(&self, base: Option<&Path>, path: &str) -> Option<(Decision, &'static str)> {
+        self.guards(base, path)
+            .then(|| (Decision::Deny(STATE_REFUSAL.to_string()), "state-write"))
+    }
+
+    /// klin's own state taken as an argument by a writer. klin can prove the write, and a person
     /// decides whether it goes through. Paired with the hyphenated reason a journal line names
     /// the ask by. Spec 9.6.
     fn asked(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
-        let (what, reason) = match self.which(base, token)? {
-            Which::Config => ("the configuration klin guards", "config-mention"),
-            Which::State => ("klin's own record of the turn", "state-mention"),
-        };
-        Some((
-            Decision::Ask(format!("this names \"{token}\", which is {what}.")),
-            reason,
-        ))
+        self.guards(base, token).then(|| {
+            (
+                Decision::Ask(format!(
+                    "this names \"{token}\", which is klin's own record of the turn."
+                )),
+                "state-mention",
+            )
+        })
     }
-}
 
-impl Paths {
-    fn at(root: &Path) -> Paths {
-        Paths {
-            config: real(&root.join(NAME)),
-            state: state::dir(root).map(|at| real(&at)),
-        }
+    /// The opt-in file taken as an argument by a command that deletes or moves it. Without the
+    /// file klin answers nothing, so a person decides. Spec 10.8, ADR 0074.
+    fn removed(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
+        let at = Entry::of(base, token)?;
+        at.is(&Entry::of(Some(&self.root), NAME)?).then(|| {
+            (
+                Decision::Ask(format!(
+                    "this deletes or moves \"{token}\", the file that turns klin on."
+                )),
+                "config-mention",
+            )
+        })
     }
 }
 
@@ -236,6 +234,56 @@ fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
         return None;
     }
     Some(real(&plain(&joined(base, token)?)))
+}
+
+/// A directory entry, which `rm` and `mv` act on: a link itself, never what it points to.
+/// Kept apart from a resolved path, which follows a final link. Two entries compare through
+/// `is` alone.
+struct Entry(PathBuf);
+
+impl Entry {
+    /// The entry a token names from `base`: its parent resolved by the file system, so a `..`
+    /// after a link climbs out of where the link points, and the name kept as it is spelled.
+    fn of(base: Option<&Path>, token: &str) -> Option<Entry> {
+        if token.is_empty() || token.contains(WILDCARDS) {
+            return None;
+        }
+        let at = joined(base, token)?;
+        let (parent, name) = (at.parent()?, at.file_name()?);
+        let parent = parent
+            .canonicalize()
+            .unwrap_or_else(|_| real(&plain(parent)));
+        Some(Entry(parent.join(name)))
+    }
+
+    /// Whether this entry is `other`: the same path, or in the same directory another spelling
+    /// that reaches the same file, which a case-insensitive file system accepts under any case
+    /// folding it does. Two names the directory both lists are two hard links, each its own
+    /// entry.
+    fn is(&self, other: &Entry) -> bool {
+        let (one, other) = (&self.0, &other.0);
+        if one == other {
+            return true;
+        }
+        let file = |at: &Path| {
+            at.symlink_metadata()
+                .map(|found| (found.dev(), found.ino()))
+        };
+        one.parent() == other.parent()
+            && matches!((file(one), file(other)), (Ok(one), Ok(other)) if one == other)
+            && !(listed(one) && listed(other))
+    }
+}
+
+/// Whether the directory lists a name spelled exactly as the path's own, and `false` when it
+/// cannot be read.
+fn listed(at: &Path) -> bool {
+    let (Some(parent), Some(name)) = (at.parent(), at.file_name()) else {
+        return false;
+    };
+    parent.read_dir().is_ok_and(|mut names| {
+        names.any(|found| found.is_ok_and(|found| found.file_name() == name))
+    })
 }
 
 /// The path a token names from `base`, and `None` for a relative one with no `base`.
@@ -488,6 +536,7 @@ fn segment_decision(
         return (Decision::Allow, "");
     }
     let written = written_by(&segment.words, cwd);
+    let removed = removed_by(&segment.words);
     strictest(
         segment
             .targets
@@ -499,6 +548,12 @@ fn segment_decision(
                     .iter()
                     .filter(|word| !word.contains(PARAMETER))
                     .flat_map(|word| guarded.asked(cwd, word)),
+            )
+            .chain(
+                removed
+                    .iter()
+                    .filter(|word| !word.contains(PARAMETER))
+                    .flat_map(|word| guarded.removed(cwd, word)),
             ),
     )
 }
@@ -519,6 +574,15 @@ fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
             false => Vec::new(),
         },
         command if WRITERS.contains(&command) => args.to_vec(),
+        _ => Vec::new(),
+    }
+}
+
+/// The files a command deletes, moves or empties. ADR 0074.
+fn removed_by(words: &[String]) -> Vec<String> {
+    match command(words) {
+        Some(("mv", args)) => copy::sources(&copy::MV, args),
+        Some((command, args)) if REMOVERS.contains(&command) => args.to_vec(),
         _ => Vec::new(),
     }
 }

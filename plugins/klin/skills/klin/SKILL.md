@@ -1,6 +1,6 @@
 ---
 name: klin
-description: How to answer a klin quality gate — read the failure, fix the site it names, and leave the configuration alone. Use this whenever a klin line appears in a hook, whenever a stop is blocked by a gate or by a build failure, whenever a person asks about klin's gates, findings, radius, base, window or state, and before any work touches klin.json, a hook file or CODEOWNERS. Read it before you try to make a klin failure go away, because most of the fast routes to green are routes klin refuses.
+description: How to answer a klin quality gate — read the failure, fix the site it names, and change the configuration only when the person asks. Use this whenever a klin line appears in a hook, whenever a stop is blocked by a gate or by a build failure, whenever a person asks about klin's gates, findings, radius, base, window or state, and before any work touches klin.json, a hook file or CODEOWNERS. Read it before you try to make a klin failure go away, because most of the fast routes to green are routes klin refuses.
 ---
 
 # klin
@@ -66,10 +66,17 @@ derived the command.
 Each route below makes a gate pass without fixing anything. Every one of them
 is visible in the diff a person reviews.
 
-- Editing `klin.json`. An edit tool that names it is denied, and a shell
-  write that klin can read is denied or put to the person. Any other write
-  still shows in the diff, and the rule is the same. Never add an entry to
-  `accepted`, and never raise a ceiling.
+- Editing `klin.json` on your own. Change it only when the person
+  explicitly asks for that change: the request names `klin.json`, or the
+  setting or entry to change. "Make the gates pass" or "fix CI however you
+  need" is not such a request. When the person gave the exact change, make
+  it and show the diff. When you choose any value yourself, such as which
+  entry to accept, its reason or a ceiling, show the change and write it
+  only after the person says yes. Never add an entry to `accepted` or raise
+  a ceiling to make a gate pass. klin does not refuse the edit, and klin
+  judges under the edited file, so this rule is yours to keep. Never delete
+  or move `klin.json`: without it klin is off, and klin asks the person
+  first.
 - Deleting a failing test. The stop asks once why each deleted test went.
   If it failed because the code is wrong, restore it and fix the code. If
   the removal is intended, say why in your reply, and the stop after that

@@ -150,7 +150,7 @@ be proven headlessly:
 
 1. the plugin installs or loads,
 2. a repository with `klin.json` invokes klin,
-3. the guard refuses an attempted write to `klin.json`,
+3. the guard refuses an attempted write under `.git/klin`,
 4. a deterministic failing stop reaches the agent through the host's block or
    report channel.
 

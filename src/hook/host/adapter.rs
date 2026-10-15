@@ -198,6 +198,9 @@ pub struct Event {
     pub kind: Option<Kind>,
     pub tool: String,
     pub file_paths: Vec<String>,
+    /// The paths an edit tool deletes or moves away, such as a Codex patch's `*** Delete File:`.
+    /// ADR 0074.
+    pub removed: Vec<String>,
     pub command: String,
     pub blocked_before: bool,
     /// Whether the host says this stop follows a message it submitted by itself, which Cursor
@@ -224,6 +227,7 @@ impl Event {
             kind: None,
             tool: String::new(),
             file_paths: Vec::new(),
+            removed: Vec::new(),
             command: String::new(),
             blocked_before: false,
             continued: false,

@@ -603,13 +603,13 @@ fn guard(tree: &Tree, event: &str) -> harness::Run {
 }
 
 #[test]
-fn a_guard_deny_for_the_configuration_appends_a_line_with_config_write() {
+fn a_guard_deny_for_the_state_directory_appends_a_line_with_state_write() {
     let tree = tree(EVERY_GATE);
-    let event = format!(
-        r#"{{"tool_name": "Write", "tool_input": {{"file_path": {:?}}}, "session_id": "s-7"}}"#,
-        tree.at("klin.json")
+    let run = guard(
+        &tree,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "echo x > .git/klin/turn"},
+            "session_id": "s-7"}"#,
     );
-    let run = guard(&tree, &event);
     assert_eq!(run.code, 2, "{}", run.out);
 
     let lines = journal(&tree);
@@ -619,44 +619,30 @@ fn a_guard_deny_for_the_configuration_appends_a_line_with_config_write() {
     assert_eq!(field(line, &["kind"]), "guard", "{line}");
     assert_eq!(field(line, &["session"]), "s-7", "{line}");
     assert_eq!(field(line, &["decision"]), "deny", "{line}");
-    assert_eq!(field(line, &["reason"]), "config-write", "{line}");
-}
-
-#[test]
-fn a_guard_deny_for_the_state_directory_appends_a_line_with_state_write() {
-    let tree = tree(EVERY_GATE);
-    let run = guard(
-        &tree,
-        r#"{"tool_name": "Bash", "tool_input": {"command": "echo x > .git/klin/turn"}}"#,
-    );
-    assert_eq!(run.code, 2, "{}", run.out);
-
-    let lines = journal(&tree);
-    let line = &lines[0];
-    assert_eq!(field(line, &["kind"]), "guard", "{line}");
-    assert_eq!(field(line, &["decision"]), "deny", "{line}");
     assert_eq!(field(line, &["reason"]), "state-write", "{line}");
 }
 
+/// The guard leaves the configuration to the agent, so a call that writes it is no guard line.
 #[test]
-fn a_guard_ask_naming_the_configuration_appends_a_line_with_config_mention() {
+fn a_call_that_writes_the_configuration_appends_no_line() {
     let tree = tree(EVERY_GATE);
-    let run = guard(
-        &tree,
-        r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#,
+    let edit = format!(
+        r#"{{"tool_name": "Write", "tool_input": {{"file_path": {:?}}}}}"#,
+        tree.at("klin.json")
     );
-    assert_eq!(run.code, 0, "{}", run.out);
-
-    let lines = journal(&tree);
-    let line = &lines[0];
-    assert_eq!(field(line, &["kind"]), "guard", "{line}");
-    assert_eq!(field(line, &["decision"]), "ask", "{line}");
-    assert_eq!(field(line, &["reason"]), "config-mention", "{line}");
+    for event in [
+        edit.as_str(),
+        r#"{"tool_name": "Bash", "tool_input": {"command": "sed -i s/a/b/ klin.json"}}"#,
+    ] {
+        let run = guard(&tree, event);
+        assert_eq!(run.code, 0, "{event}: {}", run.out);
+    }
+    assert!(journal(&tree).is_empty(), "{:?}", journal(&tree));
 }
 
 /// The ask side of `state-write`: a shell command only names the state directory as a write
 /// argument, which klin cannot prove the way a direct edit or a redirect does (ADR 0033), so it
-/// asks rather than denies. The reason mirrors `config-mention`'s.
+/// asks rather than denies.
 #[test]
 fn a_guard_ask_naming_the_state_directory_appends_a_line_with_state_mention() {
     let tree = tree(EVERY_GATE);
@@ -698,7 +684,7 @@ fn an_ask_a_host_delivers_as_a_refusal_is_journaled_as_a_deny() {
     let run = guard(
         &tree,
         r#"{"turn_id": "t-1", "tool_name": "Bash", "session_id": "s-8",
-            "tool_input": {"command": "rm klin.json"}}"#,
+            "tool_input": {"command": "rm .git/klin/turn"}}"#,
     );
     assert_eq!(run.code, 2, "{}", run.out);
 
@@ -707,7 +693,7 @@ fn an_ask_a_host_delivers_as_a_refusal_is_journaled_as_a_deny() {
     assert_eq!(field(line, &["kind"]), "guard", "{line}");
     assert_eq!(field(line, &["session"]), "s-8", "{line}");
     assert_eq!(field(line, &["decision"]), "deny", "{line}");
-    assert_eq!(field(line, &["reason"]), "config-mention", "{line}");
+    assert_eq!(field(line, &["reason"]), "state-mention", "{line}");
 }
 
 #[test]

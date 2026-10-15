@@ -16,8 +16,8 @@ is inherited debt.
 _Avoid_: baseline, snapshot, reference
 
 **Accepted**:
-The config list where only a person records allowed debt, in a reviewed
-commit.
+The config list of debt a person allows. An agent adds an entry only when the
+person asks for it, and the entry lands in a reviewed commit.
 _Avoid_: allowlist, exemption, suppression
 
 **Finding**:
