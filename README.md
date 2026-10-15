@@ -84,7 +84,7 @@ Add `--details` for individual findings, `--since 7d` for the last seven days, o
 
 klin also runs as a Claude Code, Codex, or Cursor plugin.
 
-A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin report`. If the plugin and the repository hooks are both present, only one of them handles each event.
+A plugin does not add a `klin` command to your shell. Install the CLI too for `klin report`, and for tailoring under Codex or Cursor. If both the plugin and the repository hooks are present, only one handles each event.
 
 ### Claude Code
 

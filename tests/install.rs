@@ -1584,32 +1584,42 @@ fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
     );
 }
 
-/// A repository setup ends by naming the next step, as a request to the agent rather than a
-/// slash command, because each host invokes a skill its own way. A second run, which changes
-/// nothing, still names it, and a `--user` run, which writes no `klin.json`, does not.
-/// Spec 11.2, #593.
+/// A setup that leaves the repository opted in ends by naming the next step, as a request to
+/// the agent rather than a slash command, because each host invokes a skill its own way. A
+/// second run, which changes nothing, still names it. Spec 11.2, #593.
 #[test]
 fn setup_ends_by_naming_the_request_to_tailor_klin_json() {
     let tree = Tree::new();
     tree.write("src/lib.rs", "pub fn f() {}\n");
     tree.base();
-    let next = "Next: ask your agent to tailor klin.json to this repository.";
 
     for _ in 0..2 {
         let run = tree.run(&["setup", "--host", "claude"]);
         assert_eq!(run.code, 0, "{}", run.out);
-        assert_eq!(run.out.lines().last(), Some(next), "{}", run.out);
+        assert_eq!(run.out.lines().last(), Some(TAILOR_NEXT), "{}", run.out);
     }
+}
 
+/// A first `--user` setup in a repository writes its `klin.json` too, so it names the same next
+/// step. Review 5532508565, #593.
+#[test]
+fn setup_user_names_the_request_to_tailor_the_klin_json_it_wrote() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
     let home = Tree::bare();
     let at = home_of(&home);
-    let user = tree.run_with(
+
+    let run = tree.run_with(
         &[("HOME", at.as_str())],
         &["setup", "--user", "--host", "claude"],
     );
-    assert_eq!(user.code, 0, "{}", user.out);
-    assert!(!user.says(next), "{}", user.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path("klin.json").is_file(), "{}", run.out);
+    assert_eq!(run.out.lines().last(), Some(TAILOR_NEXT), "{}", run.out);
 }
+
+const TAILOR_NEXT: &str = "Next: ask your agent to tailor klin.json to this repository.";
 
 /// A tree with no debt says so, rather than naming an empty floor. #587.
 #[test]

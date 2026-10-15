@@ -90,8 +90,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 }
 
 /// What a run ends with: any inert line it saw, the closing line, and in a repository the
-/// baseline of what klin now holds and, outside `--user`, the request to tailor `klin.json`.
-/// Spec 11.2.
+/// baseline of what klin now holds and the request to tailor its `klin.json`. Spec 11.2.
 fn closed(scope: &Scope, wrote_hooks: bool, out: &mut String) {
     if let Some(root) = &scope.repository {
         starter::inert(root, out);
@@ -103,8 +102,6 @@ fn closed(scope: &Scope, wrote_hooks: bool, out: &mut String) {
         .filter(|root| root.join(MARKER).is_file());
     if let Some(root) = opted_in {
         baseline::said(root, out);
-    }
-    if scope.repository.is_some() && !scope.user {
         let _ = writeln!(out, "{TAILOR_NEXT}");
     }
 }
