@@ -154,3 +154,38 @@ fn a_run_that_selects_another_gate_or_names_a_config_judges_once() {
     let report = named.json();
     assert!(loosened(&report).is_empty(), "{report}");
 }
+
+#[test]
+fn a_base_policy_that_cannot_be_judged_says_so_in_a_note() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"escapes": {"in": "src"},
+            "sarif": [{"name": "escapes", "report": "out/lint.sarif"}]}"#,
+    );
+    tree.write("src/a.ts", CLEAN);
+    tree.base();
+    tree.write("klin.json", r#"{"escapes": false}"#);
+    tree.write("src/b.ts", ESCAPED);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert!(loosened(&report).is_empty(), "{report}");
+    let unjudged: Vec<&Value> = report["notes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|note| note["kind"] == "config-loosened")
+        .collect();
+    assert_eq!(unjudged.len(), 1, "{report}");
+    let said = unjudged[0]["message"].as_str().unwrap_or_default();
+    assert!(said.contains("two gates are named escapes"), "{said}");
+
+    let run = tree.run(&["check"]);
+    assert!(
+        run.says("NOTE: klin.json changed, and the base's policy could not be judged:"),
+        "{}",
+        run.out
+    );
+}

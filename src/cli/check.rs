@@ -139,8 +139,9 @@ fn measured(
 }
 
 /// A review item per finding a gate whose policy the change loosened fails under the base's
-/// `klin.json` and not under the tree's. The tree's policy alone sets the exit, so a person
-/// can accept debt in the same change, and a person's review decides. Spec 16.2.
+/// `klin.json` and not under the tree's, or a note that the base's policy could not be judged.
+/// The tree's policy alone sets the exit, so a person can accept debt in the same change, and a
+/// person's review decides. Spec 16.2.
 fn loosened(
     args: &Args,
     project: &Project,
@@ -148,29 +149,24 @@ fn loosened(
     report: &mut CheckDocument,
     out: &mut String,
 ) {
-    let Some((judged, window)) =
-        window.and_then(|window| Some((under_base(args, project, window)?, window)))
-    else {
+    let Some(window) = window else {
         return;
     };
-    let Ok(plan) = Plan::of(&judged) else {
+    let Some(judged) = under_base(args, project, window) else {
         return;
     };
-    let changed = changed_gates(args, (&judged.config, &project.config), &plan);
-    let hidden = hidden(args, (&judged, &changed), window, &report.reported());
-    if hidden.is_empty() {
-        return;
+    let failing = report.reported();
+    match hidden_by_gate(args, (project, &judged), window, &failing) {
+        Ok(hidden) => told(args, hidden, report, out),
+        Err(why) => unjudged(args, &why, report, out),
     }
-    if args.text() {
-        let _ = writeln!(out, "  REVIEW: {FILENAME} loosens the policy:");
-    }
-    for (gate, change) in &changed {
-        let found: Vec<&Finding> = hidden
-            .iter()
-            .filter(|finding| finding.check.as_ref() == Some(&gate.name))
-            .collect();
-        told(args, (gate, change), &found, report, out);
-    }
+}
+
+/// The findings one changed gate hides, and what the change did to its policy.
+struct Hidden {
+    gate: String,
+    change: String,
+    found: Vec<Finding>,
 }
 
 /// The run under the `klin.json` the base holds at the worktree root, read as the tree's file,
@@ -180,15 +176,44 @@ fn under_base(args: &Args, project: &Project, window: &Window) -> Option<Project
     if args.config.is_some() {
         return None;
     }
-    let base = at_base(project, window);
-    if base == std::fs::read(&project.config.file).ok() {
+    let bytes = at_base(project, window);
+    if bytes == std::fs::read(&project.config.file).ok() {
         return None;
     }
-    let text = String::from_utf8(base.unwrap_or_else(|| b"{}".to_vec())).ok()?;
-    let base = Config::read(&project.config.file, &text, &catalogue::sections()).ok()?;
+    let text = match &bytes {
+        Some(bytes) => std::str::from_utf8(bytes).ok()?,
+        None => "{}",
+    };
+    let base = Config::read(&project.config.file, text, &catalogue::sections()).ok()?;
     let mut judged = Project::of(base, project.start());
     judged.bind(window);
     Some(judged)
+}
+
+/// Each changed gate that hides a finding, in the base plan's order, with what it hides.
+fn hidden_by_gate(
+    args: &Args,
+    (project, judged): (&Project, &Project),
+    window: &Window,
+    failing: &[String],
+) -> Result<Vec<Hidden>, Error> {
+    let plan = Plan::of(judged)?;
+    let changed = changed_gates(args, (&judged.config, &project.config), &plan);
+    let gates: Vec<&Gate> = changed.iter().map(|(gate, _)| *gate).collect();
+    let mut hidden = hidden(args, (judged, &gates), window, failing)?;
+    Ok(changed
+        .into_iter()
+        .filter_map(|(gate, change)| {
+            let found: Vec<Finding> = hidden
+                .extract_if(.., |finding| finding.check.as_ref() == Some(&gate.name))
+                .collect();
+            (!found.is_empty()).then(|| Hidden {
+                gate: gate.name.clone(),
+                change,
+                found,
+            })
+        })
+        .collect())
 }
 
 /// The gates of the base's plan the run selects whose policy the change altered, each with
@@ -205,65 +230,80 @@ fn changed_gates<'a>(
         .collect()
 }
 
-/// The findings the changed gates fail under the base's policy, over the run's window, that the
-/// run itself does not fail.
+/// The findings `gates` fail under the base's policy, over the run's window, that the run itself
+/// does not fail.
 fn hidden(
     args: &Args,
-    (judged, changed): (&Project, &[(&Gate, String)]),
+    (judged, gates): (&Project, &[&Gate]),
     window: &Window,
     failing: &[String],
-) -> Vec<Finding> {
-    let gates: Vec<&Gate> = changed.iter().map(|(gate, _)| *gate).collect();
+) -> Result<Vec<Finding>, Error> {
     if gates.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let Ok(against) = against(args, &gates, judged, Some(window), &mut String::new()) else {
-        return Vec::new();
-    };
-    CheckDocument::failing_under(args, (judged, &gates), &against)
-        .into_iter()
-        .filter(|finding| !failing.contains(&finding.id))
-        .collect()
+    let against = against(args, gates, judged, Some(window), &mut String::new())
+        .map_err(|fault| fault.error)?;
+    Ok(
+        CheckDocument::failing_under(args, (judged, gates), &against)
+            .into_iter()
+            .filter(|finding| !failing.contains(&finding.id))
+            .collect(),
+    )
 }
 
-/// One changed gate's line under the report's heading, and a review item per finding it hides.
-fn told(
-    args: &Args,
-    (gate, change): (&Gate, &str),
-    found: &[&Finding],
-    report: &mut CheckDocument,
-    out: &mut String,
-) {
-    if found.is_empty() {
-        return;
+/// The report's heading and one line per changed gate that hides a finding, and a review item
+/// per finding it hides.
+fn told(args: &Args, hidden: Vec<Hidden>, report: &mut CheckDocument, out: &mut String) {
+    if args.text() && !hidden.is_empty() {
+        let _ = writeln!(out, "  REVIEW: {FILENAME} loosens the policy:");
     }
+    for Hidden {
+        gate,
+        change,
+        found,
+    } in hidden
+    {
+        if args.text() {
+            let sites: Vec<String> = found.iter().map(Finding::site).collect();
+            let noun = match found.len() {
+                1 => "finding",
+                _ => "findings",
+            };
+            let _ = writeln!(
+                out,
+                "    {change} hides {} new {noun}: {}",
+                found.len(),
+                sites.join(", ")
+            );
+        }
+        for finding in found {
+            report.review(Review {
+                check: Some(gate.clone()),
+                kind: CONFIG_LOOSENED,
+                text: format!(
+                    "{FILENAME} loosens the policy: {change} hides {}",
+                    finding.site()
+                ),
+                line: finding.line.map_or(Slot::Null, Slot::Is),
+                file: finding.file,
+                reason: Slot::Null,
+                values: None,
+            });
+        }
+    }
+}
+
+/// The note of a changed `klin.json` whose base policy could not be judged, so no review item
+/// says what the change hides. Spec 16.2.
+fn unjudged(args: &Args, why: &Error, report: &mut CheckDocument, out: &mut String) {
+    let note = Note::of_run(
+        CONFIG_LOOSENED,
+        &format!("{FILENAME} changed, and the base's policy could not be judged: {why}"),
+    );
     if args.text() {
-        let sites: Vec<String> = found.iter().map(|finding| finding.site()).collect();
-        let noun = match found.len() {
-            1 => "finding",
-            _ => "findings",
-        };
-        let _ = writeln!(
-            out,
-            "    {change} hides {} new {noun}: {}",
-            found.len(),
-            sites.join(", ")
-        );
+        let _ = writeln!(out, "  NOTE: {}", note.message);
     }
-    for finding in found {
-        report.review(Review {
-            check: Some(gate.name.clone()),
-            kind: CONFIG_LOOSENED,
-            file: finding.file.clone(),
-            line: finding.line.map_or(Slot::Null, Slot::Is),
-            text: format!(
-                "{FILENAME} loosens the policy: {change} hides {}",
-                finding.site()
-            ),
-            reason: Slot::Null,
-            values: None,
-        });
-    }
+    report.note(note);
 }
 
 /// What the change did to one gate's policy, where it changed the gate's section or the

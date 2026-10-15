@@ -2197,8 +2197,10 @@ A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
 `kind` is its reason of section 7.2. Other kinds include the
 0.x note outcomes that stay notes: `unmatched` at the Stop, `derivation`,
-`config`, `window` for what choosing the base found (section 6.5), and
-`no-source-root` for a Stop in a tree whose survey found no source root.
+`config`, `window` for what choosing the base found (section 6.5),
+`no-source-root` for a Stop in a tree whose survey found no source root, and
+`config-loosened` for a changed `klin.json` whose base policy could not be
+judged (section 16.2).
 
 A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail, text}`,
@@ -2790,6 +2792,10 @@ change altered the `klin.json` at the worktree root and the run names no
 4. Each finding they fail that the run's own gates do not fail is a
    `config-loosened` review item. The item names the gate, the site, and the
    change, such as `escapes: false`.
+
+When the base's policy loads but cannot be planned or laid out, the run
+writes a `config-loosened` note that names the error, so a person can tell
+"the change hides nothing" from "klin could not judge the base".
 
 The text report groups the items under one line:
 
