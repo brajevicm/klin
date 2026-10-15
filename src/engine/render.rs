@@ -210,18 +210,8 @@ fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
             );
             new_sites(&heading, failed, detail, out);
         }
-        Ratchet::Worse {
-            unit,
-            failed,
-            asks: false,
-            ..
-        } => worse(unit, failed, out),
-        Ratchet::Worse {
-            unit,
-            failed,
-            asks: true,
-            ..
-        } => asked(unit, failed, out),
+        Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
+        Ratchet::Asked { unit, failed, .. } => asked(unit, failed, out),
         Ratchet::RidesAlong {
             unit,
             condition,
@@ -356,11 +346,11 @@ fn asked(unit: &str, failed: &[Failed], out: &mut String) {
 /// Whether a gate told a question and no failure, so its row says `ASK` and not `FAIL`.
 /// Spec 9.2.
 pub fn asks_only(told: &[Told]) -> bool {
-    let asks = |item: &Told| matches!(item, Told::Ratchet(Ratchet::Worse { asks: true, .. }));
+    let asks = |item: &Told| matches!(item, Told::Ratchet(Ratchet::Asked { .. }));
     let fails = |item: &Told| {
         matches!(
             item,
-            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { asks: false, .. })
+            Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. })
                 | Told::Plain(Plain::PathMissing(_))
         )
     };
@@ -1173,6 +1163,9 @@ fn ratchet_records(said: &Ratchet, out: &mut GateRecords) {
             condition, failed, ..
         } => failed_findings(Outcome::New, condition, failed, out),
         Ratchet::Worse {
+            condition, failed, ..
+        }
+        | Ratchet::Asked {
             condition, failed, ..
         } => failed_findings(Outcome::Worsened, condition, failed, out),
         Ratchet::RidesAlong {

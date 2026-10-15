@@ -328,7 +328,15 @@ fn deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why(
             pattern.marker,
             run.out
         );
+        assert!(
+            run.says("answer each ASK"),
+            "{}: {}",
+            pattern.marker,
+            run.out
+        );
+        assert!(run.says(", 1 asked."), "{}: {}", pattern.marker, run.out);
         assert!(!run.says("FAIL"), "{}: {}", pattern.marker, run.out);
+        assert!(!run.says("failed"), "{}: {}", pattern.marker, run.out);
         assert!(run.says(QUESTION), "{}: {}", pattern.marker, run.out);
         assert!(!run.says("accepted"), "{}: {}", pattern.marker, run.out);
         assert!(!run.says("restore"), "{}: {}", pattern.marker, run.out);
@@ -380,6 +388,27 @@ fn a_new_skip_at_the_stop_is_one_escapes_finding() {
     assert!(run.says("skipped test  test.skip(\"a\""), "{}", run.out);
     assert!(!run.says("inventory"), "{}", run.out);
     assert!(!run.says(QUESTION), "{}", run.out);
+}
+
+/// A question beside a FAIL keeps the FAIL lead, and the summary counts each apart.
+#[test]
+fn a_stop_with_a_fail_and_a_question_keeps_the_fail_lead() {
+    let tree = Tree::new();
+    tree.write(
+        "tests/a.test.ts",
+        "test(\"a\", () => {\n  expect(1).toBe(1);\n});\n\ntest(\"b\", () => {\n  expect(2).toBe(2);\n});\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/a.test.ts",
+        "test.skip(\"a\", () => {\n  expect(1).toBe(1);\n});\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("a quality gate failed"), "{}", run.out);
+    assert!(run.says("  FAIL  escapes"), "{}", run.out);
+    assert!(run.says("  ASK   inventory"), "{}", run.out);
+    assert!(run.says(", 1 failed, 1 asked."), "{}", run.out);
 }
 
 #[test]

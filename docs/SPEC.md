@@ -1351,7 +1351,8 @@ At the Stop:
    counts the gate as `asked` and not as `failed`. A Stop that also holds a
    FAIL keeps the FAIL lead. Pinned by
    `deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`
-   in `tests/inventory.rs`.
+   and `a_stop_with_a_fail_and_a_question_keeps_the_fail_lead` in
+   `tests/inventory.rs`.
 5. An asked deletion is a review item, which the Stop shows as a note. It is
    no reason for a gate block. Any Stop after a gate block, whether it holds a
    question, a FAIL or both, spends gate block 2 only over a changed tree.

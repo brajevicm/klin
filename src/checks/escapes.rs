@@ -206,6 +206,7 @@ pub const KIND: Kind = Kind {
         format_metrics: show,
         nested: None,
         rides_along,
+        worsened: ratchet::Worsened::Fails,
     },
 };
 

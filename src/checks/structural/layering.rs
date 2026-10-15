@@ -1105,6 +1105,7 @@ fn evaluator() -> Evaluator<'static> {
         format_metrics: show,
         nested: None,
         rides_along: ratchet::every_row_blocks,
+        worsened: ratchet::Worsened::Fails,
     }
 }
 

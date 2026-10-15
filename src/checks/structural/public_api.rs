@@ -339,6 +339,7 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
         format_metrics: show,
         nested: Some(held_by_removed_modules),
         rides_along: ratchet::every_row_blocks,
+        worsened: ratchet::Worsened::Fails,
     }
 }
 

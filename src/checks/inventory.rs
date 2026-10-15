@@ -139,7 +139,6 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         gone: went.len(),
     };
     let code = evaluator().evaluate(now, before, accepted, at, Line::new(state, said), out);
-    out.ask_worsened();
     deleted(&went, at, out);
     noted(&paired, out);
     orphaned(&orphans, out);
@@ -366,6 +365,7 @@ fn evaluator() -> Evaluator<'static> {
         format_metrics: show,
         nested: None,
         rides_along: ratchet::every_row_blocks,
+        worsened: ratchet::Worsened::Asks,
     }
 }
 

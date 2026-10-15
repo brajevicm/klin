@@ -700,9 +700,12 @@ pub enum Ratchet {
         unit: String,
         condition: String,
         failed: Vec<Failed>,
-        /// Whether the gate asks about these and does not judge them, as the Stop asks about a
-        /// deleted test. Spec 9.2.
-        asks: bool,
+    },
+    /// What the Stop asks about and does not judge: the deleted tests of spec 9.2.
+    Asked {
+        unit: String,
+        condition: String,
+        failed: Vec<Failed>,
     },
     /// The findings of ride-along rows at `klin check`: review items. Spec 9.6.
     RidesAlong {
@@ -733,7 +736,11 @@ impl Ratchet {
             unit,
             condition,
             failed,
-            ..
+        }
+        | Ratchet::Asked {
+            unit,
+            condition,
+            failed,
         }) = self
         else {
             return None;
@@ -752,7 +759,11 @@ impl Ratchet {
 
     /// Whether this is a new or worsened result with no finding left in it.
     pub fn emptied(&self) -> bool {
-        matches!(self, Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. } if failed.is_empty())
+        matches!(
+            self,
+            Ratchet::New { failed, .. } | Ratchet::Worse { failed, .. } | Ratchet::Asked { failed, .. }
+                if failed.is_empty()
+        )
     }
 }
 
@@ -805,16 +816,6 @@ impl From<Ratchet> for Told {
 impl<'a> Sink<'a> {
     pub fn tell(&mut self, told: impl Into<Told>) {
         self.told.push(told.into());
-    }
-
-    /// Makes every worsened result this gate told a question, which the Stop asks and does not
-    /// judge. Spec 9.2.
-    pub fn ask_worsened(&mut self) {
-        for item in self.told.iter_mut() {
-            if let Told::Ratchet(Ratchet::Worse { asks, .. }) = item {
-                *asks = true;
-            }
-        }
     }
 
     pub fn tell_each<T: Into<Told>>(&mut self, told: impl IntoIterator<Item = T>) {
