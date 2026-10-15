@@ -1295,8 +1295,12 @@ pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
 }
 
 fn unmeasured_said(item: &Unmeasured) -> String {
+    let measured = match item.measured {
+        true => "is still measured",
+        false => "is not measured",
+    };
     format!(
-        "{} is not measured ({}) — {}",
+        "{} {measured} ({}) — {}",
         item.file,
         item.reason.name(),
         item.text
@@ -1365,6 +1369,7 @@ pub fn opened_review(item: &Unmeasured) -> Review {
         line: Slot::Null,
         text: item.text.clone(),
         reason: Slot::Is(item.reason.name().to_string()),
+        values: measured(item),
         ..Review::default()
     }
 }
@@ -1376,8 +1381,16 @@ pub fn limit_note(item: &Unmeasured) -> Note {
         message: unmeasured_said(item),
         coverage: Some(true),
         file: Slot::Is(item.file.clone()),
+        values: measured(item),
         ..Note::default()
     }
+}
+
+/// `{"measured": true}` for a file a gate still measured under a form an attribute gives it, so
+/// a reader of the document does not count it as not measured. Spec 7.2.
+fn measured(item: &Unmeasured) -> Option<Map<String, Value>> {
+    item.measured
+        .then(|| Map::from_iter([("measured".to_string(), Value::Bool(true))]))
 }
 
 /// The review item of an accepted entry of gate `measurement-lost` whose file klin measures

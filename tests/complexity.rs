@@ -2094,3 +2094,26 @@ fn dense_sub_ceiling_lines_keep_every_function_in_both_trees_and_the_survey() {
         );
     }
 }
+
+/// An accepted entry is no site the base holds, so a FAIL does not count it. Spec 10.6.
+#[test]
+fn a_fail_counts_no_accepted_entry_as_held_by_the_base() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "complexity", "file": "src/lib.rs",
+                           "text": "fn g(a: bool) -> i32 { if a { 1 } else { 0 } }", "cc": 2, "lines": 1}],
+             "complexity": { "in": "src", "cc": 1 } }"#,
+    );
+    let body = |name: &str| format!("fn {name}(a: bool) -> i32 {{ if a {{ 1 }} else {{ 0 }} }}\n");
+    tree.write("src/lib.rs", &format!("{}{}", body("f"), body("g")));
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        &format!("{}{}{}", body("f"), body("g"), body("h")),
+    );
+
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("beyond the 2 the base holds"), "{}", run.out);
+}

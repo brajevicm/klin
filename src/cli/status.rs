@@ -1,6 +1,7 @@
 //! `klin status`: the configuration, each host integration, the state directory and the local
 //! window, read without running a check and without writing anything. Spec 11.4, 11.7.
 
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,7 +14,7 @@ use crate::engine::catalogue;
 use crate::sys::error::Error;
 use crate::sys::release::{self, Expected};
 use crate::window::stamp::{Here, Verdict};
-use crate::{hook::journal, sys::state, window::stamp};
+use crate::{hook::journal, hook::turn, sys::state, window::stamp};
 
 const NO_REPOSITORY: &str = "klin status reads a repository, and this is no git repository.";
 
@@ -108,8 +109,9 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     let held = stamp::read(at)?;
     let mut window = json!({
         "verdict": held.verdict.name(),
-        "age_seconds": now().saturating_sub(held.time),
+        "age_seconds": known(held.time).map(|time| now().saturating_sub(time)),
         "open": [],
+        "open_sites": [],
         "unasked": [],
         "error": null,
         "aborted_since": null,
@@ -122,14 +124,65 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     });
     match held.verdict {
         Verdict::Red { open, unasked } => {
+            window["open_sites"] = sites_of(lines, &open).into();
             window["open"] = open.into();
             window["unasked"] = unasked.into();
         }
         Verdict::Unjudged { error, .. } => window["error"] = error.into(),
-        Verdict::Aborted { since } => window["aborted_since"] = since.into(),
+        Verdict::Aborted { since } => window["aborted_since"] = known(since).into(),
         Verdict::Pending | Verdict::Green => {}
     }
     Some(window)
+}
+
+/// Where the newest Stop that recorded each open finding id found it, as file and line, or the
+/// id where no Stop the journal holds recorded it. Findings that share an id take that Stop's
+/// sites in order, so each keeps its own line. Spec 11.4.
+fn sites_of(lines: &[Value], open: &[String]) -> Vec<String> {
+    let found = newest_sites(lines, open.iter().map(String::as_str).collect());
+    let mut taken: HashMap<&str, usize> = HashMap::new();
+    open.iter()
+        .map(|id| {
+            let nth = taken.entry(id.as_str()).or_default();
+            let sites = found
+                .get(id.as_str())
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            let site = sites.get(*nth).or(sites.last()).cloned();
+            *nth += 1;
+            site.unwrap_or_else(|| id.clone())
+        })
+        .collect()
+}
+
+/// Every site of each wanted id in the newest Stop that recorded it. One pass from the newest
+/// line, which stops once every id has its sites.
+fn newest_sites<'a>(lines: &'a [Value], wanted: HashSet<&str>) -> HashMap<&'a str, Vec<String>> {
+    let mut found: HashMap<&str, Vec<String>> = HashMap::new();
+    let stops = lines.iter().rev().filter(|line| line["kind"] == "stop");
+    for findings in stops.filter_map(|line| line["result"]["findings"].as_array()) {
+        if found.len() == wanted.len() {
+            break;
+        }
+        let mut here: HashMap<&str, Vec<String>> = HashMap::new();
+        for finding in findings {
+            if let Some(id) = finding["id"].as_str().filter(|id| wanted.contains(id)) {
+                here.entry(id).or_default().push(site(finding, id));
+            }
+        }
+        for (id, sites) in here {
+            found.entry(id).or_insert(sites);
+        }
+    }
+    found
+}
+
+fn site(finding: &Value, id: &str) -> String {
+    match (word(finding, "file"), finding["line"].as_u64()) {
+        ("", _) => id.to_string(),
+        (file, Some(line)) if line > 0 => format!("{file}:{line}"),
+        (file, _) => file.to_string(),
+    }
 }
 
 /// The last advisory Stop the journal records and its reason, also one that lost the lock and
@@ -223,27 +276,34 @@ fn local_text(document: &Value, out: &mut String) {
     window_text(window, out);
     let stop = &document["last_stop"];
     if let Some(verdict) = stop["verdict"].as_str() {
-        let _ = writeln!(out, "last stop (historical): {verdict} at {}", stop["time"]);
+        let _ = writeln!(
+            out,
+            "last stop (historical): {verdict}{}",
+            when(&stop["time"])
+        );
     }
 }
 
 /// The stamp's verdict and age, and what keeps the window red: "nothing judged" for an
 /// unjudged window, never green. Spec 6.6, 11.4.
 fn window_text(window: &Value, out: &mut String) {
-    let age = &window["age_seconds"];
+    let stamped = window["age_seconds"]
+        .as_u64()
+        .map(|age| format!(", stamped {}", turn::age(age)))
+        .unwrap_or_default();
     let _ = match window["verdict"].as_str() {
         Some("unjudged") => writeln!(
             out,
-            "window: nothing judged, stamped {age} s ago — {}",
+            "window: nothing judged{stamped} — {}",
             word(window, "error")
         ),
         Some("aborted") => writeln!(
             out,
-            "window: aborted since {}, stamped {age} s ago — klin failed during a stop, and \
+            "window: aborted{}{stamped} — klin failed during a stop, and \
              the next stop that measures replaces it",
-            window["aborted_since"]
+            when(&window["aborted_since"])
         ),
-        Some(verdict) => writeln!(out, "window: {verdict}, stamped {age} s ago"),
+        Some(verdict) => writeln!(out, "window: {verdict}{stamped}"),
         None => writeln!(out, "window: none, no session has opened one"),
     };
     history_text(window, out);
@@ -251,7 +311,7 @@ fn window_text(window: &Value, out: &mut String) {
         let _ = writeln!(out, "  notice: {}", word(notice, "message"));
     }
     for (key, label) in [
-        ("open", "open finding"),
+        ("open_sites", "open finding"),
         ("unasked", "deleted test not asked about"),
     ] {
         for item in window[key].as_array().into_iter().flatten() {
@@ -269,10 +329,23 @@ fn history_text(window: &Value, out: &mut String) {
     if let Some(reason) = advisory["reason"].as_str() {
         let _ = writeln!(
             out,
-            "  last advisory stop: {reason} at {}",
-            advisory["time"]
+            "  last advisory stop: {reason}{}",
+            when(&advisory["time"])
         );
     }
+}
+
+/// How long ago a journal time was, after a comma, and nothing where the time is unknown.
+fn when(time: &Value) -> String {
+    time.as_u64()
+        .and_then(known)
+        .map(|time| format!(", {}", turn::age(now().saturating_sub(time))))
+        .unwrap_or_default()
+}
+
+/// A time a stamp or a journal line holds, where zero is the default of a missing one.
+fn known(time: u64) -> Option<u64> {
+    (time > 0).then_some(time)
 }
 
 fn word<'a>(value: &'a Value, key: &str) -> &'a str {

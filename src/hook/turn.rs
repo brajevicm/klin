@@ -731,7 +731,11 @@ fn merged(held: &[String], more: &[String]) -> Vec<String> {
 /// How long ago the stamp was taken, from the time the stamp holds. An age rather than a date,
 /// because it answers the only question a person reading a stop's report asks of it.
 fn ago(time: u64) -> String {
-    let seconds = now().saturating_sub(time);
+    age(now().saturating_sub(time))
+}
+
+/// An age in seconds in the person's words.
+pub fn age(seconds: u64) -> String {
     match seconds {
         0..60 => "just now".to_string(),
         60..3600 => format!("{} minute(s) ago", seconds / 60),

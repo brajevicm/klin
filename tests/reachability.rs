@@ -1165,3 +1165,17 @@ fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_b
         remedies(&tree)
     );
 }
+
+/// A FAIL counts only the failing sites the base holds, not every base member it matched
+/// against. Spec 10.6.
+#[test]
+fn a_fail_counts_no_reached_base_member_as_held() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
+
+    let run = tree.run(&["check", "reachability"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("beyond the 0 the base holds"), "{}", run.out);
+}

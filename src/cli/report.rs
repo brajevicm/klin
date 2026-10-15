@@ -345,19 +345,28 @@ impl Evidence {
         let gaps = held(line, "reviews")
             .iter()
             .filter(|item| word(item, "kind") == "unmeasured")
-            .map(|item| (&item["check"], word(item, "reason"), word(item, "file")));
+            .map(|item| {
+                (
+                    &item["check"],
+                    word(item, "reason"),
+                    word(item, "file"),
+                    item,
+                )
+            });
         let limits = held(line, "notes")
             .iter()
             .filter(|note| note["coverage"] == true)
-            .map(|note| (&note["check"], word(note, "kind"), word(note, "file")));
+            .map(|note| (&note["check"], word(note, "kind"), word(note, "file"), note));
         let lost = held(line, "findings")
             .iter()
             .filter(|finding| word(finding, "kind") == MEASUREMENT_LOST)
             .map(|finding| {
                 let reason = word(&finding["values"], "reason");
-                (&finding["check"], reason, word(finding, "file"))
+                (&finding["check"], reason, word(finding, "file"), finding)
             });
-        for (check, reason, file) in gaps.chain(limits).chain(lost) {
+        let gaps = gaps.filter(|(_, _, _, item)| !measured(item));
+        let limits = limits.filter(|(_, _, _, note)| !measured(note));
+        for (check, reason, file, _) in gaps.chain(limits).chain(lost) {
             let same =
                 |one: &Unmeasured| one.check == *check && one.reason == reason && one.file == file;
             upsert(&mut self.not_measured, same, || Unmeasured {
@@ -369,6 +378,12 @@ impl Evidence {
             .last_seen = time;
         }
     }
+}
+
+/// Whether a note or review item names a file a gate still measured under a form an attribute
+/// gives it. Spec 7.2.
+fn measured(item: &Value) -> bool {
+    item["values"]["measured"] == true
 }
 
 /// The entry of `list` that `same` finds, or a new one `made` pushes, so each key is kept once.
@@ -479,11 +494,9 @@ fn deleted(file: &str, line: Option<u64>, text: &str) -> String {
     let clipped = clip(text);
     let site = clipped.trim_end_matches(['{', ':', ' ']);
     match (site.is_empty(), line.filter(|line| *line > 0)) {
-        (true, _) => format!("{file} deleted. The agent said why."),
-        (false, Some(line)) => {
-            format!("a test deleted from {file}:{line}, {site}. The agent said why.")
-        }
-        (false, None) => format!("a test deleted from {file}, {site}. The agent said why."),
+        (true, _) => format!("{file} deleted."),
+        (false, Some(line)) => format!("a test deleted from {file}:{line}, {site}."),
+        (false, None) => format!("a test deleted from {file}, {site}."),
     }
 }
 

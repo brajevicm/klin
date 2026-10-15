@@ -939,7 +939,9 @@ finding by making a file unmeasurable.
   JSON is `built-in`. The row appears in a run that holds a lost file.
 - **Other rows.** The capabilities that read the file count it as not
   measured and add no note for it. A form that an attribute gives is the
-  exception: those capabilities still measure the file's bytes. A capability reports no finding that
+  exception: those capabilities still measure the file's bytes, and its note
+  says the file "is still measured", never "is not measured". Pinned by
+  `the_note_of_an_inherited_binary_attribute_says_the_file_is_still_measured`. A capability reports no finding that
   depends only on the contents it could not read, such as a `public-api`
   item that the file declared at the base.
 - **Remedy.** For a parse, the remedy names the line and column of the first
@@ -978,7 +980,10 @@ the exit code.
 **4. A coverage note** is klin's own limit that the change did not open. It
 never makes the measurement incomplete, never blocks and never keeps the
 stamp. The coverage counts and the summary still count its file as not
-measured.
+measured, except a file that a capability still measured under a form an
+attribute gives it and that is not lost. That note, or the review item of such an opened gap,
+holds `values: {"measured": true}`, the check document's `not_measured`
+leaves the file out, and `klin report` does not list it as not measured.
 
 - Any reason of the opened-gap table that the base holds at the same site
   with the same reason.
@@ -1612,6 +1617,17 @@ When it leaves out new sites, it says how many and that `klin check
 --changed` lists every one. Repeated evidence that a family identifies safely is shown
 once.
 
+A FAIL's heading counts the new sites "beyond the N the base holds". N counts
+only the failing sites the base holds. An accepted entry is not one, and
+neither is a base member that a gate records to match against but that
+passes, such as a reached file. A gate whose ratcheted values do not say
+alone whether a site fails names its own test: `lockfile` counts a base
+dependency only where it is unlocked or stale, so a locked range is not
+counted. Pinned by
+`a_fail_counts_no_reached_base_member_as_held`,
+`a_fail_counts_no_accepted_entry_as_held_by_the_base` and
+`a_fail_counts_no_passing_range_dependency_as_held_by_the_base`.
+
 The Stop text leaves out provenance that does not change the repair:
 
 - a new site does not say that nothing matched it;
@@ -1652,6 +1668,14 @@ The Stop keeps these 0.x shapes, with vNext command names:
   it;
 - the turn-end line, the weekly line, and the `public-api` wording of ADR
   0054 name `klin report`;
+- the turn-end line counts only the regressions that the stops of the
+  current prompt flagged. A regression that an earlier prompt left red, and
+  that no stop of this prompt flagged, is not counted again. Pinned by
+  `the_turn_line_counts_only_the_current_prompt`;
+- the weekly line does not wait for a turn line: it is told when it is due
+  and the last seven days caught a regression, also at a stop whose turn line
+  says nothing. Pinned by
+  `a_due_weekly_line_is_told_at_a_clean_prompt_after_a_blocked_one`;
 - the `no-prompt-event` note says that klin grants no fresh gate blocks until
   the host's prompt hook runs `klin __agent event`.
 
@@ -1975,6 +1999,14 @@ Text output:
     reason, and the non-blocking notices of the open window that only the
     journal holds;
   - the last Stop, labeled as historical.
+- The text names each open finding by file and line, from the newest Stop
+  in the journal that recorded its id, and by its id where no such Stop
+  remains. Findings that share an id take that Stop's sites in order, so
+  each keeps its own line. It prints each time as an age, such as "5 minute(s) ago", and
+  leaves out a time the stamp or the journal does not hold. Pinned by
+  `status_names_an_open_finding_by_its_site_and_each_time_by_its_age` and
+  `status_prints_no_age_for_a_stamp_without_a_time` and
+  `status_names_each_line_of_open_findings_that_share_an_id`.
 - It never claims that the current working tree passes.
 - Integration states:
 
@@ -2182,7 +2214,7 @@ into a `measurement-lost` finding, a review item or a coverage note.
 `schema_version`, `command`, `klin {version, latest_known, update_available, updated_from, auto_update}`, `config {path, present,
 valid, error}`, `integrations [{host, scope, route, state, detail}]`,
 `state_dir`, `cache_dir`, `window {verdict, age_seconds, open [finding
-ids], unasked [deleted-test sites], error, aborted_since,
+ids], open_sites [the same findings as file:line], unasked [deleted-test sites], error, aborted_since,
 default_branch, last_advisory {time, reason} or null, notices [{time,
 message}]}` or null,
 and `last_stop {time, verdict, historical: true}` or null.
@@ -2196,11 +2228,12 @@ outside `CI`, without `KLIN_NO_UPDATE_CHECK`, and with auto-update on
 (section 11.9).
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
-`green` (section 6.6). `open` and `unasked` are empty unless the verdict is
+`green` (section 6.6). `open`, `open_sites` and `unasked` are empty unless the verdict is
 `red`. Each `unasked` entry is the site as `file:line  text` of a deleted test, so a gate
 that errors adds none. `error` is null
 unless the verdict is `unjudged`, and `aborted_since` is null unless it is
-`aborted`. The text prints an `unjudged` window as "nothing judged" with its
+`aborted`. `age_seconds` and `aborted_since` are null where the stamp holds
+no time. The text prints an `unjudged` window as "nothing judged" with its
 error.
 
 #### The `report` document
@@ -2563,7 +2596,9 @@ it counts under every scope.
 - The counted unit is the Regression of B.11.5, keyed by finding `id`. A
   fix counts only when comparable (section 8.3).
 - Review items are keyed by `check`, `kind`, `file` and `text`.
-- It never says who authored a fix.
+- It never says who authored a fix. klin never reads the agent's reply, so
+  the audit trail makes no claim about it. Pinned by
+  `a_deleted_test_klin_let_through_is_a_question_and_stays_out_of_the_count`.
 - Exit 0 whatever it finds. Exit 2 on an invalid invocation.
 
 ### 13.3 The `report` document

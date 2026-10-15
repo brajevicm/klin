@@ -225,6 +225,9 @@ pub struct Unmeasured {
     pub at: Option<(u64, u64)>,
     pub text: String,
     pub gates: Vec<String>,
+    /// Whether the capabilities still measured the file's bytes, as they do for a form an
+    /// attribute gives. Spec 7.2.
+    pub measured: bool,
 }
 
 /// Every file the gates of one run reported, each sorted once against the base, in path order.
@@ -248,7 +251,14 @@ pub fn sorted(
         .map(|(file, seen)| {
             let mut gates: Vec<String> = seen.iter().map(|(gate, _)| gate.clone()).collect();
             gates.dedup();
-            let (class, reason, at, text) = one(project, against, &file, &seen);
+            let Sorted {
+                class,
+                reason,
+                at,
+                text,
+            } = one(project, against, &file, &seen);
+            let measured =
+                class != Class::Lost && seen.iter().any(|(_, seen)| matches!(seen, Seen::Form(..)));
             Unmeasured {
                 language: syntax::language_of(&file).map(|language| language.name),
                 file,
@@ -257,6 +267,7 @@ pub fn sorted(
                 at,
                 text,
                 gates,
+                measured,
             }
         })
         .collect();
@@ -285,7 +296,14 @@ fn in_place<'a>(
     }
 }
 
-type Sorted = (Class, Cause, Option<(u64, u64)>, String);
+/// One file as the run sorts it: its class, the reason its class names it by, the line and
+/// column of a parse's first error node, and the words a person reads.
+struct Sorted {
+    class: Class,
+    reason: Cause,
+    at: Option<(u64, u64)>,
+    text: String,
+}
 
 /// One file, by the strongest thing a gate saw: a read that failed, then a manifest, then a
 /// file that left a scope.
@@ -338,7 +356,12 @@ fn manifest(class: Class, why: &str) -> Sorted {
         Class::Lost => Cause::Manifest,
         Class::Opened | Class::Limit => Cause::Unreadable,
     };
-    (class, reason, None, why.to_string())
+    Sorted {
+        class,
+        reason,
+        at: None,
+        text: why.to_string(),
+    }
 }
 
 /// A file the working tree's `.gitattributes` make not text: klin's own limit where the base's
@@ -369,7 +392,12 @@ fn formed(
         Class::Lost => Cause::Form,
         Class::Opened | Class::Limit => reason,
     };
-    (class, reason, None, said.to_string())
+    Sorted {
+        class,
+        reason,
+        at: None,
+        text: said.to_string(),
+    }
 }
 
 /// What the base's own `.gitattributes` gave the path the base held this file at.
@@ -436,7 +464,12 @@ fn unread(project: &Project, against: Option<(&[Change], &str)>, file: &str) -> 
         Class::Lost => reason,
         Class::Opened | Class::Limit => opened_reason(now),
     };
-    (class, reason, at, said)
+    Sorted {
+        class,
+        reason,
+        at,
+        text: said,
+    }
 }
 
 /// The reason an opened gap or a coverage note names a read that failed by. Spec 7.2.
@@ -516,12 +549,12 @@ fn left(
     whys: &[Left],
 ) -> Sorted {
     if linked(project.root(), file) {
-        return (
-            Class::Lost,
-            Cause::Form,
-            None,
-            "it is a symbolic link now, so it is not text".to_string(),
-        );
+        return Sorted {
+            class: Class::Lost,
+            reason: Cause::Form,
+            at: None,
+            text: "it is a symbolic link now, so it is not text".to_string(),
+        };
     }
     let facts = whys.iter().find(|why| **why != Left::Excluded);
     let class = match (against, facts) {
@@ -529,12 +562,12 @@ fn left(
         (Some(_), Some(_)) => Class::Opened,
     };
     let why = facts.copied().unwrap_or(Left::Excluded);
-    (
+    Sorted {
         class,
-        Cause::LeftScope,
-        None,
-        format!("measured at the base and not now — {}", why.text()),
-    )
+        reason: Cause::LeftScope,
+        at: None,
+        text: format!("measured at the base and not now — {}", why.text()),
+    }
 }
 
 fn linked(root: &Path, file: &str) -> bool {

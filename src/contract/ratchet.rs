@@ -486,6 +486,10 @@ pub struct Evaluator<'a> {
     /// What a finding whose value rose is: a failure, or a question the Stop asks and does
     /// not judge. Spec 9.2.
     pub worsened: Worsened,
+    /// Whether a base entry's values make it a failing site, for a gate where a ratcheted value
+    /// above zero does not say so. `None` reads any ratcheted value other than zero as failing.
+    /// Spec 10.6.
+    pub fails: Option<fn(&Values) -> bool>,
 }
 
 /// What a gate makes of a finding whose value rose. Spec 9.2.
@@ -517,9 +521,28 @@ impl Evaluator<'_> {
             .chain(prior.iter().map(Finding::entry))
             .collect();
         let (findings, entries) = restrict(findings, entries, at.only);
-        let held = entries.len();
+        let held = entries
+            .iter()
+            .filter(|entry| !is_accepted(entry) && self.fails(entry))
+            .count();
         let comparison = judge(findings, entries, self.metrics);
         report(&comparison, self, held, line, at, out)
+    }
+
+    /// Whether a base entry is a failing site: the gate's own test where it has one, and
+    /// otherwise any ratcheted value other than zero, because a gate that records every base
+    /// member, passing ones included, writes a zero for each ratcheted value of a passing one.
+    /// Spec 10.6.
+    fn fails(&self, entry: &Values) -> bool {
+        if let Some(fails) = self.fails {
+            return fails(entry);
+        }
+        self.metrics.is_empty()
+            || self.metrics.iter().any(|metric| {
+                entry
+                    .get(*metric)
+                    .is_some_and(|value| value.as_u64() != Some(0))
+            })
     }
 }
 

@@ -363,6 +363,11 @@ fn a_binary_attribute_the_change_gives_a_measured_file_is_a_lost_form() {
 
     assert_eq!(code, 1, "{report}");
     assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+    assert_eq!(report["not_measured"], 1, "{report}");
+
+    assert_eq!(stop(&tree).code, 2);
+    let since = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(since["counts"]["not_measured"], 1, "{since}");
 }
 
 #[test]
@@ -1226,4 +1231,38 @@ fn global_used_as_an_identifier_stays_measured() {
         "ts",
         "declare const global: { fetch: unknown };\nglobal.fetch = 1;\nexport class Wrapped extends global.constructor {}\n",
     );
+}
+
+/// An attribute never takes a file out of measurement, so the note of a form an attribute gives
+/// does not say the file is not measured. Spec 7.2.
+#[test]
+fn the_note_of_an_inherited_binary_attribute_says_the_file_is_still_measured() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    tree.write("src/art.rs", CLEAN);
+    tree.write(".gitattributes", "src/art.rs binary\n");
+    tree.base();
+
+    let run = tree.run(&["check"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: src/art.rs is still measured (not-text) — its attributes make it binary"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("src/art.rs is not measured"), "{}", run.out);
+
+    let (_, report) = checked(&tree, &[]);
+    assert_eq!(report["not_measured"], 0, "{report}");
+    let note = list(&report, "notes")
+        .iter()
+        .find(|note| note["file"] == "src/art.rs")
+        .unwrap_or_else(|| panic!("no note for src/art.rs in {report}"));
+    assert_eq!(note["values"]["measured"], true, "{report}");
+
+    assert_eq!(stop(&tree).code, 0);
+    let since = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(since["counts"]["not_measured"], 0, "{since}");
 }

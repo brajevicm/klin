@@ -572,3 +572,87 @@ fn the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest() {
     let check = tree.run(&["check", "--changed"]);
     assert_eq!(sites(&check.out), 25, "{}", check.out);
 }
+
+/// `klin status` names each open finding by file and line, and each time as an age a person
+/// reads. Spec 11.4.
+#[test]
+fn status_names_an_open_finding_by_its_site_and_each_time_by_its_age() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    tree.write(
+        "src/lib.rs",
+        "pub fn kept() -> u8 {\n    1\n}\n\npub fn knot(a: bool) -> u8 {\n    if a { 1 } else { 0 }\n}\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let status = tree.run(&["status"]);
+
+    assert_eq!(status.code, 0, "{}", status.out);
+    assert!(status.says("open finding: src/lib.rs:5"), "{}", status.out);
+    assert!(
+        status.says("window: red, stamped just now"),
+        "{}",
+        status.out
+    );
+    assert!(
+        status.says("last stop (historical): red, just now"),
+        "{}",
+        status.out
+    );
+    assert_eq!(
+        window(&tree)["open_sites"],
+        serde_json::json!(["src/lib.rs:5"])
+    );
+}
+
+/// A stamp that holds no time prints no age, and its JSON age is null. Spec 11.4.
+#[test]
+fn status_prints_no_age_for_a_stamp_without_a_time() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    tree.write(
+        "src/lib.rs",
+        "pub fn knot(a: bool) -> u8 {\n    if a { 1 } else { 0 }\n}\n",
+    );
+    assert_eq!(stop(&tree).code, 2);
+    let at = tree.path(".git/klin/turn");
+    let mut stamp: Value = serde_json::from_str(&std::fs::read_to_string(&at).unwrap()).unwrap();
+    stamp.as_object_mut().unwrap().remove("time");
+    std::fs::write(&at, stamp.to_string()).unwrap();
+
+    let status = tree.run(&["status"]);
+
+    assert_eq!(status.code, 0, "{}", status.out);
+    assert!(status.says("window: red\n"), "{}", status.out);
+    assert_eq!(window(&tree)["age_seconds"], Value::Null);
+}
+
+/// Two open findings that share an id, the same text twice in one file, each keep their own line
+/// in `klin status`. Spec 11.4.
+#[test]
+fn status_names_each_line_of_open_findings_that_share_an_id() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    let knot = "    fn knot(a: bool) -> u8 {\n        if a { 1 } else { 0 }\n    }\n";
+    tree.write(
+        "src/lib.rs",
+        &format!("pub struct A;\nimpl A {{\n{knot}}}\n\npub struct B;\nimpl B {{\n{knot}}}\n"),
+    );
+    assert_eq!(stop(&tree).code, 2);
+    let held = window(&tree);
+    let open = held["open"].as_array().cloned().unwrap_or_default();
+    let sites = held["open_sites"].as_array().cloned().unwrap_or_default();
+    let shared: Vec<&Value> = open
+        .iter()
+        .zip(&sites)
+        .filter(|(id, _)| open.iter().filter(|other| other == id).count() == 2)
+        .map(|(_, site)| site)
+        .collect();
+    assert!(shared.len() >= 2, "no two findings share an id: {held}");
+    assert_eq!(
+        shared[..2],
+        [
+            &serde_json::json!("src/lib.rs:3"),
+            &serde_json::json!("src/lib.rs:10")
+        ],
+        "{held}"
+    );
+}
