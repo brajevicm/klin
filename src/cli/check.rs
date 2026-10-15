@@ -155,10 +155,15 @@ fn loosened(
     let Some(judged) = under_base(args, project, window) else {
         return;
     };
-    let failing = report.reported();
-    match hidden_by_gate(args, (project, &judged), window, &failing) {
-        Ok(hidden) => told(args, hidden, report, out),
-        Err(why) => unjudged(args, &why, report, out),
+    let failing: Vec<(String, Option<u64>)> = report
+        .failing_sites()
+        .into_iter()
+        .map(|(id, line)| (id.to_string(), line))
+        .collect();
+    let (hidden, erred) = hidden_by_gate(args, (project, &judged), window, &failing);
+    told(args, hidden, report, out);
+    if let Some(why) = erred {
+        unjudged(args, &why, report, out);
     }
 }
 
@@ -190,18 +195,22 @@ fn under_base(args: &Args, project: &Project, window: &Window) -> Option<Project
     Some(judged)
 }
 
-/// Each changed gate that hides a finding, in the base plan's order, with what it hides.
+/// Each changed gate that hides a finding, in the base plan's order, with what it hides, and the
+/// error that kept the base's policy from being judged whole.
 fn hidden_by_gate(
     args: &Args,
     (project, judged): (&Project, &Project),
     window: &Window,
-    failing: &[String],
-) -> Result<Vec<Hidden>, Error> {
-    let plan = Plan::of(judged)?;
+    failing: &[(String, Option<u64>)],
+) -> (Vec<Hidden>, Option<Error>) {
+    let plan = match Plan::of(judged) {
+        Ok(plan) => plan,
+        Err(why) => return (Vec::new(), Some(why)),
+    };
     let changed = changed_gates(args, (&judged.config, &project.config), &plan);
     let gates: Vec<&Gate> = changed.iter().map(|(gate, _)| *gate).collect();
-    let mut hidden = hidden(args, (judged, &gates), window, failing)?;
-    Ok(changed
+    let (mut hidden, erred) = hidden(args, (judged, &gates), window, failing);
+    let grouped = changed
         .into_iter()
         .filter_map(|(gate, change)| {
             let found: Vec<Finding> = hidden
@@ -213,7 +222,8 @@ fn hidden_by_gate(
                 found,
             })
         })
-        .collect())
+        .collect();
+    (grouped, erred)
 }
 
 /// The gates of the base's plan the run selects whose policy the change altered, each with
@@ -230,25 +240,32 @@ fn changed_gates<'a>(
         .collect()
 }
 
-/// The findings `gates` fail under the base's policy, over the run's window, that the run itself
-/// does not fail.
+/// The findings `gates` fail under the base's policy, over the run's window, at a site the run
+/// itself does not fail, and the first error of a gate that could not run. Both runs measure
+/// the one working tree, so an id and a line name one site.
 fn hidden(
     args: &Args,
     (judged, gates): (&Project, &[&Gate]),
     window: &Window,
-    failing: &[String],
-) -> Result<Vec<Finding>, Error> {
+    failing: &[(String, Option<u64>)],
+) -> (Vec<Finding>, Option<Error>) {
     if gates.is_empty() {
-        return Ok(Vec::new());
+        return (Vec::new(), None);
     }
-    let against = against(args, gates, judged, Some(window), &mut String::new())
-        .map_err(|fault| fault.error)?;
-    Ok(
-        CheckDocument::failing_under(args, (judged, gates), &against)
-            .into_iter()
-            .filter(|finding| !failing.contains(&finding.id))
-            .collect(),
-    )
+    let against = match against(args, gates, judged, Some(window), &mut String::new()) {
+        Ok(against) => against,
+        Err(fault) => return (Vec::new(), Some(fault.error)),
+    };
+    let (found, erred) = CheckDocument::failing_under(args, (judged, gates), &against);
+    let hidden = found
+        .into_iter()
+        .filter(|finding| {
+            !failing
+                .iter()
+                .any(|(id, line)| *id == finding.id && *line == finding.line)
+        })
+        .collect();
+    (hidden, erred)
 }
 
 /// The report's heading and one line per changed gate that hides a finding, and a review item

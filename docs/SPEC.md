@@ -2789,13 +2789,16 @@ change altered the `klin.json` at the worktree root and the run names no
 2. It selects each gate of the base's plan whose section, or whose `accepted`
    entries, the change altered, within the run's own selection.
 3. It runs those gates under the base's policy, over the same window.
-4. Each finding they fail that the run's own gates do not fail is a
-   `config-loosened` review item. The item names the gate, the site, and the
+4. Each finding they fail at a site the run's own gates do not fail is a
+   `config-loosened` review item. Both runs measure one working tree, so a
+   finding's id and line name its site, and two findings that share an id
+   (the same text twice in one file) stay apart. The item names the gate, the site, and the
    change, such as `escapes: false`.
 
-When the base's policy loads but cannot be planned or laid out, the run
-writes a `config-loosened` note that names the error, so a person can tell
-"the change hides nothing" from "klin could not judge the base".
+When the base's policy loads but cannot be planned or laid out, or a gate
+errs under it, the run writes a `config-loosened` note that names the first
+error, so a person can tell "the change hides nothing" from "klin could not
+judge the base". The review items of the gates that ran stay.
 
 The text report groups the items under one line:
 

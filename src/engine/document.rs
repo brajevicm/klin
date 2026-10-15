@@ -787,16 +787,26 @@ impl CheckDocument {
     }
 
     /// The findings `wanted` fail under `project`'s policy, run apart from any document a
-    /// person reads. Spec 16.2.
+    /// person reads, and the first error of a gate that could not run. Spec 16.2.
     pub fn failing_under(
         args: &Args,
         (project, wanted): (&Project, &[&Gate]),
         against: &Against,
-    ) -> Vec<Finding> {
+    ) -> (Vec<Finding>, Option<Error>) {
         let mut apart = CheckDocument::default();
         apart.gates(args, (project, wanted), against, &mut String::new());
+        let erred = apart.first_problem();
         apart.findings.retain(Finding::failing);
-        apart.findings
+        (apart.findings, erred)
+    }
+
+    /// The first error of the run, a check's included.
+    fn first_problem(&self) -> Option<Error> {
+        let problem = self.problems.first()?;
+        Some(Error(match &problem.check {
+            Some(check) => format!("{check}: {}", problem.message),
+            None => problem.message.clone(),
+        }))
     }
 
     /// A run-scope error, which stops the run before any capability measures. Spec 7.3.
@@ -811,11 +821,8 @@ impl CheckDocument {
     /// error of the run, a check's included, where one kept any capability from measuring, and
     /// why the measurement is incomplete where it is, because then no floor is known. Spec 11.2.
     pub fn floor(&self) -> Result<Vec<Floor>, Error> {
-        if let Some(problem) = self.problems.first() {
-            return Err(Error(match &problem.check {
-                Some(check) => format!("{check}: {}", problem.message),
-                None => problem.message.clone(),
-            }));
+        if let Some(error) = self.first_problem() {
+            return Err(error);
         }
         if self.totals().incomplete {
             return Err(Error(match self.holes.first() {
@@ -896,6 +903,16 @@ impl CheckDocument {
 
     pub fn grammar_lag(&self) -> bool {
         self.grammar_lag
+    }
+
+    /// The id and line of every finding the run failed, which tell apart the findings that share
+    /// an id: the same text more than once in one file. Spec 16.2.
+    pub fn failing_sites(&self) -> Vec<(&str, Option<u64>)> {
+        self.findings
+            .iter()
+            .filter(|finding| finding.failing())
+            .map(|finding| (finding.id.as_str(), finding.line))
+            .collect()
     }
 
     /// The site id of every finding the run failed, which a stop that blocks records as asked.

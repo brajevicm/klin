@@ -189,3 +189,69 @@ fn a_base_policy_that_cannot_be_judged_says_so_in_a_note() {
         run.out
     );
 }
+
+#[test]
+fn an_accepted_entry_for_one_of_two_same_text_sites_names_the_site_it_holds() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    tree.write("src/lib.rs", "pub fn a() {}\n");
+    tree.base();
+    let knot = "    fn knot(a: bool) -> u8 {\n        if a { 1 } else { 0 }\n    }\n";
+    tree.write(
+        "src/b.rs",
+        &format!("pub struct A;\nimpl A {{\n{knot}}}\npub struct B;\nimpl B {{\n{knot}}}\n"),
+    );
+    tree.write(
+        "klin.json",
+        r#"{"complexity": {"in": "src", "cc": 1},
+            "accepted": [{"gate": "complexity", "file": "src/b.rs",
+                          "text": "fn knot(a: bool) -> u8 {", "cc": 2, "lines": 3,
+                          "reason": "kept for the migration"}]}"#,
+    );
+
+    let run = tree.run(&["check", "complexity", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = run.json();
+    let failing: Vec<&Value> = report["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|finding| finding["outcome"] != "held")
+        .collect();
+    assert_eq!(failing.len(), 1, "{report}");
+    let hidden = loosened(&report);
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "src/b.rs", "{report}");
+    assert_ne!(hidden[0]["line"], failing[0]["line"], "{report}");
+}
+
+#[test]
+fn a_gate_that_errs_under_the_base_policy_adds_a_note_beside_the_items_of_the_others() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"escapes": {"in": "src"}, "complexity": {"in": "src"},
+            "accepted": [{"gate": "complexity", "file": "src/a.ts",
+                          "text": "export const a = 1;", "reason": "no values"}]}"#,
+    );
+    tree.write("src/a.ts", CLEAN);
+    tree.base();
+    tree.write("klin.json", r#"{"escapes": false}"#);
+    tree.write("src/b.ts", ESCAPED);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let hidden = loosened(&report);
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "src/b.ts", "{report}");
+    let unjudged: Vec<&Value> = report["notes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|note| note["kind"] == "config-loosened")
+        .collect();
+    assert_eq!(unjudged.len(), 1, "{report}");
+    let said = unjudged[0]["message"].as_str().unwrap_or_default();
+    assert!(said.contains("does not give a number"), "{said}");
+}
