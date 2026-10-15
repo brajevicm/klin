@@ -1572,7 +1572,7 @@ fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
     assert_eq!(run.code, 0, "{}", run.out);
     let lines: Vec<&str> = run.out.lines().collect();
     assert_eq!(
-        lines[lines.len() - 2..],
+        lines[lines.len() - 3..lines.len() - 1],
         [
             "klin now holds today's debt as the floor: 2 escape hatches.",
             "Only new problems block. Blind spots here: lockfile (0 of 1 files judged), \
@@ -1582,6 +1582,26 @@ fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
         "{}",
         run.out
     );
+}
+
+/// A repository setup ends by naming the next step, as a request to the agent rather than a
+/// slash command, because each host invokes a skill its own way. #593.
+#[test]
+fn setup_ends_by_naming_the_request_to_tailor_klin_json() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+
+    for _ in 0..2 {
+        let run = tree.run(&["setup", "--host", "claude"]);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert_eq!(
+            run.out.lines().last(),
+            Some("Next: ask your agent to tailor klin.json to this repository."),
+            "{}",
+            run.out
+        );
+    }
 }
 
 /// A tree with no debt says so, rather than naming an empty floor. #587.

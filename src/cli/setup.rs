@@ -49,6 +49,10 @@ const NO_REPOSITORY: &str = "klin setup writes a repository's own files, and thi
     repository. Run it inside one, or run klin setup --user --host NAME to set up the host \
     files of one person on this machine.";
 
+/// The step after setup, named as a request because each host invokes a skill its own way.
+/// Spec 11.2, #593.
+const NEXT: &str = "Next: ask your agent to tailor klin.json to this repository.";
+
 const NO_HOME: &str = "--user writes the host files of one person on this machine, and this \
     system names no home directory.";
 
@@ -98,6 +102,9 @@ fn closed(scope: &Scope, wrote_hooks: bool, out: &mut String) {
         .filter(|root| root.join(MARKER).is_file());
     if let Some(root) = opted_in {
         baseline::said(root, out);
+    }
+    if scope.repository.is_some() {
+        let _ = writeln!(out, "{NEXT}");
     }
 }
 

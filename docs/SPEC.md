@@ -1869,6 +1869,12 @@ exits 2, also under `--json`.
   `setup_names_a_check_a_person_set_to_false_as_off`,
   `setup_counts_no_missing_test_where_every_test_is_present` and
   `setup_runs_no_sarif_command_and_keeps_the_report` in `tests/install.rs`.
+- In a repository, ends with `Next: ask your agent to tailor klin.json to
+  this repository.`, after the baseline. The line names a request and no
+  slash command, because each host invokes a skill its own way, and it must
+  be in setup's output, because hook output reaches only the model (#593).
+  Pinned by `setup_ends_by_naming_the_request_to_tailor_klin_json` in
+  `tests/install.rs`.
 - Exit 0 on success. Exit 2 on an invalid invocation or a write it could
   not make.
 
