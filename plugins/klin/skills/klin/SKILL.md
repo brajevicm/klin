@@ -141,23 +141,29 @@ is sound.
 ## Proposing conventions from instruction files
 
 When the person asks, read the rules in `AGENTS.md` or `CLAUDE.md` and
-propose a `conventions` rule in `klin.json` for each one a machine can check.
-A convention forbids literal text, a code pattern or a file path in the paths
-it names, and says what to do instead. An instruction that needs judgment
-cannot be a convention. Leave it in the file and say why.
+propose a `conventions` rule in `klin.json` for each instruction that one
+convention can enforce in full. A convention only forbids: literal `text`, a
+`code` pattern in a language klin parses, or a `files` glob, in the paths it
+names. An instruction that needs judgment, or that requires something to be
+present, such as documentation on every public method, is not a convention.
+Leave it in the file and say why.
 
 1. Read the rule shape from `klin policy --schema`, or from
    `klin policy --reference`, which says what each key does.
-2. For each checkable instruction, show the convention's name, its one
-   `text`, `code` or `files` value, any `in` and `except`, its `language`
-   when a `code` value meets more than one language, and its `remedy`. klin
-   derives no convention, so every value is yours, and the rule for
-   `klin.json` above applies: write it only after the person says yes. When
-   the repository has no `klin.json`, step 1 of "Tailoring klin.json" applies
-   first.
+2. For each instruction, show the convention's name, its one `text`, `code`
+   or `files` value, any `in` and `except`, and its `remedy`. A `code` rule
+   reads one language: its `language`, or the one language of the source
+   files in its scope. When the instruction covers more than one language,
+   propose one rule per language. klin derives no convention, so every value
+   is yours, and the rule for `klin.json` above applies: write it only after
+   the person says yes. When the repository has no `klin.json`, step 1 of
+   "Tailoring klin.json" applies first.
 3. After the write, follow step 6 of "Tailoring klin.json", and show
    `klin policy conventions NAME`, which says what the convention forbids
-   and where.
+   and where. It runs no check. A passing `klin check` does not show that
+   the rule catches a breach either, because klin judges what is new against
+   the base. When it is practical, show the rule catching a sample breach in
+   a throwaway repository.
 
 ## Installation ownership
 
