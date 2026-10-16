@@ -5869,11 +5869,16 @@ forbidden and every judged dependency is judged for cycles. Pinned by
 `acyclic_alone_fails_a_new_cycle_and_holds_the_cycles_the_base_holds` and
 `a_section_that_asks_for_neither_layers_nor_cycles_is_refused` in
 `tests/layering.rs`. A layer's `in` is a path or a list of paths of
-5.3, never a glob. `can_use` lists the layers a layer may depend on, `null`
+5.3, never a glob. A layer's `except` is the same, and takes its paths out
+of that layer only, so an outer layer can leave a nested layer its files. A
+file under a layer's `except` that no other layer holds is in no layer.
+`can_use` lists the layers a layer may depend on, `null`
 lets it depend on every layer, and an absent `can_use` lets it depend only on
 itself. A layer may always depend on itself. A `can_use` that names no layer,
-a layer or shared `in` that holds no Rust or TypeScript file, and a file two
-layers hold are config errors. `roots`, `languages`, `skip_dirs`, `name`,
+a layer or shared `in` that holds no Rust or TypeScript file, a layer
+`except` path that holds none or that lies outside the layer's own `in`, and
+a file two layers hold are config errors. The error for a file two layers
+hold suggests a layer `except`. `roots`, `languages`, `skip_dirs`, `name`,
 globs, `allow_same` and package topology are refused.
 
 The check builds the module graph of ADR 0043 for both trees from the
@@ -6134,6 +6139,10 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `an_allowed_and_a_same_layer_dependency_pass`,
 `can_use_null_lets_a_layer_use_every_layer`,
 `a_file_in_two_layers_is_a_configuration_error_naming_both`,
+`a_layer_except_hands_a_nested_layer_its_files`,
+`a_file_under_a_layer_except_that_no_other_layer_holds_is_in_no_layer`,
+`a_layer_except_that_holds_no_file_is_a_configuration_error`,
+`a_layer_except_outside_its_own_in_is_a_configuration_error`,
 `retired_topology_and_unknown_keys_are_refused`,
 `a_super_path_inside_an_inline_module_resolves_from_that_module`,
 `a_path_attribute_that_retargets_an_unchanged_file_is_new_debt_in_a_changed_run`,

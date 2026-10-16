@@ -49,7 +49,7 @@ const ACYCLIC: Key = Key {
 
 const LAYERS: Key = Key {
     name: "layers",
-    holds: "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. The section states `layers`, `\"acyclic\": true`, or both",
+    holds: "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, `except`, a path or list of them inside `in` the layer does not hold, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. The section states `layers`, `\"acyclic\": true`, or both",
     required: false,
     rule: None,
     default: "no layers, so no edge is forbidden",
@@ -76,7 +76,14 @@ const REMEDY: &str = "Depend on a layer this layer's `can_use` names, through th
 struct Layer {
     name: String,
     within: Vec<Selector>,
+    except: Vec<Selector>,
     can_use: Option<Vec<String>>,
+}
+
+impl Layer {
+    fn holds(&self, file: &str) -> bool {
+        scope::any_holds(&self.within, file) && !scope::any_holds(&self.except, file)
+    }
 }
 
 struct Policy {
@@ -420,11 +427,22 @@ fn layers(config: &Config, fields: &Map<String, Value>) -> Result<Vec<Layer>, Er
     listed
         .into_iter()
         .map(|layer| {
-            let within = scope::selectors(layer.fields, scope::IN)
-                .map_err(|why| refused(config, &format!("layer \"{}\" {why}", layer.name)))?;
+            let at = |why: String| refused(config, &format!("layer \"{}\" {why}", layer.name));
+            let within = scope::selectors(layer.fields, scope::IN).map_err(at)?;
+            let except = scope::selectors(layer.fields, scope::EXCEPT).map_err(at)?;
+            if let Some(out) = except
+                .iter()
+                .find(|out| !scope::any_holds(&within, out.as_str()))
+            {
+                return Err(at(format!(
+                    "has an \"except\" path \"{}\" outside its \"in\"",
+                    out.as_str()
+                )));
+            }
             Ok(Layer {
                 name: layer.name.to_string(),
                 within,
+                except,
                 can_use: layer.can_use,
             })
         })
@@ -462,7 +480,7 @@ fn shaped_layer<'a>(name: &'a str, value: &'a Value) -> Result<Shaped<'a>, Strin
     config::file::unknown_field(
         &format!("{SECTION} layer {name}"),
         fields,
-        &[scope::IN.name, CAN_USE],
+        &[scope::IN.name, scope::EXCEPT.name, CAN_USE],
     )?;
     let within = fields
         .get(scope::IN.name)
@@ -555,6 +573,7 @@ pub fn suggested(project: &Project) -> Result<Option<Suggested>, Error> {
             .filter_map(|directory| {
                 Some(Layer {
                     within: vec![Selector::parse(scope::IN, &directory).ok()?],
+                    except: Vec::new(),
                     name: directory
                         .rsplit('/')
                         .next()
@@ -754,10 +773,7 @@ impl Policy {
         worked(PLACED);
         Place {
             selected: self.scope.selects(file),
-            layer: self
-                .layers
-                .iter()
-                .position(|layer| scope::any_holds(&layer.within, file)),
+            layer: self.layers.iter().position(|layer| layer.holds(file)),
         }
     }
 
@@ -801,6 +817,20 @@ impl Policy {
                     ),
                 ));
             }
+            if let Some(out) = layer
+                .except
+                .iter()
+                .find(|out| !files().any(|file| out.holds(file)))
+            {
+                return Err(refused(
+                    config,
+                    &format!(
+                        "layer \"{}\" has an \"except\" path \"{}\" with no applicable file",
+                        layer.name,
+                        out.as_str()
+                    ),
+                ));
+            }
         }
         was.files
             .iter()
@@ -812,7 +842,7 @@ impl Policy {
         let holding: Vec<String> = self
             .layers
             .iter()
-            .filter(|layer| scope::any_holds(&layer.within, file))
+            .filter(|layer| layer.holds(file))
             .map(|layer| format!("\"{}\"", layer.name))
             .collect();
         match holding.len() {
@@ -820,7 +850,7 @@ impl Policy {
             _ => Err(refused(
                 config,
                 &format!(
-                    "puts {file} in layers {} — a file belongs to at most one layer",
+                    "puts {file} in layers {} — a file belongs to at most one layer, so take it out of the outer one with that layer's \"except\"",
                     holding.join(" and ")
                 ),
             )),
@@ -1224,6 +1254,7 @@ mod tests {
         let layer = |name: &str| Layer {
             name: name.to_string(),
             within: vec![Selector::parse(scope::IN, name).unwrap()],
+            except: Vec::new(),
             can_use: Some(Vec::new()),
         };
         let fields = match except {

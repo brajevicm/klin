@@ -97,7 +97,7 @@ No keys: the section is absent, or `false` to exclude the gate.
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
 | `acyclic` | `true` to fail a dependency that closes a module cycle the base did not hold | no | pinned only | — | `false` |
-| `layers` | a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. The section states `layers`, `"acyclic": true`, or both | no | pinned only | — | no layers, so no edge is forbidden |
+| `layers` | a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, `except`, a path or list of them inside `in` the layer does not hold, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. The section states `layers`, `"acyclic": true`, or both | no | pinned only | — | no layers, so no edge is forbidden |
 
 ### `public_api`
 

@@ -89,6 +89,84 @@ fn a_file_in_two_layers_is_a_configuration_error_naming_both() {
         "{}",
         run.out
     );
+    assert!(run.says("that layer's \"except\""), "{}", run.out);
+}
+
+#[test]
+fn a_layer_except_hands_a_nested_layer_its_files() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() { crate::ui::show(); }\n");
+    tree.write(
+        "src/ui/mod.rs",
+        "pub fn show() { crate::domain::rule(); }\n",
+    );
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"app":{"in":"src","except":"src/domain","can_use":["domain"]},"domain":{"in":"src/domain","can_use":[]}}}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new"), "{}", run.out);
+    assert!(
+        run.says("src/domain/mod.rs:1") && run.says("domain → app"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_file_under_a_layer_except_that_no_other_layer_holds_is_in_no_layer() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() { crate::ui::show(); }\n");
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"app":{"in":"src","except":"src/domain","can_use":[]}}}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 forbidden"), "{}", run.out);
+}
+
+#[test]
+fn a_layer_except_that_holds_no_file_is_a_configuration_error() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() {}\n");
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"app":{"in":"src","except":"src/nowhere","can_use":[]}}}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("layer \"app\" has an \"except\" path \"src/nowhere\" with no applicable file"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_layer_except_outside_its_own_in_is_a_configuration_error() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() {}\n");
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"ui":{"in":"src/ui","except":"src/domain","can_use":[]}}}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("layer \"ui\" has an \"except\" path \"src/domain\" outside its \"in\""),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
