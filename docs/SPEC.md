@@ -4676,7 +4676,9 @@ inside the attribute change nothing.
 The remedies MUST name the legitimate repair (#433):
 
 - `doc-size` tells the agent to keep in the file what the task asked for;
-  only a person raises the ceiling, in a reviewed commit.
+  only a person raises the ceiling, in a reviewed commit. It names a
+  `conventions` rule, proposed to the person, as the gate for an instruction
+  that forbids text, code or a file (#659).
 - `doc-citations` tells the agent to update the citation when a file moves
   or is renamed. It offers deleting the citing sentence only when the
   referenced content was intentionally removed and the sentence no longer

@@ -81,6 +81,7 @@ fn the_failure_says_what_fixes_the_code() {
         run.out
     );
     assert!(run.says("docs/"), "{}", run.out);
+    assert!(run.says("a `conventions` rule"), "{}", run.out);
     assert!(!run.says("--write-baseline"), "{}", run.out);
 }
 
