@@ -2187,18 +2187,20 @@ and `rides_along` (true) for a finding of a ride-along row at the Stop
 (section 9.6).
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
-`unmeasured`, `moved-pin`, `moved-skipped`, `ride-along`), `file`, `line`,
-`text`, `reason` (the agent's reply for a deleted test, the gap reason for
-`unmeasured`, the old and new path for `moved-pin` and `moved-skipped`, the
-condition the row breaks for `ride-along`), and `values` where the item has
-them.
+`unmeasured`, `moved-pin`, `moved-skipped`, `ride-along`, `config-loosened`),
+`file`, `line`, `text`, `reason` (the agent's reply for a deleted test, the
+gap reason for `unmeasured`, the old and new path for `moved-pin` and
+`moved-skipped`, the condition the row breaks for `ride-along`, null for
+`config-loosened`), and `values` where the item has them.
 
 A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
 `kind` is its reason of section 7.2. Other kinds include the
 0.x note outcomes that stay notes: `unmatched` at the Stop, `derivation`,
-`config`, `window` for what choosing the base found (section 6.5), and
-`no-source-root` for a Stop in a tree whose survey found no source root.
+`config`, `window` for what choosing the base found (section 6.5),
+`no-source-root` for a Stop in a tree whose survey found no source root, and
+`config-loosened` for a changed `klin.json` whose base policy could not be
+judged (section 16.2).
 
 A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail, text}`,
@@ -2515,13 +2517,19 @@ the project's commands ran. No message, document or hook text may claim that
   see never leaves a green job.
 - It writes review items, holes, errors, failing findings, the count of
   files not measured, and the count of what it did not annotate to the job
-  summary. The summary gives every count first, then lists errors, holes,
-  failing findings and review items, in that order, up to
+  summary. The summary gives every count first, the `config-loosened` review
+  items and notes among them (section 16.2), then lists each `config-loosened`
+  note, the `config-loosened` review items, errors, holes, failing findings
+  and the other review items, in that order, up to
   a budget under GitHub's step summary limit of 1 MiB, and says how many
   lines it left out past it. A hole's line gives its reason and its text. It
   writes failing findings and review
-  items, including `unmeasured` gaps, as file-and-line annotations, so a
-  green job still shows them in the pull request.
+  items, including `unmeasured` gaps, as file-and-line annotations, and each
+  `config-loosened` note as a `warning` annotation with no file, so a green
+  job still shows them in the pull request. Its `warning` annotations take
+  the `config-loosened` notes first, then the `config-loosened` review items,
+  then the other review items, so no number of other review items pushes a
+  loosening out of GitHub's limit.
 - The Action writes annotations as workflow commands: `error` for a failing
   finding, `warning` for a review item. GitHub shows at most 10 of each
   level per step and 50 in total per job, shared with the job's other steps.
@@ -2721,6 +2729,7 @@ the base (section 6.5).
 | Integration tool error | Not applicable: integrations never run at Stop. | Hole, `tool-error`, exit 3, unless a FAIL gives exit 1. |
 | Deleted test | Section 9.2. | Review item. Exit unaffected. |
 | Unmatched accepted entry | A note. | Review item. Exit unaffected. |
+| A `klin.json` change that hides a finding the base's `klin.json` fails | Not applicable: the Stop judges once. | `config-loosened` review item per hidden finding (section 16.2). Exit unaffected. |
 | Build fails | Build block per section 6.4. | Not applicable: no build. |
 | Build tool absent (127) | A note. The gates still run. | Not applicable. |
 | Host event unreadable, usage error, panic | Section 10.10. | Not applicable. |
@@ -2773,6 +2782,58 @@ tests or type checks. The project's CI owns those (section 12.2).
 A deleted test, an unmatched accepted entry and a finding of a ride-along
 row (section 9.6) are review items at this level. The Action shows them in
 the job summary and as annotations (section 12.3). They do not fail CI. A person's code review decides them.
+
+The tree's `klin.json` sets the judgement, so a change that loosens it passes
+under its own policy. `klin check` therefore judges a second time when the
+change altered the `klin.json` at the worktree root and the run names no
+`--config`:
+
+1. It reads the base's `klin.json` as the tree's file. A file missing on
+   either side reads as `{}`, so a first `klin.json` and a deleted one are
+   changes too. A base file that does not load ends the second judgement in
+   silence.
+2. It selects each gate of the base's plan whose section, or whose `accepted`
+   entries, the change altered, within the run's own selection. When the
+   change altered the `accepted` entries of `measurement-lost`, it selects
+   every gate of the run's selection, since any gate can lose a file. When
+   the run names gates, it also selects each base entry of a section, such as
+   a `sarif` entry, that the tree's plan no longer holds while the run
+   selects a gate of that section, since a rename may have moved it there.
+3. It runs those gates under the base's policy, over the same window, and
+   sorts what they could not measure as a run does (section 7.2), so a lost
+   file is a `measurement-lost` finding.
+4. Each finding they fail at a site the run's own gates do not fail is a
+   `config-loosened` review item. A lost file's item has the check
+   `measurement-lost` and names the file alone. Both runs measure one working
+   tree. A site is a finding's check, file, line and text, without the gate's
+   name, so a renamed `sarif` entry keeps its sites. Each finding the run's
+   own gates fail at a site cancels one finding of the base's policy there,
+   so two findings at one site (the same text twice on one line) stay apart.
+   The item names the gate, the site, and the change, such as
+   `escapes: false`.
+
+When git cannot read the base's `klin.json`, when the base's policy loads but
+cannot be planned or laid out, when a gate errs under it, or when a gate it
+runs stays incomplete, the run writes a `config-loosened` note that names the
+first error or the incomplete gates. A person can then tell "the change hides
+nothing" from "klin could not judge the base". The review items of the gates
+that ran stay.
+
+Every `klin check` judges twice, a local one too. The second judgement runs
+the integrations the base's policy names, their commands included, even where
+the tree's policy removed them. The baseline of `klin setup` leaves every
+integration alone in both judgements (section 11.2).
+
+The text report groups the items under one line:
+
+```text
+  REVIEW: klin.json loosens the policy:
+    escapes: false hides 1 new finding: src/b.ts:2  export const n = (y as any).n;
+```
+
+The second judgement changes no exit code. A hard failure would stop a person
+from accepting debt in the same change as the code. The Stop never judges
+twice.
 
 The README MUST name both levels and say which one a setup reaches.
 

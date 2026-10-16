@@ -444,6 +444,7 @@ fn stubs_runs_automatically_when_the_tree_has_no_supported_file() {
 fn a_compact_scope_limits_the_built_in_detector() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{ "stubs": { "in": "src" } }"#);
+    tree.base();
     tree.write("src/lib.rs", "fn f() {}\n");
     tree.write("lib/todo.rs", "fn f() {\n    todo!()\n}\n");
 
