@@ -1,0 +1,389 @@
+--- a/src/checks/complexity.rs
++++ b/src/checks/complexity.rs
+@@ -26,8 +26,8 @@
+ 
+ pub const SECTION: &str = "complexity";
+ pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
+-    ratchets: &[CC.name, LINES.name, TEST_LINES.name],
+-    optional: &[LINES.name, TEST_LINES.name],
++    ratchets: &[CC.name, LINES.name, TEST_LINES.name, "depth", "bumps"],
++    optional: &[LINES.name, TEST_LINES.name, "depth", "bumps"],
+     by_entry: false,
+ };
+ const CC_FLOOR: u64 = 10;
+@@ -278,6 +278,7 @@
+     text: Rc<str>,
+     body: u64,
+     test: bool,
++    shape: Shape,
+ }
+ 
+ impl Function {
+@@ -289,26 +290,72 @@
+         match self.test {
+             true => ceilings.test_lines.as_ref(),
+             false => Some(&ceilings.lines),
++        }
++    }
++
++    fn measured_length(&self) -> u64 {
++        match variant() {
++            "jsxlogic" if self.shape.jsx => self.shape.logic,
++            _ => self.length(),
++        }
++    }
++
++    fn length_limit(&self, ceilings: &Ceilings) -> Option<u64> {
++        let ceiling = self.length_ceiling(ceilings)?.value;
++        Some(match variant() {
++            "jsx120" if self.shape.jsx => ceiling.max(120),
++            _ => ceiling,
++        })
++    }
++
++    fn complexity(&self) -> u64 {
++        match variant() {
++            "cog" => self.shape.cog,
++            _ => self.cc,
+         }
+     }
+ 
+     fn over(&self, ceilings: &Ceilings) -> bool {
+-        self.cc > ceilings.cc.value
+-            || self
+-                .length_ceiling(ceilings)
+-                .is_some_and(|ceiling| self.length() > ceiling.value)
++        let long = self
++            .length_limit(ceilings)
++            .is_some_and(|limit| self.measured_length() > limit);
++        let complex = self.complexity() > ceilings.cc.value;
++        match variant() {
++            "depth" => complex || long || self.shape.depth > ceilings.depth,
++            "bumpy" => complex || long || self.shape.bumps >= 2,
++            "cogand" => (complex && self.shape.cog > ceilings.cog) || long,
++            "lendepth" => complex || (long && self.shape.depth >= 3),
++            "lenbumpy" => complex || (long && self.shape.bumps >= 1),
++            _ => complex || long,
++        }
+     }
+ 
+     fn finding(&self, ceilings: &Ceilings) -> Finding {
+         let mut values = Values::new();
+-        values.insert(CC.name.into(), self.cc.into());
++        values.insert(CC.name.into(), self.complexity().into());
+         if self.length_ceiling(ceilings).is_some() {
+             let key = match self.test {
+                 true => TEST_LINES,
+                 false => LINES,
+             };
+-            values.insert(key.name.into(), self.length().into());
++            values.insert(key.name.into(), self.measured_length().into());
+         }
++        match variant() {
++            "depth" => {
++                values.insert("depth".into(), self.shape.depth.into());
++            }
++            "bumpy" => {
++                values.insert("bumps".into(), self.shape.bumps.into());
++            }
++            _ => {}
++        }
++        values.insert("x_jsx".into(), self.shape.jsx.into());
++        values.insert("x_logic".into(), self.shape.logic.into());
++        values.insert("x_depth".into(), self.shape.depth.into());
++        values.insert("x_bumps".into(), self.shape.bumps.into());
++        values.insert("x_cog".into(), self.shape.cog.into());
++        values.insert("x_cc".into(), self.cc.into());
++        values.insert("x_lines".into(), self.length().into());
+         Finding {
+             file: self.file.clone(),
+             line: self.line,
+@@ -320,6 +367,8 @@
+ }
+ 
+ struct Ceilings {
++    depth: u64,
++    cog: u64,
+     cc: Ceiling,
+     lines: Ceiling,
+     test_lines: Option<Ceiling>,
+@@ -628,8 +677,21 @@
+         );
+         Ok((Ceiling { value, step: None }, said.into()))
+     };
+-    let (cc, cc_said) = resolve(CC, CC_FLOOR, |found| found.cc)?;
++    let (cc, cc_said) = match variant() {
++        "cog" => resolve(CC, COG_FLOOR, |found| found.cog)?,
++        _ => resolve(CC, CC_FLOOR, |found| found.cc)?,
++    };
++    let extra = sample.get_or_init(|| derived_sample(project)).0.clone();
+     let (lines, lines_said) = resolve(LINES, LINES_FLOOR, |found| found.lines)?;
++    let (cc, lines) = match variant().strip_prefix("cap:") {
++        Some(caps) => {
++            let mut caps = caps.split(':').map(|cap| cap.parse::<u64>().unwrap_or(u64::MAX));
++            let (cc_cap, lines_cap) = (caps.next().unwrap_or(u64::MAX), caps.next().unwrap_or(u64::MAX));
++            let capped = |ceiling: Ceiling, cap: u64| Ceiling { value: ceiling.value.min(cap), ..ceiling };
++            (capped(cc, cc_cap), capped(lines, lines_cap))
++        }
++        None => (cc, lines),
++    };
+     let mut provenance = vec![cc_said, lines_said];
+     let test_lines = match section.get(TEST_LINES.name) {
+         Some(value) => {
+@@ -646,6 +708,8 @@
+         .unwrap_or_default();
+     Ok(Resolved {
+         ceilings: Ceilings {
++            depth: extra.depth.max(DEPTH_FLOOR),
++            cog: extra.cog.max(COG_FLOOR),
+             cc,
+             lines,
+             test_lines,
+@@ -657,6 +721,8 @@
+ 
+ #[derive(Clone, Default)]
+ struct Sample {
++    depth: u64,
++    cog: u64,
+     cc: u64,
+     lines: u64,
+     functions: usize,
+@@ -717,11 +783,15 @@
+         .collect();
+     let mut cc = Vec::new();
+     let mut lines = Vec::new();
++    let mut depth = Vec::new();
++    let mut cog = Vec::new();
+     let read = changed::blobs(root, commit, &paths, |path, bytes| {
+         let Some(bytes) = bytes else { return };
+         for function in measured(path, &String::from_utf8_lossy(bytes)) {
+             cc.push(function.cc);
+             lines.push(function.lines);
++            depth.push(function.shape.depth);
++            cog.push(function.shape.cog);
+         }
+     });
+     if read.is_none() {
+@@ -729,6 +799,8 @@
+         lines.clear();
+     }
+     Sample {
++        depth: percentile(depth, DEPTH_FLOOR),
++        cog: percentile(cog, COG_FLOOR),
+         functions: cc.len(),
+         cc: percentile(cc, CC_FLOOR),
+         lines: percentile(lines, LINES_FLOOR),
+@@ -838,6 +910,8 @@
+     let number = |key| value.get(key).and_then(Value::as_u64);
+     let scope = Scope::from_fields(value.get("scope")?.as_object()?).ok()?;
+     Some(Sample {
++        depth: number("depth").unwrap_or(0),
++        cog: number("cog").unwrap_or(0),
+         cc: number("cc")?,
+         lines: number("lines")?,
+         functions: usize::try_from(number("functions")?).ok()?,
+@@ -852,6 +926,8 @@
+ fn kept_sample(sample: &Sample) -> Value {
+     let mut kept = Map::from_iter([
+         ("cc".into(), sample.cc.into()),
++        ("depth".into(), sample.depth.into()),
++        ("cog".into(), sample.cog.into()),
+         ("lines".into(), sample.lines.into()),
+         ("functions".into(), sample.functions.into()),
+         ("scope".into(), sample.scope.value()),
+@@ -1026,7 +1102,7 @@
+     let lines = file.lines();
+     let mut sites = HashMap::new();
+     let mut out = Vec::new();
+-    walk_functions(file, &mut |node, cc| {
++    walk_functions(file, &mut |node, cc, shape| {
+         let row = node.start_position().row;
+         let key = (holder_row(node).filter(|holder| *holder < row), row);
+         let text = sites
+@@ -1041,6 +1117,7 @@
+             text,
+             body: record::body_hash(node.utf8_text(file.bytes()).unwrap_or_default()),
+             test: false,
++            shape,
+         });
+     });
+     out
+@@ -1064,6 +1141,7 @@
+ /// What one function comes to under this check, for a caller that measures a tree it does not
+ /// judge. The two numbers a ceiling names, and nothing about where the function sits.
+ pub struct Measured {
++    shape: Shape,
+     pub cc: u64,
+     pub lines: u64,
+ }
+@@ -1076,8 +1154,9 @@
+         return Vec::new();
+     };
+     let mut out = Vec::new();
+-    walk_functions(&file, &mut |node, cc| {
++    walk_functions(&file, &mut |node, cc, shape| {
+         out.push(Measured {
++            shape,
+             cc,
+             lines: (node.end_position().row - node.start_position().row + 1) as u64,
+         });
+@@ -1095,7 +1174,7 @@
+ 
+ /// The same function selection and metrics for survey samples and retained gate sites.
+ /// A sample never builds a Function or materializes its site text or body hash.
+-fn walk_functions(file: &ParsedFile, keep: &mut impl FnMut(Node, u64)) {
++fn walk_functions(file: &ParsedFile, keep: &mut impl FnMut(Node, u64, Shape)) {
+     let at = Walked {
+         language: file.language,
+         metrics: metrics(file.language.id),
+@@ -1107,7 +1186,7 @@
+             && !holds_a_body(node, at.language)
+             && !suite_callback(node, &at)
+         {
+-            keep(node, 1 + decisions(node, &at));
++            keep(node, 1 + decisions(node, &at), shape(node, &at));
+         }
+     });
+ }
+@@ -1266,3 +1345,141 @@
+         .unwrap_or_default();
+     format!("cc {}{length}", number(CC.name))
+ }
++
++const DEPTH_FLOOR: u64 = 4;
++const COG_FLOOR: u64 = 15;
++const JSX: &[&str] = &["jsx_element", "jsx_self_closing_element"];
++const NESTS: &[&str] = &[
++    "if_statement",
++    "for_statement",
++    "for_in_statement",
++    "while_statement",
++    "do_statement",
++    "switch_statement",
++    "catch_clause",
++    "ternary_expression",
++];
++
++fn variant() -> &'static str {
++    static VARIANT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
++    VARIANT.get_or_init(|| std::env::var("EXP585").unwrap_or_else(|_| "base".into()))
++}
++
++#[derive(Clone, Copy, Default)]
++struct Shape {
++    jsx: bool,
++    logic: u64,
++    depth: u64,
++    bumps: u64,
++    cog: u64,
++}
++
++fn shape(node: Node, at: &Walked) -> Shape {
++    let mut rows = BTreeSet::new();
++    jsx_rows(node, &mut rows);
++    let lines = (node.end_position().row - node.start_position().row + 1) as u64;
++    let body = node.child_by_field_name("body");
++    Shape {
++        jsx: !rows.is_empty(),
++        logic: lines.saturating_sub(rows.len() as u64).max(1),
++        depth: depth_of(node, 0, at),
++        bumps: body.map_or(0, |body| bumps(body, at)),
++        cog: cognitive(node, 0, at),
++    }
++}
++
++fn jsx_rows(node: Node, rows: &mut BTreeSet<usize>) {
++    if JSX.contains(&node.kind()) {
++        rows.extend(node.start_position().row..=node.end_position().row);
++        return;
++    }
++    let mut cursor = node.walk();
++    for child in node.children(&mut cursor) {
++        jsx_rows(child, rows);
++    }
++}
++
++fn nests(node: Node) -> bool {
++    NESTS.contains(&node.kind())
++        && !(node.kind() == "if_statement"
++            && node.parent().is_some_and(|parent| parent.kind() == "else_clause"))
++}
++
++fn depth_of(node: Node, depth: u64, at: &Walked) -> u64 {
++    let mut deepest = depth;
++    let mut cursor = node.walk();
++    for child in node.children(&mut cursor) {
++        if at.language.functions.contains(&child.kind()) {
++            continue;
++        }
++        let inner = depth + u64::from(nests(child));
++        deepest = deepest.max(depth_of(child, inner, at));
++    }
++    deepest
++}
++
++fn bumps(body: Node, at: &Walked) -> u64 {
++    let statements: Vec<Node> = match body.kind() {
++        "statement_block" => {
++            let mut cursor = body.walk();
++            body.named_children(&mut cursor).collect()
++        }
++        _ => vec![body],
++    };
++    let mut count = 0;
++    let mut inside = false;
++    for statement in statements {
++        let deep = depth_of(statement, u64::from(nests(statement)), at) >= 2;
++        if deep && !inside {
++            count += 1;
++        }
++        inside = deep;
++    }
++    count
++}
++
++fn logical(node: Node) -> Option<&'static str> {
++    if node.kind() != "binary_expression" {
++        return None;
++    }
++    let operator = node.child_by_field_name("operator")?.kind();
++    ["&&", "||", "??"].into_iter().find(|wanted| *wanted == operator)
++}
++
++fn cognitive(node: Node, nesting: u64, at: &Walked) -> u64 {
++    let mut total = 0;
++    let mut cursor = node.walk();
++    for child in node.children(&mut cursor) {
++        let kind = child.kind();
++        if at.language.functions.contains(&kind) {
++            continue;
++        }
++        total += match kind {
++            "if_statement" if child.parent().is_some_and(|parent| parent.kind() == "else_clause") => {
++                1 + cognitive(child, nesting.saturating_sub(1) + 1, at)
++            }
++            "else_clause" => {
++                let chained = {
++                    let mut inner = child.walk();
++                    child.named_children(&mut inner).any(|grand| grand.kind() == "if_statement")
++                };
++                match chained {
++                    true => cognitive(child, nesting, at),
++                    false => 1 + cognitive(child, nesting, at),
++                }
++            }
++            _ if NESTS.contains(&kind) => 1 + nesting + cognitive(child, nesting + 1, at),
++            _ => {
++                let sequence = logical(child).is_some_and(|operator| {
++                    let mut parent = child.parent();
++                    while let Some(above) = parent.filter(|above| above.kind() == "parenthesized_expression") {
++                        parent = above.parent();
++                    }
++                    parent.and_then(logical) != Some(operator)
++                });
++                u64::from(sequence) + cognitive(child, nesting, at)
++            }
++        };
++    }
++    total
++}
