@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -8,7 +7,7 @@ use crate::config::file::{Config, FILENAME, MEASUREMENT_LOST, ignored, located, 
 use crate::contract::check::{Activation, CONFIG_LOOSENED};
 use crate::contract::project::Project;
 use crate::engine::against::against;
-use crate::engine::document::{Args, CheckDocument, Partial, View};
+use crate::engine::document::{Args, CheckDocument, Partial, Sites, View};
 use crate::engine::plan::{Gate, Plan};
 use crate::engine::render::{Finding, Note, Review, Slot};
 use crate::engine::{catalogue, diagnostics};
@@ -135,7 +134,13 @@ fn measured(
     }
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
-    loosened(args, project, window.as_ref(), report, out);
+    loosened(
+        args,
+        (project, &plan, &wanted),
+        window.as_ref(),
+        report,
+        out,
+    );
     Ok(())
 }
 
@@ -145,7 +150,7 @@ fn measured(
 /// person's review decides. Spec 16.2.
 fn loosened(
     args: &Args,
-    project: &Project,
+    (project, plan, wanted): (&Project, &Plan, &[&Gate]),
     window: Option<&Window>,
     report: &mut CheckDocument,
     out: &mut String,
@@ -158,12 +163,24 @@ fn loosened(
         Ok(None) => return,
         Err(why) => return unjudged(args, &why, report, out),
     };
-    let failing: HashSet<(&str, Option<u64>)> = report.failing_sites().collect();
-    let Partial { found, erred } = hidden_by_gate(args, (project, &judged), window, &failing);
+    let failing = report.failing_sites();
+    let tree = Tree {
+        project,
+        plan,
+        wanted,
+    };
+    let Partial { found, erred } = hidden_by_gate(args, (&tree, &judged), window, &failing);
     told(args, found, report, out);
     if let Some(why) = erred {
         unjudged(args, &why, report, out);
     }
+}
+
+/// The run under the tree's own policy: its project, its plan and the gates it selected.
+struct Tree<'a> {
+    project: &'a Project,
+    plan: &'a Plan,
+    wanted: &'a [&'a Gate],
 }
 
 /// The findings one changed gate hides, and what the change did to its policy.
@@ -210,21 +227,21 @@ fn under_base(args: &Args, project: &Project, window: &Window) -> Result<Option<
 /// can lose a file.
 fn hidden_by_gate(
     args: &Args,
-    (project, judged): (&Project, &Project),
+    (tree, judged): (&Tree, &Project),
     window: &Window,
-    failing: &HashSet<(&str, Option<u64>)>,
+    failing: &Sites,
 ) -> Partial<Hidden> {
     let plan = match Plan::of(judged) {
         Ok(plan) => plan,
         Err(why) => return Partial::stopped(why),
     };
-    let (base, tree) = (&judged.config, &project.config);
-    let changed: Vec<(&Gate, String)> = selected(args, &plan)
-        .filter_map(|gate| Some((gate, change(base, tree, gate)?)))
+    let (base, policy) = (&judged.config, &tree.project.config);
+    let changed: Vec<(&Gate, String)> = selected(args, &plan, tree)
+        .filter_map(|gate| Some((gate, change(base, policy, gate)?)))
         .collect();
-    let lost = accepted_change(base, tree, MEASUREMENT_LOST);
+    let lost = accepted_change(base, policy, MEASUREMENT_LOST);
     let gates: Vec<&Gate> = match lost {
-        Some(_) => selected(args, &plan).collect(),
+        Some(_) => selected(args, &plan, tree).collect(),
         None => changed.iter().map(|(gate, _)| *gate).collect(),
     };
     let Partial { found, erred } = hidden(args, (judged, &gates), window, failing);
@@ -234,11 +251,22 @@ fn hidden_by_gate(
     }
 }
 
-/// The gates of the base's plan the run selects.
-fn selected<'a>(args: &Args, plan: &'a Plan) -> impl Iterator<Item = &'a Gate> {
-    plan.gates
+/// The gates of the base's plan the run selects: each it names, and each entry the tree's plan
+/// no longer holds in the section of a gate it selected, which a rename may have moved there.
+fn selected<'a>(args: &Args, base: &'a Plan, tree: &Tree) -> impl Iterator<Item = &'a Gate> {
+    base.gates
         .iter()
-        .filter(|gate| named(&args.gates, gate) && !left_alone(args, gate))
+        .filter(|gate| !left_alone(args, gate) && (named(&args.gates, gate) || renamed(gate, tree)))
+}
+
+/// Whether the tree's plan lost this base gate while the run selects a gate of its section.
+fn renamed(gate: &Gate, tree: &Tree) -> bool {
+    let section = gate.check.section;
+    !tree.plan.gates.iter().any(|kept| kept.name == gate.name)
+        && tree
+            .wanted
+            .iter()
+            .any(|wanted| wanted.check.section == section)
 }
 
 /// The hidden findings of each changed gate, then the hidden lost files, under the change to
@@ -278,14 +306,14 @@ fn grouped(
     found
 }
 
-/// The findings `gates` fail under the base's policy, over the run's window, at a site the run
-/// itself does not fail, and the first error of a gate that could not run. Both runs measure
-/// the one working tree, so an id and a line name one site.
+/// The findings `gates` fail under the base's policy, over the run's window, beyond the ones the
+/// run itself fails at the same site, and the first error of a gate that could not run. Both
+/// runs measure the one working tree, so a site names the same place in each.
 fn hidden(
     args: &Args,
     (judged, gates): (&Project, &[&Gate]),
     window: &Window,
-    failing: &HashSet<(&str, Option<u64>)>,
+    failing: &Sites,
 ) -> Partial<Finding> {
     if gates.is_empty() {
         return Partial {
@@ -297,11 +325,7 @@ fn hidden(
         Ok(against) => against,
         Err(fault) => return Partial::stopped(fault.error),
     };
-    let mut partial = CheckDocument::failing_under(args, (judged, gates), &against);
-    partial
-        .found
-        .retain(|finding| !failing.contains(&(finding.id.as_str(), finding.line)));
-    partial
+    CheckDocument::failing_under(args, (judged, gates), &against, failing)
 }
 
 /// The report's heading and one line per changed gate that hides a finding, and a review item

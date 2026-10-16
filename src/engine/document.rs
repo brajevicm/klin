@@ -4,7 +4,7 @@
 //! Spec 7, 11.3, 11.7, 13.1.
 
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
 use std::path::PathBuf;
 
@@ -692,6 +692,20 @@ impl<T> Partial<T> {
     }
 }
 
+/// Where a failing finding is: the check that found it, its file, line and text. A gate's name
+/// is left out, so a renamed `sarif` entry keeps its sites. Spec 16.2.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Site<'a> {
+    check: &'a str,
+    file: &'a str,
+    line: Option<u64>,
+    text: Option<&'a str>,
+}
+
+/// The failing sites of a run, each with how many findings fail there, since findings can share
+/// a site: the same text twice on one line. Spec 16.2.
+pub type Sites<'a> = HashMap<Site<'a>, usize>;
+
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
 pub struct CheckDocument {
@@ -803,21 +817,49 @@ impl CheckDocument {
         self.reviews.push(review);
     }
 
-    /// The findings `wanted` fail under `project`'s policy, the lost files among them, run apart
-    /// from any document a person reads, and why the run could not judge everything: its first
-    /// error, or else the gates it left incomplete. Spec 16.2.
+    /// The findings `wanted` fail under `project`'s policy, the lost files among them, at a site
+    /// beyond what `failing` holds, run apart from any document a person reads, and why the run
+    /// could not judge everything: its first error, or else the gates it left incomplete. Each
+    /// site `failing` holds cancels one finding there. Spec 16.2.
     pub fn failing_under(
         args: &Args,
         (project, wanted): (&Project, &[&Gate]),
         against: &Against,
+        failing: &Sites,
     ) -> Partial<Finding> {
         let mut apart = CheckDocument::default();
         apart.judged(args, (project, wanted), against, &mut String::new());
         let erred = apart.first_problem().or_else(|| apart.first_incomplete());
-        apart.findings.retain(Finding::failing);
-        Partial {
-            found: apart.findings,
-            erred,
+        let mut left = failing.clone();
+        let found = apart
+            .findings
+            .iter()
+            .filter(|finding| finding.failing())
+            .filter(|finding| match left.get_mut(&apart.site(finding)) {
+                Some(count) if *count > 0 => {
+                    *count -= 1;
+                    false
+                }
+                _ => true,
+            })
+            .cloned()
+            .collect();
+        Partial { found, erred }
+    }
+
+    /// Where a finding is, by the catalogue check of its gate, or by its kind for a row of its
+    /// own such as `measurement-lost`.
+    fn site<'a>(&'a self, finding: &'a Finding) -> Site<'a> {
+        let check = finding
+            .check
+            .as_deref()
+            .and_then(|gate| self.capabilities.iter().find(|row| row.name == gate))
+            .map_or(finding.kind, |row| row.check);
+        Site {
+            check,
+            file: &finding.file,
+            line: finding.line,
+            text: finding.text.as_deref(),
         }
     }
 
@@ -942,19 +984,23 @@ impl CheckDocument {
         self.grammar_lag
     }
 
-    /// The id and line of every finding the run failed, which tell apart the findings that share
-    /// an id: the same text more than once in one file. Spec 16.2.
-    pub fn failing_sites(&self) -> impl Iterator<Item = (&str, Option<u64>)> {
-        self.findings
-            .iter()
-            .filter(|finding| finding.failing())
-            .map(|finding| (finding.id.as_str(), finding.line))
+    /// Every site the run failed, with how many of its findings fail there. Spec 16.2.
+    pub fn failing_sites(&self) -> Sites<'_> {
+        let mut sites = Sites::new();
+        for finding in self.findings.iter().filter(|finding| finding.failing()) {
+            *sites.entry(self.site(finding)).or_default() += 1;
+        }
+        sites
     }
 
     /// The site id of every finding the run failed, which a stop that blocks records as asked.
     /// Spec 8.2, 9.2.
     pub fn reported(&self) -> Vec<String> {
-        self.failing_sites().map(|(id, _)| id.to_string()).collect()
+        self.findings
+            .iter()
+            .filter(|finding| finding.failing())
+            .map(|finding| finding.id.clone())
+            .collect()
     }
 
     /// The deleted tests among the findings, as sites, which klin has not asked about yet.

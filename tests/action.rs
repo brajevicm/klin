@@ -377,28 +377,38 @@ fn the_action_without_jq_fails_a_green_job() {
     );
 }
 
-#[test]
-fn a_summary_past_the_step_limit_keeps_its_counts_and_says_what_it_left_out() {
-    let tree = tree();
-    let review = serde_json::json!({
-        "check": null, "kind": "unmeasured", "file": "src/a.rs", "line": null,
-        "text": "x".repeat(200), "reason": "unreadable",
-    });
-    let document = serde_json::json!({
-        "judgement": "review", "measurement": "complete", "execution": "ok", "exit": 0,
-        "findings": [], "reviews": vec![review; 20_000], "measurements": [], "errors": [],
-        "not_measured": 20_000,
-    });
+/// A run of the gate step over a check document a fake `klin` prints.
+fn gated_by(tree: &Tree, document: &serde_json::Value) -> Gated {
     tree.write(".runner/check.json", &document.to_string());
     let document = tree.path(".runner/check.json");
     let klin = format!("#!/bin/sh\ncat '{}'\n", document.display());
     let path = format!(
         "{}:{}",
-        bin(&tree, &[], &[("klin", &klin)]),
+        bin(tree, &[], &[("klin", &klin)]),
         std::env::var("PATH").unwrap()
     );
+    gated_on(tree, "", &path)
+}
 
-    let gated = gated_on(&tree, "", &path);
+/// Twenty thousand review items, more than the job summary holds.
+fn many_reviews() -> Vec<serde_json::Value> {
+    let review = serde_json::json!({
+        "check": null, "kind": "unmeasured", "file": "src/a.rs", "line": null,
+        "text": "x".repeat(200), "reason": "unreadable",
+    });
+    vec![review; 20_000]
+}
+
+#[test]
+fn a_summary_past_the_step_limit_keeps_its_counts_and_says_what_it_left_out() {
+    let tree = tree();
+    let document = serde_json::json!({
+        "judgement": "review", "measurement": "complete", "execution": "ok", "exit": 0,
+        "findings": [], "reviews": many_reviews(), "measurements": [], "errors": [],
+        "not_measured": 20_000,
+    });
+
+    let gated = gated_by(&tree, &document);
 
     assert_eq!(gated.code, 0, "{}", gated.printed);
     assert!(gated.summary.len() < 1024 * 1024, "{}", gated.summary.len());
@@ -411,6 +421,59 @@ fn a_summary_past_the_step_limit_keeps_its_counts_and_says_what_it_left_out() {
         gated.summary.contains("line(s) left out"),
         "{}",
         &gated.summary[gated.summary.len() - 500..]
+    );
+}
+
+#[test]
+fn a_loosening_beside_many_review_items_keeps_its_annotations_and_its_summary_lines() {
+    let tree = tree();
+    let mut reviews = many_reviews();
+    reviews.push(serde_json::json!({
+        "check": "escapes", "kind": "config-loosened", "file": "src/b.ts", "line": 2,
+        "text": "klin.json loosens the policy: escapes: false hides src/b.ts:2  as any",
+        "reason": null,
+    }));
+    let note = serde_json::json!({
+        "check": null, "kind": "config-loosened", "coverage": false,
+        "message": "klin.json changed, and the base's policy could not be judged: boom",
+    });
+    let document = serde_json::json!({
+        "judgement": "review", "measurement": "complete", "execution": "ok", "exit": 0,
+        "findings": [], "reviews": reviews, "notes": [note], "measurements": [],
+        "errors": [], "not_measured": 20_000,
+    });
+
+    let gated = gated_by(&tree, &document);
+
+    assert_eq!(gated.code, 0, "{}", gated.printed);
+    let warnings = gated.annotations("warning");
+    assert_eq!(warnings.len(), 10, "{}", gated.printed);
+    assert!(
+        warnings[0].starts_with("::warning title=klin%3A config-loosened::klin.json changed"),
+        "{}",
+        gated.printed
+    );
+    assert!(
+        warnings[1].contains("title=klin review%3A config-loosened::"),
+        "{}",
+        gated.printed
+    );
+    assert!(
+        gated
+            .summary
+            .contains("klin.json loosenings: 1, unjudged klin.json changes: 1"),
+        "{}",
+        &gated.summary[..500]
+    );
+    assert!(
+        gated.summary.contains("hides src/b.ts:2"),
+        "{}",
+        &gated.summary[..500]
+    );
+    assert!(
+        gated.summary.contains("could not be judged: boom"),
+        "{}",
+        &gated.summary[..500]
     );
 }
 

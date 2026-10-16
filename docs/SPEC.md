@@ -2517,15 +2517,19 @@ the project's commands ran. No message, document or hook text may claim that
   see never leaves a green job.
 - It writes review items, holes, errors, failing findings, the count of
   files not measured, and the count of what it did not annotate to the job
-  summary. The summary gives every count first, then lists errors, holes,
-  failing findings, review items and each `config-loosened` note (section
-  16.2), in that order, up to
+  summary. The summary gives every count first, the `config-loosened` review
+  items and notes among them (section 16.2), then lists each `config-loosened`
+  note, the `config-loosened` review items, errors, holes, failing findings
+  and the other review items, in that order, up to
   a budget under GitHub's step summary limit of 1 MiB, and says how many
   lines it left out past it. A hole's line gives its reason and its text. It
   writes failing findings and review
   items, including `unmeasured` gaps, as file-and-line annotations, and each
   `config-loosened` note as a `warning` annotation with no file, so a green
-  job still shows them in the pull request.
+  job still shows them in the pull request. Its `warning` annotations take
+  the `config-loosened` notes first, then the `config-loosened` review items,
+  then the other review items, so no number of other review items pushes a
+  loosening out of GitHub's limit.
 - The Action writes annotations as workflow commands: `error` for a failing
   finding, `warning` for a review item. GitHub shows at most 10 of each
   level per step and 50 in total per job, shared with the job's other steps.
@@ -2791,16 +2795,22 @@ change altered the `klin.json` at the worktree root and the run names no
 2. It selects each gate of the base's plan whose section, or whose `accepted`
    entries, the change altered, within the run's own selection. When the
    change altered the `accepted` entries of `measurement-lost`, it selects
-   every gate of the run's selection, since any gate can lose a file.
+   every gate of the run's selection, since any gate can lose a file. When
+   the run names gates, it also selects each base entry of a section, such as
+   a `sarif` entry, that the tree's plan no longer holds while the run
+   selects a gate of that section, since a rename may have moved it there.
 3. It runs those gates under the base's policy, over the same window, and
    sorts what they could not measure as a run does (section 7.2), so a lost
    file is a `measurement-lost` finding.
 4. Each finding they fail at a site the run's own gates do not fail is a
    `config-loosened` review item. A lost file's item has the check
-   `measurement-lost` and names the file alone. Both runs measure one working tree, so a
-   finding's id and line name its site, and two findings that share an id
-   (the same text twice in one file) stay apart. The item names the gate, the site, and the
-   change, such as `escapes: false`.
+   `measurement-lost` and names the file alone. Both runs measure one working
+   tree. A site is a finding's check, file, line and text, without the gate's
+   name, so a renamed `sarif` entry keeps its sites. Each finding the run's
+   own gates fail at a site cancels one finding of the base's policy there,
+   so two findings at one site (the same text twice on one line) stay apart.
+   The item names the gate, the site, and the change, such as
+   `escapes: false`.
 
 When git cannot read the base's `klin.json`, when the base's policy loads but
 cannot be planned or laid out, when a gate errs under it, or when a gate it

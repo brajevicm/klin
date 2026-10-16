@@ -7,6 +7,10 @@ def failing: [.findings[] | select(.outcome != "held")];
 
 def unjudged: [(.notes // [])[] | select(.kind == "config-loosened")];
 
+def loosening: [.reviews[] | select(.kind == "config-loosened")];
+
+def ordinary: [.reviews[] | select(.kind != "config-loosened")];
+
 def flat: tostring | gsub("[\r\n]+"; " ");
 
 def command_data: tostring | gsub("%"; "%25") | gsub("\r"; "%0D") | gsub("\n"; "%0A");
@@ -31,10 +35,14 @@ def annotation(level; title; said):
   + (if line_of then ",line=\(line_of)" else "" end)
   + ",title=\(title | command_property)::\(said | command_data)";
 
+def note_annotation: "::warning title=\("klin: \(.kind)" | command_property)::\(.message | command_data)";
+
+def review_annotation: annotation("warning"; "klin review: \(.kind)"; review_said);
+
 def annotations:
   (failing[:per_level][] | annotation("error"; "klin: \(.check // .kind)"; finding_said)),
-  (.reviews[:per_level][] | annotation("warning"; "klin review: \(.kind)"; review_said)),
-  (unjudged[] | "::warning title=\("klin: \(.kind)" | command_property)::\(.message | command_data)");
+  ([(unjudged[] | note_annotation), (loosening[] | review_annotation),
+    (ordinary[:per_level][] | review_annotation)][:per_level][]);
 
 def summary_budget: 900000;
 
@@ -60,11 +68,14 @@ def summary:
   "",
   "failing findings: \(failing | length), review items: \(.reviews | length), holes: \(holes | length), errors: \(.errors | length), files not measured: \(.not_measured)",
   "",
-  "Not annotated: \([(failing | length) - per_level, 0] | max) failing finding(s) and \([(.reviews | length) - per_level, 0] | max) review item(s) over GitHub's limit of \(per_level) annotations per level, and every hole and error. The lists below hold them, up to the summary's size budget.",
-  ([section("Errors"; [.errors[] | "\(.check // "run") \(.kind): \(.message)"]),
+  "klin.json loosenings: \(loosening | length), unjudged klin.json changes: \(unjudged | length)",
+  "",
+  "Not annotated: \([(failing | length) - per_level, 0] | max) failing finding(s) and \([(.reviews | length) - ([per_level - (unjudged | length), 0] | max), 0] | max) review item(s) over GitHub's limit of \(per_level) annotations per level, and every hole and error. The lists below hold them, up to the summary's size budget.",
+  ([section("Unjudged klin.json changes"; [unjudged[] | .message]),
+    section("klin.json loosenings"; [loosening[] | "`\(site)` \(review_said)"]),
+    section("Errors"; [.errors[] | "\(.check // "run") \(.kind): \(.message)"]),
     section("Holes"; holes),
     section("Failing findings"; [failing[] | "`\(site)` \(.check // .kind): \(finding_said)"]),
-    section("Review items"; [.reviews[] | "`\(site)` \(.kind): \(review_said)"]),
-    section("Unjudged klin.json changes"; [unjudged[] | .message])] | capped(summary_budget));
+    section("Review items"; [ordinary[] | "`\(site)` \(.kind): \(review_said)"])] | capped(summary_budget));
 
 if $part == "annotations" then annotations else summary end

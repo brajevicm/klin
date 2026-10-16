@@ -380,3 +380,88 @@ fn the_setup_baseline_never_runs_an_integration_the_change_removed() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!tree.path("ran").exists(), "{}", run.out);
 }
+
+#[test]
+fn an_accepted_entry_for_one_of_two_findings_on_one_line_names_the_other() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"in": "src", "cc": 1}}"#);
+    tree.write("src/lib.rs", "pub fn a() {}\n");
+    tree.base();
+    let line = "impl A { fn knot(a: bool) -> u8 { if a { 1 } else { 0 } } \
+                fn knot(a: bool) -> u8 { if a { 1 } else { 0 } } }";
+    tree.write("src/b.rs", &format!("pub struct A;\n{line}\n"));
+    tree.write(
+        "klin.json",
+        &serde_json::json!({
+            "complexity": {"in": "src", "cc": 1},
+            "accepted": [{"gate": "complexity", "file": "src/b.rs", "text": line,
+                          "cc": 2, "lines": 1, "reason": "kept for the migration"}],
+        })
+        .to_string(),
+    );
+
+    let run = tree.run(&["check", "complexity", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = run.json();
+    let hidden = loosened(&report);
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["line"], 2, "{report}");
+}
+
+const ESLINT: &str = r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif"}]}"#;
+const ONE_RESULT: &str = r#"{"version": "2.1.0", "runs": [{
+    "tool": {"driver": {"name": "eslint"}},
+    "results": [{"ruleId": "no-any", "message": {"text": "Unexpected any"}, "locations": [
+        {"physicalLocation": {"artifactLocation": {"uri": "src/a.ts"},
+                              "region": {"startLine": 2}}}]}]
+}]}"#;
+
+fn linted() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", ESLINT);
+    tree.write("src/a.ts", "one\ntwo\nthree\n");
+    tree.base();
+    tree.write("src/a.ts", "one\nchanged\nthree\n");
+    tree
+}
+
+/// The report, written after every change so it is newer than each changed file.
+fn reported(tree: &Tree) {
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    tree.write("eslint.sarif", ONE_RESULT);
+}
+
+#[test]
+fn renaming_an_integration_that_still_fails_its_result_hides_nothing() {
+    let tree = linted();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "lint", "report": "eslint.sarif"}]}"#,
+    );
+    reported(&tree);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = run.json();
+    assert!(loosened(&report).is_empty(), "{report}");
+}
+
+#[test]
+fn a_run_that_names_the_new_name_of_a_renamed_integration_judges_its_old_entry() {
+    let tree = linted();
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "lint", "report": "eslint.sarif"}],
+            "accepted": [{"gate": "lint", "file": "src/a.ts",
+                          "text": "no-any: Unexpected any", "count": 1,
+                          "reason": "kept for the migration"}]}"#,
+    );
+    reported(&tree);
+
+    let run = tree.run(&["check", "lint", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let hidden = loosened(&report);
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "src/a.ts", "{report}");
+}
