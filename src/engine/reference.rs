@@ -282,6 +282,7 @@ fn path_graph_schema() -> Value {
             "type": "object",
             "properties": {
                 "in": string_or_list_schema(),
+                "except": string_or_list_schema(),
                 "can_use": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"type": "string"}}]}
             },
             "required": ["in"],
