@@ -247,12 +247,12 @@ The owner decided these on 2026-10-16, after the adversarial review:
 
 ### Follow-up tickets
 
-- The report-only tier for lines-only findings, with the ADR 0073 amendment,
-  the SPEC change and CLI tests.
-- The validation of the two ride-along candidates on a new frozen sample,
-  which ends the interim exception.
-- A recall row that tests length on its own, with `recall()` counting a
-  ride-along finding apart from a blocking one.
+- #696: the report-only tier for lines-only findings, with the ADR 0073
+  amendment, the SPEC change and CLI tests.
+- #697: the validation of the two ride-along candidates on a new frozen
+  sample, which ends the interim exception.
+- #698: a recall row that tests length on its own, with `recall()` counting
+  a ride-along finding apart from a blocking one.
 
 ## Limits
 
