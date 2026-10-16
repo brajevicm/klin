@@ -809,36 +809,22 @@ impl Policy {
             ));
         }
         for layer in &self.layers {
+            let refuse =
+                |why: &str| Err(refused(config, &format!("layer \"{}\" {why}", layer.name)));
             if !files().any(|file| scope::any_holds(&layer.within, file)) {
-                return Err(refused(
-                    config,
-                    &format!(
-                        "layer \"{}\" has an \"in\" with no applicable file",
-                        layer.name
-                    ),
-                ));
+                return refuse("has an \"in\" with no applicable file");
             }
             if !files().any(|file| layer.holds(file)) {
-                return Err(refused(
-                    config,
-                    &format!(
-                        "layer \"{}\" holds no applicable file once its \"except\" is taken out",
-                        layer.name
-                    ),
-                ));
+                return refuse("holds no applicable file once its \"except\" is taken out");
             }
             if let Some(out) = layer
                 .except
                 .iter()
                 .find(|out| !files().any(|file| out.holds(file)))
             {
-                return Err(refused(
-                    config,
-                    &format!(
-                        "layer \"{}\" has an \"except\" path \"{}\" with no applicable file",
-                        layer.name,
-                        out.as_str()
-                    ),
+                return refuse(&format!(
+                    "has an \"except\" path \"{}\" with no applicable file",
+                    out.as_str()
                 ));
             }
         }
