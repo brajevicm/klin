@@ -4,7 +4,7 @@
 //! Spec 7, 11.3, 11.7, 13.1.
 
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
 use std::path::PathBuf;
 
@@ -675,6 +675,46 @@ pub enum Standing {
     Skipped,
 }
 
+/// What a run found, beside the first error that kept it from judging everything. What it found
+/// stays valid when the error is there. Spec 16.2.
+pub struct Partial<T> {
+    pub found: Vec<T>,
+    pub erred: Option<Error>,
+}
+
+impl<T> Default for Partial<T> {
+    fn default() -> Self {
+        Partial {
+            found: Vec::new(),
+            erred: None,
+        }
+    }
+}
+
+impl<T> Partial<T> {
+    /// A run the error stopped before it found anything.
+    pub fn stopped(why: Error) -> Partial<T> {
+        Partial {
+            found: Vec::new(),
+            erred: Some(why),
+        }
+    }
+}
+
+/// Where a failing finding is: the check that found it, its file, line and text. A gate's name
+/// is left out, so a renamed `sarif` entry keeps its sites. Spec 16.2.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Site<'a> {
+    check: &'a str,
+    file: &'a str,
+    line: Option<u64>,
+    text: Option<&'a str>,
+}
+
+/// The failing sites of a run, each with how many findings fail there, since findings can share
+/// a site: the same text twice on one line. Spec 16.2.
+pub type Sites<'a> = HashMap<Site<'a>, usize>;
+
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
 pub struct CheckDocument {
@@ -782,6 +822,88 @@ impl CheckDocument {
         self.notes.push(note);
     }
 
+    pub fn review(&mut self, review: Review) {
+        self.reviews.push(review);
+    }
+
+    /// The findings `wanted` fail under `project`'s policy, the lost files among them, at a site
+    /// beyond what `failing` holds, run apart from any document a person reads, and why the run
+    /// could not judge everything: its first error, or else the gates it left incomplete. Each
+    /// site `failing` holds cancels one finding there. Spec 16.2.
+    pub fn failing_under(
+        args: &Args,
+        (project, wanted): (&Project, &[&Gate]),
+        against: &Against,
+        failing: &Sites,
+    ) -> Partial<Finding> {
+        let mut apart = CheckDocument::default();
+        apart.judged(args, (project, wanted), against, &mut String::new());
+        let erred = apart.first_problem().or_else(|| apart.first_incomplete());
+        let mut left = failing.clone();
+        let hides: Vec<bool> = apart
+            .findings
+            .iter()
+            .map(|finding| {
+                finding.failing()
+                    && match left.get_mut(&apart.site(finding)) {
+                        Some(count) if *count > 0 => {
+                            *count -= 1;
+                            false
+                        }
+                        _ => true,
+                    }
+            })
+            .collect();
+        let found = apart
+            .findings
+            .into_iter()
+            .zip(hides)
+            .filter_map(|(finding, hides)| hides.then_some(finding))
+            .collect();
+        Partial { found, erred }
+    }
+
+    /// Where a finding is, by the catalogue check of its gate, or by its kind for a row of its
+    /// own such as `measurement-lost`.
+    fn site<'a>(&'a self, finding: &'a Finding) -> Site<'a> {
+        let check = finding
+            .check
+            .as_deref()
+            .and_then(|gate| self.capabilities.iter().find(|row| row.name == gate))
+            .map_or(finding.kind, |row| row.check);
+        Site {
+            check,
+            file: &finding.file,
+            line: finding.line,
+            text: finding.text.as_deref(),
+        }
+    }
+
+    /// The gates whose measurement is incomplete, named in one error.
+    fn first_incomplete(&self) -> Option<Error> {
+        let incomplete: Vec<&str> = self
+            .capabilities
+            .iter()
+            .filter(|row| row.incomplete == Some(true))
+            .map(|row| row.name.as_str())
+            .collect();
+        (!incomplete.is_empty()).then(|| {
+            Error(format!(
+                "{} could not measure everything it found",
+                incomplete.join(", ")
+            ))
+        })
+    }
+
+    /// The first error of the run, a check's included.
+    fn first_problem(&self) -> Option<Error> {
+        let problem = self.problems.first()?;
+        Some(Error(match &problem.check {
+            Some(check) => format!("{check}: {}", problem.message),
+            None => problem.message.clone(),
+        }))
+    }
+
     /// A run-scope error, which stops the run before any capability measures. Spec 7.3.
     pub fn stop(&mut self, fault: Fault) {
         self.stopped = true;
@@ -794,11 +916,8 @@ impl CheckDocument {
     /// error of the run, a check's included, where one kept any capability from measuring, and
     /// why the measurement is incomplete where it is, because then no floor is known. Spec 11.2.
     pub fn floor(&self) -> Result<Vec<Floor>, Error> {
-        if let Some(problem) = self.problems.first() {
-            return Err(Error(match &problem.check {
-                Some(check) => format!("{check}: {}", problem.message),
-                None => problem.message.clone(),
-            }));
+        if let Some(error) = self.first_problem() {
+            return Err(error);
         }
         if self.totals().incomplete {
             return Err(Error(match self.holes.first() {
@@ -881,6 +1000,15 @@ impl CheckDocument {
         self.grammar_lag
     }
 
+    /// Every site the run failed, with how many of its findings fail there. Spec 16.2.
+    pub fn failing_sites(&self) -> Sites<'_> {
+        let mut sites = Sites::new();
+        for finding in self.findings.iter().filter(|finding| finding.failing()) {
+            *sites.entry(self.site(finding)).or_default() += 1;
+        }
+        sites
+    }
+
     /// The site id of every finding the run failed, which a stop that blocks records as asked.
     /// Spec 8.2, 9.2.
     pub fn reported(&self) -> Vec<String> {
@@ -933,11 +1061,7 @@ impl CheckDocument {
         out: &mut String,
     ) {
         self.windowed(args, (project, wanted), against.base.as_ref(), out);
-        self.gates(args, (project, wanted), against, out);
-        let base = against.base.as_ref().map(|base| base.before.as_str());
-        let seen = std::mem::take(&mut self.seen);
-        let sorted = holes::sorted(project, base, seen);
-        self.settled(args, (project, wanted, against), &sorted, out);
+        self.judged(args, (project, wanted), against, out);
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
         {
@@ -952,6 +1076,22 @@ impl CheckDocument {
         if self.failed_on_findings() > 0 {
             out.extend(self.riding.iter().map(String::as_str));
         }
+    }
+
+    /// Every selected gate's result, and what the gates together could not measure, sorted once
+    /// into the `measurement-lost` row, review items and coverage notes. Spec 7.2, 10.6.
+    fn judged(
+        &mut self,
+        args: &Args,
+        (project, wanted): (&Project, &[&Gate]),
+        against: &Against,
+        out: &mut String,
+    ) {
+        self.gates(args, (project, wanted), against, out);
+        let base = against.base.as_ref().map(|base| base.before.as_str());
+        let seen = std::mem::take(&mut self.seen);
+        let sorted = holes::sorted(project, base, seen);
+        self.settled(args, (project, wanted, against), &sorted, out);
     }
 
     /// Every selected gate runs first, and then each one's result goes into the document, so a

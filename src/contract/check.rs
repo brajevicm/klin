@@ -37,6 +37,10 @@ pub const MOVED_PIN: &str = "moved-pin";
 /// The review item kind of a file renamed under a directory every walk skips. Spec 7.3.
 pub const MOVED_SKIPPED: &str = "moved-skipped";
 
+/// The review item kind of a finding a changed `klin.json` hides, which the base's `klin.json`
+/// fails. Spec 16.2.
+pub const CONFIG_LOOSENED: &str = "config-loosened";
+
 /// The note kind of what choosing the base of a `klin check` window found. Spec 6.5.
 pub const WINDOW: &str = "window";
 
