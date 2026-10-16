@@ -52,8 +52,9 @@ const NEW_CEILING: u64 = 50;
 const NEW_RULE: &str = "the 50-word default for an instruction file the derivation commit lacks";
 const MARGIN_FRACTION: f64 = 0.02;
 const REMEDY: &str = "Keep in this file what the task asked for. Remove or compress redundant \
-    instruction text first. An instruction that \
-    can be a gate costs no words — encode it as a gate and point at it. Point at background in \
+    instruction text first. An instruction that can be a gate costs no words — encode it as a \
+    gate and point at it. The gate for an instruction that forbids text, code or a file is a \
+    `conventions` rule in klin.json, which you propose to the person. Point at background in \
     docs/ only where the instruction keeps its intent. Only a person raises the ceiling, \
     in a reviewed commit.";
 
