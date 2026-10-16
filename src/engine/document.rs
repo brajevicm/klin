@@ -682,6 +682,15 @@ pub struct Partial<T> {
     pub erred: Option<Error>,
 }
 
+impl<T> Default for Partial<T> {
+    fn default() -> Self {
+        Partial {
+            found: Vec::new(),
+            erred: None,
+        }
+    }
+}
+
 impl<T> Partial<T> {
     /// A run the error stopped before it found anything.
     pub fn stopped(why: Error) -> Partial<T> {
@@ -831,18 +840,25 @@ impl CheckDocument {
         apart.judged(args, (project, wanted), against, &mut String::new());
         let erred = apart.first_problem().or_else(|| apart.first_incomplete());
         let mut left = failing.clone();
-        let found = apart
+        let hides: Vec<bool> = apart
             .findings
             .iter()
-            .filter(|finding| finding.failing())
-            .filter(|finding| match left.get_mut(&apart.site(finding)) {
-                Some(count) if *count > 0 => {
-                    *count -= 1;
-                    false
-                }
-                _ => true,
+            .map(|finding| {
+                finding.failing()
+                    && match left.get_mut(&apart.site(finding)) {
+                        Some(count) if *count > 0 => {
+                            *count -= 1;
+                            false
+                        }
+                        _ => true,
+                    }
             })
-            .cloned()
+            .collect();
+        let found = apart
+            .findings
+            .into_iter()
+            .zip(hides)
+            .filter_map(|(finding, hides)| hides.then_some(finding))
             .collect();
         Partial { found, erred }
     }

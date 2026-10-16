@@ -316,10 +316,7 @@ fn hidden(
     failing: &Sites,
 ) -> Partial<Finding> {
     if gates.is_empty() {
-        return Partial {
-            found: Vec::new(),
-            erred: None,
-        };
+        return Partial::default();
     }
     let against = match against(args, gates, judged, Some(window), &mut String::new()) {
         Ok(against) => against,
