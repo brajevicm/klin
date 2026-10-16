@@ -427,14 +427,14 @@ fn layers(config: &Config, fields: &Map<String, Value>) -> Result<Vec<Layer>, Er
     listed
         .into_iter()
         .map(|layer| {
-            let at = |why: String| refused(config, &format!("layer \"{}\" {why}", layer.name));
-            let within = scope::selectors(layer.fields, scope::IN).map_err(at)?;
-            let except = scope::selectors(layer.fields, scope::EXCEPT).map_err(at)?;
+            let refuse = |why: String| refused(config, &format!("layer \"{}\" {why}", layer.name));
+            let within = scope::selectors(layer.fields, scope::IN).map_err(refuse)?;
+            let except = scope::selectors(layer.fields, scope::EXCEPT).map_err(refuse)?;
             if let Some(out) = except
                 .iter()
                 .find(|out| !scope::any_holds(&within, out.as_str()))
             {
-                return Err(at(format!(
+                return Err(refuse(format!(
                     "has an \"except\" path \"{}\" outside its \"in\"",
                     out.as_str()
                 )));
@@ -798,7 +798,8 @@ impl Policy {
     }
 
     /// The configuration errors the trees reveal: an `in` that holds no structural file in either
-    /// tree, so a layer the work emptied is still judged, and a file two layers hold.
+    /// tree, so a layer the work emptied is still judged, a layer that holds none once its
+    /// `except` is taken out, a layer `except` path that holds none, and a file two layers hold.
     fn applies(&self, config: &Config, was: &Side, now: &Side) -> Result<(), Error> {
         let files = || was.files.iter().chain(&now.files);
         if self.scope.has_in() && !files().any(|file| self.scope.inside(file)) {
@@ -813,6 +814,15 @@ impl Policy {
                     config,
                     &format!(
                         "layer \"{}\" has an \"in\" with no applicable file",
+                        layer.name
+                    ),
+                ));
+            }
+            if !files().any(|file| layer.holds(file)) {
+                return Err(refused(
+                    config,
+                    &format!(
+                        "layer \"{}\" holds no applicable file once its \"except\" is taken out",
                         layer.name
                     ),
                 ));
@@ -850,7 +860,7 @@ impl Policy {
             _ => Err(refused(
                 config,
                 &format!(
-                    "puts {file} in layers {} — a file belongs to at most one layer, so take it out of the outer one with that layer's \"except\"",
+                    "puts {file} in layers {} — a file belongs to at most one layer, so take it out of one of them with that layer's \"except\"",
                     holding.join(" and ")
                 ),
             )),

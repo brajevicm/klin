@@ -89,7 +89,11 @@ fn a_file_in_two_layers_is_a_configuration_error_naming_both() {
         "{}",
         run.out
     );
-    assert!(run.says("that layer's \"except\""), "{}", run.out);
+    assert!(
+        run.says("take it out of one of them with that layer's \"except\""),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -164,6 +168,25 @@ fn a_layer_except_outside_its_own_in_is_a_configuration_error() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("layer \"ui\" has an \"except\" path \"src/domain\" outside its \"in\""),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_layer_its_own_except_empties_is_a_configuration_error() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() {}\n");
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"app":{"in":"src","except":"src","can_use":[]}}}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("layer \"app\" holds no applicable file once its \"except\" is taken out"),
         "{}",
         run.out
     );

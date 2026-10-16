@@ -5875,9 +5875,10 @@ file under a layer's `except` that no other layer holds is in no layer.
 `can_use` lists the layers a layer may depend on, `null`
 lets it depend on every layer, and an absent `can_use` lets it depend only on
 itself. A layer may always depend on itself. A `can_use` that names no layer,
-a layer or shared `in` that holds no Rust or TypeScript file, a layer
-`except` path that holds none or that lies outside the layer's own `in`, and
-a file two layers hold are config errors. The error for a file two layers
+a layer or shared `in` that holds no Rust or TypeScript file, a layer that
+holds none once its `except` is taken out, a layer `except` path that holds
+none or that lies outside the layer's own `in`, and a file two layers hold
+are config errors. The error for a file two layers
 hold suggests a layer `except`. `roots`, `languages`, `skip_dirs`, `name`,
 globs, `allow_same` and package topology are refused.
 
@@ -6143,6 +6144,7 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_file_under_a_layer_except_that_no_other_layer_holds_is_in_no_layer`,
 `a_layer_except_that_holds_no_file_is_a_configuration_error`,
 `a_layer_except_outside_its_own_in_is_a_configuration_error`,
+`a_layer_its_own_except_empties_is_a_configuration_error`,
 `retired_topology_and_unknown_keys_are_refused`,
 `a_super_path_inside_an_inline_module_resolves_from_that_module`,
 `a_path_attribute_that_retargets_an_unchanged_file_is_new_debt_in_a_changed_run`,
