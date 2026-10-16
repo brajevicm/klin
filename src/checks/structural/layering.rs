@@ -492,6 +492,16 @@ fn shaped_layer<'a>(name: &'a str, value: &'a Value) -> Result<Shaped<'a>, Strin
             "a non-empty path or list of paths",
         ));
     }
+    if fields
+        .get(scope::EXCEPT.name)
+        .is_some_and(|except| !config::file::string_or_list(except))
+    {
+        return Err(config::file::must_be(
+            SECTION,
+            scope::EXCEPT.name,
+            "a non-empty path or list of paths",
+        ));
+    }
     Ok(Shaped {
         name,
         fields,

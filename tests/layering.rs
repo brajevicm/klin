@@ -2002,6 +2002,10 @@ fn a_layer_rule_a_load_judges_refuses_every_command() {
             "a \"layering\" entry's \"in\" must be a non-empty path or list of paths",
         ),
         (
+            r#"{"layering":{"layers":{"ui":{"in":"src/ui","except":[]}}}}"#,
+            "a \"layering\" entry's \"except\" must be a non-empty path or list of paths",
+        ),
+        (
             r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":"domain"}}}}"#,
             "a \"layering\" entry's \"can_use\" must be a list of layer names or null",
         ),
