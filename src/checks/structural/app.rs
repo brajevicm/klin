@@ -251,9 +251,17 @@ struct Package {
     role: Role,
 }
 
+/// What a manifest alone makes of its package: its role, or a Vite app whose `index.html`, at
+/// this path, is still to be read.
+enum Read {
+    Role(Role),
+    Vite(String),
+}
+
 impl Package {
-    /// A package by its manifest alone, a Vite app's entries still unread.
-    fn read(manifest: &str, bytes: Option<Vec<u8>>, paged: bool) -> Package {
+    /// What a manifest makes of its package, with the path of the `index.html` beside it where
+    /// the tree holds one.
+    fn read(bytes: Option<Vec<u8>>, page: Option<String>) -> Read {
         let parsed: Option<Value> = bytes.and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let fields = parsed.as_ref().and_then(Value::as_object);
         let depends = |names: &[&str]| {
@@ -266,49 +274,42 @@ impl Package {
         let entryless = fields.is_some_and(|held| !surface::declares_entry(held));
         let tool =
             fields.is_some_and(|held| held.contains_key("bin") || held.contains_key("workspaces"));
-        let role = match entryless {
-            true if depends(&[FRAMEWORK]) => Role::NextApp,
-            true if paged && depends(&[VITE]) => Role::ViteApp(Vec::new()),
-            true if !tool && depends(UI_FRAMEWORKS) => Role::Unjudged(UNRECOGNIZED),
-            _ => Role::Library,
-        };
-        Package {
-            manifest: manifest.to_string(),
-            directory: directory(manifest).to_string(),
-            role,
+        match (entryless, page) {
+            (true, _) if depends(&[FRAMEWORK]) => Read::Role(Role::NextApp),
+            (true, Some(page)) if depends(&[VITE]) => Read::Vite(page),
+            (true, _) if !tool && depends(UI_FRAMEWORKS) => {
+                Read::Role(Role::Unjudged(UNRECOGNIZED))
+            }
+            _ => Read::Role(Role::Library),
         }
     }
 
     fn judged(&self) -> bool {
         matches!(self.role, Role::NextApp | Role::ViteApp(_))
     }
+}
 
-    fn page(&self) -> Option<String> {
-        joined(&self.directory, PAGE)
+/// The role of a Vite app once its `index.html` and the files it owns are read: the TypeScript
+/// files its module scripts name, or the first reason klin cannot judge it.
+fn vite(directory: &str, html: &str, owned: &[&str]) -> Role {
+    if owned
+        .iter()
+        .any(|file| UNREAD.iter().any(|end| file.ends_with(end)))
+    {
+        return Role::Unjudged(VITE_UNREAD);
     }
-
-    /// The role of a Vite app once its `index.html` and the files it owns are read: the
-    /// TypeScript files its module scripts name, or the first reason klin cannot judge it.
-    fn vite(&self, html: &str, owned: &[&str]) -> Role {
-        if owned
-            .iter()
-            .any(|file| UNREAD.iter().any(|end| file.ends_with(end)))
-        {
-            return Role::Unjudged(VITE_UNREAD);
-        }
-        let named = match page::named(html, &self.directory) {
-            Ok(named) => named,
-            Err(Unread::Inline) => return Role::Unjudged(VITE_INLINE),
-            Err(Unread::Placeholder) => return Role::Unjudged(VITE_PLACEHOLDER),
-        };
-        let named: Vec<String> = named
-            .into_iter()
-            .filter(|file| owned.contains(&file.as_str()) && typescript(file))
-            .collect();
-        match named.is_empty() {
-            true => Role::Unjudged(VITE_UNNAMED),
-            false => Role::ViteApp(named),
-        }
+    let named = match page::named(html, directory) {
+        Ok(named) => named,
+        Err(Unread::Inline) => return Role::Unjudged(VITE_INLINE),
+        Err(Unread::Placeholder) => return Role::Unjudged(VITE_PLACEHOLDER),
+    };
+    let named: Vec<String> = named
+        .into_iter()
+        .filter(|file| owned.contains(&file.as_str()) && typescript(file))
+        .collect();
+    match named.is_empty() {
+        true => Role::Unjudged(VITE_UNNAMED),
+        false => Role::ViteApp(named),
     }
 }
 
@@ -316,39 +317,46 @@ impl Package {
 /// `index.html` this tree holds, as a module script ships its file and grants no exemption.
 fn packages(files: &[String], read: impl Fn(&str) -> Option<Vec<u8>>) -> Vec<Package> {
     let held: HashSet<&str> = files.iter().map(String::as_str).collect();
-    let mut packages: Vec<Package> = files
+    let manifests: Vec<(&str, Read)> = files
         .iter()
         .filter(|file| basename(file) == MANIFEST && survey::surveyed(file))
         .map(|manifest| {
-            let page = joined(directory(manifest), PAGE);
-            let paged = page.is_some_and(|page| held.contains(page.as_str()));
-            Package::read(manifest, read(manifest), paged)
+            let page =
+                joined(directory(manifest), PAGE).filter(|page| held.contains(page.as_str()));
+            (manifest.as_str(), Package::read(read(manifest), page))
         })
         .collect();
-    if !packages
-        .iter()
-        .any(|package| matches!(package.role, Role::ViteApp(_)))
-    {
-        return packages;
-    }
     let mut owned: HashMap<usize, Vec<&str>> = HashMap::new();
-    for file in files.iter().filter(|file| survey::surveyed(file)) {
-        if let Some(at) = owner(&packages, file) {
-            owned.entry(at).or_default().push(file);
+    if manifests
+        .iter()
+        .any(|(_, read)| matches!(read, Read::Vite(_)))
+    {
+        let directories = || manifests.iter().map(|(manifest, _)| directory(manifest));
+        for file in files.iter().filter(|file| survey::surveyed(file)) {
+            if let Some(at) = owner(directories(), file) {
+                owned.entry(at).or_default().push(file);
+            }
         }
     }
-    for (at, package) in packages.iter_mut().enumerate() {
-        if !matches!(package.role, Role::ViteApp(_)) {
-            continue;
-        }
-        let html = package
-            .page()
-            .and_then(|page| read(&page))
-            .unwrap_or_default();
-        let owned = owned.get(&at).map_or(&[][..], Vec::as_slice);
-        package.role = package.vite(&String::from_utf8_lossy(&html), owned);
-    }
-    packages
+    manifests
+        .into_iter()
+        .enumerate()
+        .map(|(at, (manifest, found))| {
+            let role = match found {
+                Read::Role(role) => role,
+                Read::Vite(page) => {
+                    let html = read(&page).unwrap_or_default();
+                    let owned = owned.get(&at).map_or(&[][..], Vec::as_slice);
+                    vite(directory(manifest), &String::from_utf8_lossy(&html), owned)
+                }
+            };
+            Package {
+                manifest: manifest.to_string(),
+                directory: directory(manifest).to_string(),
+                role,
+            }
+        })
+        .collect()
 }
 
 /// Whether a tree holds a package app mode judges, read from its manifests and its `index.html`
@@ -464,7 +472,8 @@ fn owned<'t>(topology: &'t Topology, packages: &[Package]) -> BTreeMap<usize, Ve
         if !typescript(file) || !survey::surveyed(file) {
             continue;
         }
-        if let Some(at) = owner(packages, file) {
+        let directories = packages.iter().map(|package| package.directory.as_str());
+        if let Some(at) = owner(directories, file) {
             out.entry(at).or_default().push(file);
         }
     }
@@ -472,12 +481,11 @@ fn owned<'t>(topology: &'t Topology, packages: &[Package]) -> BTreeMap<usize, Ve
 }
 
 /// The position of the package that owns a file: the deepest package directory that holds it.
-fn owner(packages: &[Package], file: &str) -> Option<usize> {
-    packages
-        .iter()
+fn owner<'d>(directories: impl Iterator<Item = &'d str>, file: &str) -> Option<usize> {
+    directories
         .enumerate()
-        .filter(|(_, package)| within(&package.directory, file))
-        .max_by_key(|(_, package)| package.directory.len())
+        .filter(|(_, directory)| within(directory, file))
+        .max_by_key(|(_, directory)| directory.len())
         .map(|(at, _)| at)
 }
 
