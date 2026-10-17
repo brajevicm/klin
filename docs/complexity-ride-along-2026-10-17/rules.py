@@ -24,17 +24,13 @@ def ceiling(finding):
     return int(re.search(r"\bcc (\d+)", finding["ceiling"]).group(1))
 
 
-def length(values):
-    return values.get("lines", values.get("test_lines"))
-
-
 def keeps(finding):
     values = finding["values"]
     base = (finding.get("matched") or {}).get("values") or {}
     over = values["cc"] > ceiling(finding)
     new = finding["outcome"] == "new"
     worsened = finding["outcome"] == "worsened"
-    grew = worsened and length(base) is not None and length(values) - length(base) >= GROWTH
+    grew = worsened and any(key in values and key in base and values[key] - base[key] >= GROWTH for key in ("lines", "test_lines"))
     return [
         name
         for name, kept in (
@@ -47,8 +43,7 @@ def keeps(finding):
 
 
 def findings(result):
-    riders = [item for item in result.get("reviews", []) if item.get("kind") == "ride-along"]
-    return [item for item in result.get("findings", []) + riders if item.get("check") == "complexity"]
+    return [item for item in result.get("findings", []) if item.get("check") == "complexity"]
 
 
 def run(args):
@@ -89,6 +84,8 @@ def check():
     assert keeps(finding("new", 14, 30, ceiling="cc 15 (the 2026-11-01 step), lines 80")) == []
     tested = {"outcome": "worsened", "values": {"cc": 3, "test_lines": 150}, "matched": {"values": {"cc": 3, "test_lines": 130}}, "ceiling": "cc 10, lines 80, test_lines 120"}
     assert keeps(tested) == ["first"]
+    moved = {"outcome": "worsened", "values": {"cc": 3, "test_lines": 150}, "matched": {"values": {"cc": 3, "lines": 100}}, "ceiling": "cc 10, lines 80, test_lines 120"}
+    assert keeps(moved) == []
     assert keeps(finding("held", 12, 85, {"cc": 12, "lines": 85})) == []
     print("rules.py self-check passed")
 

@@ -162,7 +162,7 @@ def run(args):
         if last[change["repo"]] == index:
             remove(change["repo"])
         if result.get("measurement") != "complete":
-            failed.append(change["commit"])
+            failed.append(f"{change['commit']} ({result.get('measurement') or result.get('failed', '').strip()[:120]})")
             continue
         riders = [item for item in result.get("reviews", []) if item.get("kind") == "ride-along"]
         for finding in result.get("findings", []) + riders:
