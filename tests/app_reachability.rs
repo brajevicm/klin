@@ -1044,3 +1044,18 @@ fn a_package_that_names_next_and_vite_is_judged_as_a_next_app() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("components/footer.tsx"), "{}", run.out);
 }
+
+#[test]
+fn an_inline_module_script_gives_the_hole_text_before_a_placeholder() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/%VITE_ENTRY%.tsx\"></script>\n    <script type=\"module\">\n      import \"/src/footer.tsx\";\n    </script>",
+    );
+    tree.base();
+
+    a_vite_hole(
+        &tree,
+        "a Vite app whose index.html holds an inline module script klin does not read",
+    );
+}

@@ -192,7 +192,8 @@ const CONVENTION_EXPORTS: &[(&str, &[&[&str]])] = &[
     ("sitemap", &[&["generateSitemaps"]]),
 ];
 
-/// What kind of entry Next.js or a script makes of a file, which decides the exports it reads.
+/// What kind of entry Next.js, `index.html` or a script makes of a file, which decides the exports
+/// it reads.
 #[derive(Clone, Copy)]
 enum Kind {
     Convention(&'static str),
@@ -295,8 +296,7 @@ impl Package {
         {
             return Role::Unjudged(VITE_UNREAD);
         }
-        let at = self.page().map(|page| directory(&page).to_string());
-        let named = match page::named(html, &self.directory, at.as_deref().unwrap_or_default()) {
+        let named = match page::named(html, &self.directory) {
             Ok(named) => named,
             Err(Unread::Inline) => return Role::Unjudged(VITE_INLINE),
             Err(Unread::Placeholder) => return Role::Unjudged(VITE_PLACEHOLDER),
@@ -351,7 +351,8 @@ fn packages(files: &[String], read: impl Fn(&str) -> Option<Vec<u8>>) -> Vec<Pac
     packages
 }
 
-/// Whether a tree holds a package app mode judges, read from its manifests alone.
+/// Whether a tree holds a package app mode judges, read from its manifests and its `index.html`
+/// files.
 pub(super) fn present(root: &Path, files: &[String]) -> bool {
     packages(files, |file| std::fs::read(root.join(file)).ok())
         .iter()
@@ -676,9 +677,7 @@ impl App<'_, '_> {
         paths
             .iter()
             .any(|path| kit.is_some_and(|kit| under_or_at(path, kit)) || self.walk.vendored(path))
-            || self.package.role == Role::NextApp
-                && private(relative(&self.package.directory, file))
-                && self.base.holds(file)
+            || private(relative(&self.package.directory, file)) && self.base.holds(file)
     }
 
     /// What keeps the package from being judged: an alias configuration klin cannot prove, and a

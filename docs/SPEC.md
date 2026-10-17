@@ -5586,7 +5586,8 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_vite_app_whose_index_html_names_no_held_module_is_a_hole`,
 `a_vite_app_that_holds_a_vue_file_is_a_hole`,
 `a_vite_app_with_an_inline_module_script_is_a_hole`,
-`a_vite_app_whose_module_script_names_a_placeholder_is_a_hole` and
+`a_vite_app_whose_module_script_names_a_placeholder_is_a_hole`,
+`an_inline_module_script_gives_the_hole_text_before_a_placeholder` and
 `a_package_that_names_next_and_vite_is_judged_as_a_next_app` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
 `tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no

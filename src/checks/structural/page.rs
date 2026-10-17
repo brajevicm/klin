@@ -22,21 +22,20 @@ enum Script {
     Inline,
 }
 
-/// The tree paths the module scripts of an `index.html` name, in order, with the package
-/// directory and the HTML file's directory to resolve them from.
-pub(super) fn named(html: &str, package: &str, page: &str) -> Result<Vec<String>, Unread> {
+/// The tree paths the module scripts of the `index.html` at a package directory name, in order.
+/// An inline module script gives the reason before a placeholder does, wherever each sits.
+pub(super) fn named(html: &str, package: &str) -> Result<Vec<String>, Unread> {
     let mut srcs = Vec::new();
     for script in modules(html) {
         match script {
-            Script::Src(src) if placeholder(&src) => return Err(Unread::Placeholder),
             Script::Src(src) => srcs.push(src),
             Script::Inline => return Err(Unread::Inline),
         }
     }
-    Ok(srcs
-        .iter()
-        .filter_map(|src| path(src, package, page))
-        .collect())
+    if srcs.iter().any(|src| placeholder(src)) {
+        return Err(Unread::Placeholder);
+    }
+    Ok(srcs.iter().filter_map(|src| path(src, package)).collect())
 }
 
 /// Every module script of an HTML text, in order. A script of any other `type`, or none, and an
@@ -133,18 +132,15 @@ fn value(text: &str) -> (&str, &str) {
     }
 }
 
-/// The tree path a module script's `src` names, less any `?query` or `#hash`: a leading `/`
+/// The tree path a module script's `src` names, less any `?query` or `#hash`. A leading `/`
 /// resolves from the package directory, Vite's default `root`, and any other path from the HTML
-/// file's directory. A URL off the site names none.
-fn path(src: &str, package: &str, page: &str) -> Option<String> {
+/// file's directory, which is the same directory. A URL off the site names none.
+fn path(src: &str, package: &str) -> Option<String> {
     let path = src.split(['?', '#']).next()?.trim();
     if OFF_SITE.iter().any(|scheme| path.starts_with(scheme)) {
         return None;
     }
-    match path.strip_prefix('/') {
-        Some(rooted) => joined(package, rooted),
-        None => joined(page, path),
-    }
+    joined(package, path)
 }
 
 /// Whether a `src` holds a `%...%` placeholder, which Vite replaces from env variables.
