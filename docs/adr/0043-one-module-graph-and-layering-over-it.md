@@ -194,3 +194,17 @@ ADR 0067 replaces the runner, checks, syntax, project, catalogue, core and
 edge layers that "Final self-enforcement" names with one layer per folder of
 `src/` (#602). `acyclic` stays on, and the layer order is the table of ADR
 0067. The module graph and its rules do not change.
+
+## Amendment: workspace packages by name (#669)
+
+"Package names, aliases, `paths`, `baseUrl` and export maps are counted and
+never resolved" and "package resolution ... remain outside V1" no longer hold
+for workspace packages. A bare specifier whose package name equals the `name`
+of exactly one package that the root `package.json` lists under `workspaces`
+resolves inside that package's directory, after `paths` and `baseUrl`, as tsc
+does through the `node_modules` symlink. Only literal entries and one-segment
+`*` entries are read. A package that writes `exports`, a shared name, and
+every other package stay external and make no hole. The owner approved the
+visible change in `reachability`, `layering` and `public-api`: real
+dependencies between workspace packages show up as new `layering` findings.
+SPEC B.8.2.1 states the rule.

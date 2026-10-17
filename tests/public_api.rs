@@ -3034,3 +3034,37 @@ fn policy_refuses_an_entry_for_public_api() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("drop core"), "{}", run.out);
 }
+
+#[test]
+fn a_re_export_from_another_workspace_package_measures_the_contract_behind_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "package.json",
+        r#"{"name":"root","private":true,"workspaces":["packages/*"]}"#,
+    );
+    tree.write(
+        "packages/web/package.json",
+        r#"{"name":"web","types":"index.ts"}"#,
+    );
+    tree.write(
+        "packages/web/index.ts",
+        "export { Foo } from \"core/foo\";\n",
+    );
+    tree.write("packages/core/package.json", r#"{"name":"core"}"#);
+    tree.write(
+        "packages/core/foo.ts",
+        "export interface Foo { value: string }\n",
+    );
+    tree.base();
+    let base = by_hand(&tree);
+    assert_eq!(base.code, 0, "{}", base.out);
+    assert!(base.says("1 measured, 0 opaque"), "{}", base.out);
+    tree.write(
+        "packages/core/foo.ts",
+        "export interface Foo { value: number }\n",
+    );
+    let change = changed(&tree);
+    assert_eq!(change.code, 1, "{}", change.out);
+    assert!(change.says("Foo"), "{}", change.out);
+}

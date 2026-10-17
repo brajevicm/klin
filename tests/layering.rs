@@ -2155,3 +2155,121 @@ fn a_base_url_hole(files: &[(&str, &str)], import: &str) {
         run.out
     );
 }
+
+/// A workspace whose root lists `workspaces`, with an `app` package whose layer may use nothing
+/// and a `ui` package with this manifest, and the app importing `specifier`.
+fn workspace(workspaces: &str, ui: &str, specifier: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"app":{"in":"packages/app","can_use":[]},"ui":{"in":"packages/ui","can_use":[]}}}}"#,
+    );
+    tree.write(
+        "package.json",
+        &format!(r#"{{"name":"root","private":true,"workspaces":{workspaces}}}"#),
+    );
+    tree.write("packages/app/package.json", r#"{"name":"app"}"#);
+    tree.write("packages/ui/package.json", ui);
+    tree.write(
+        "packages/app/main.ts",
+        &format!("import {{ button }} from \"{specifier}\";\nexport const shown = button;\n"),
+    );
+    tree
+}
+
+const BUTTON: &str = "export const button = 1;\n";
+
+#[test]
+fn a_subpath_import_of_another_workspace_package_is_a_forbidden_edge() {
+    let tree = workspace(r#"["packages/*"]"#, r#"{"name":"ui"}"#, "ui/src/button");
+    tree.write("packages/ui/src/button.ts", BUTTON);
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("app → ui: packages/ui/src/button.ts"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_bare_import_of_a_workspace_package_with_no_entry_fields_reaches_its_index() {
+    let tree = workspace(r#"{"packages":["packages/*"]}"#, r#"{"name":"ui"}"#, "ui");
+    tree.write("packages/ui/index.ts", BUTTON);
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("app → ui: packages/ui/index.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_bare_import_of_a_workspace_package_follows_main_to_its_typescript_file() {
+    let tree = workspace(
+        r#"["packages/app","packages/ui"]"#,
+        r#"{"name":"ui","main":"lib/index.js"}"#,
+        "ui",
+    );
+    tree.write("packages/ui/index.ts", BUTTON);
+    tree.write("packages/ui/lib/index.ts", BUTTON);
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("app → ui: packages/ui/lib/index.ts"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_held_paths_target_wins_over_a_workspace_package_of_the_same_name() {
+    let tree = workspace(r#"["packages/*"]"#, r#"{"name":"ui"}"#, "ui");
+    tree.write("packages/ui/index.ts", BUTTON);
+    tree.write(
+        "packages/app/tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"ui":["./local/ui"]}}}"#,
+    );
+    tree.write("packages/app/local/ui.ts", BUTTON);
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_missing_paths_target_falls_through_to_the_workspace_package() {
+    let tree = workspace(r#"["packages/*"]"#, r#"{"name":"ui"}"#, "ui");
+    tree.write("packages/ui/index.ts", BUTTON);
+    tree.write(
+        "packages/app/tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"ui":["./local/ui"]}}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("app → ui: packages/ui/index.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_package_no_workspaces_entry_lists_or_one_that_writes_exports_stays_external() {
+    for (workspaces, ui) in [
+        (r#"["packages/app"]"#, r#"{"name":"ui"}"#),
+        (r#"["packages/ui-*"]"#, r#"{"name":"ui"}"#),
+        (
+            r#"["packages/*"]"#,
+            r#"{"name":"ui","exports":{"./*":"./src/*.ts"}}"#,
+        ),
+    ] {
+        let tree = workspace(workspaces, ui, "ui/src/button");
+        tree.write("packages/ui/src/button.ts", BUTTON);
+
+        let run = tree.run(&["check", "layering"]);
+
+        assert_eq!(run.code, 0, "{workspaces} {ui}: {}", run.out);
+    }
+}

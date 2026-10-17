@@ -1186,3 +1186,60 @@ fn an_end_tag_whose_name_only_starts_with_the_raw_text_name_keeps_it_raw() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/admin.tsx"), "{}", run.out);
 }
+
+/// A Yarn workspace whose root lists `packages/*` and holds a Next app named `web` under
+/// `packages/web`, whose page imports `importing` from its header.
+fn workspace(importing: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "package.json",
+        r#"{"name":"root","private":true,"workspaces":["packages/*"]}"#,
+    );
+    tree.write("packages/web/package.json", NEXT);
+    tree.write(
+        "packages/web/app/layout.tsx",
+        "export default function Layout() {\n  return null;\n}\n",
+    );
+    tree.write(
+        "packages/web/app/page.tsx",
+        &format!("import {{ Header }} from \"{importing}\";\n\nexport default function Page() {{\n  return Header();\n}}\n"),
+    );
+    tree
+}
+
+fn header(tree: &Tree, path: &str) {
+    tree.write(path, "export function Header() {\n  return null;\n}\n");
+}
+
+#[test]
+fn a_subpath_import_through_the_package_own_workspace_name_reaches_its_file() {
+    let tree = workspace("web/components/header");
+    header(&tree, "packages/web/components/header.tsx");
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("components/header.tsx"), "{}", run.out);
+}
+
+#[test]
+fn an_import_of_a_workspace_package_that_writes_exports_is_external_and_the_app_stays_judged() {
+    let tree = workspace("ui/header");
+    tree.write(
+        "packages/ui/package.json",
+        r#"{"name":"ui","exports":{"./*":"./src/*.tsx"}}"#,
+    );
+    header(&tree, "packages/ui/header.tsx");
+    header(&tree, "packages/web/components/footer.tsx");
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("packages/web/components/footer.tsx"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("ui/header"), "{}", run.out);
+}
