@@ -67,7 +67,7 @@ def checkout(change):
         git(source, "checkout", "--quiet", "--force", "--detach", commit)
     into = WORK / "trees" / slug(change["repo"])
     if not into.exists():
-        subprocess.run(["git", "clone", "--quiet", "--shared", str(source), str(into)], check=True)
+        subprocess.run(["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--shared", str(source), str(into)], check=True)
         git(into, "remote", "remove", "origin")
     return into
 
