@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::hook::record;
 use crate::sys::state;
-use crate::sys::write::{AtomicWrite, atomic_write};
+use crate::sys::token;
 
 /// Where the state directory keeps what each session of a host that submits a stop's text as
 /// its next prompt was handed: one file per session id, so one session's write never replaces
@@ -24,8 +25,15 @@ struct Handed {
 /// Spec 9.1.
 pub fn expect_followup(root: &Path, session: &str, report: &str) -> bool {
     hand(root, session, |handed| {
-        handed.followup = Some(state::hash(report.as_bytes()));
+        handed.followup = Some(delivered(report));
     })
+}
+
+/// The hash of a text as the host received it: `sys::out` redacts what it prints, so the report
+/// is redacted before it is hashed, and a prompt is redacted the same way before it is compared.
+/// Spec 9.1, ADR 0075.
+fn delivered(text: &str) -> u64 {
+    state::hash(token::redact(text).as_bytes())
 }
 
 /// Consume one expected follow-up of this session. A different prompt clears the expectation
@@ -39,7 +47,7 @@ pub fn consumes(root: &Path, session: &str, prompt: &str) -> bool {
     if expected.is_some() {
         write(&at, session, &handed);
     }
-    expected == Some(state::hash(prompt.as_bytes()))
+    expected == Some(delivered(prompt))
 }
 
 /// Forget what a session was handed, because its next prompt opened a turn. Spec 9.1.
@@ -89,10 +97,5 @@ fn write(at: &Path, session: &str, handed: &Handed) -> bool {
         return false;
     }
     let text = Value::Object(fields).to_string() + "\n";
-    atomic_write(AtomicWrite {
-        target: &target,
-        bytes: text.as_bytes(),
-        keep_mode_from: None,
-    })
-    .is_ok()
+    record::state(&target, &text).is_ok()
 }

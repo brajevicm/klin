@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
+use crate::sys::out;
+
 /// One line `klin setup` writes for a host event. The adapter owns the event names, the kind
 /// each one is, and what each one filters by, so a fourth host adds a table rather than a branch
 /// in the writer. Spec 10.1, 11.2.
@@ -261,7 +263,7 @@ pub(super) fn emit(stop: &Stop) -> u8 {
         Stop::Block(_) => 2,
         Stop::Pass => 0,
         Stop::Tell(text) => {
-            println!("{}", serde_json::json!({ "systemMessage": text }));
+            out::println(&format!("{}", serde_json::json!({ "systemMessage": text })));
             0
         }
     }
@@ -270,7 +272,7 @@ pub(super) fn emit(stop: &Stop) -> u8 {
 /// A refusal on any host: the reason on stderr under exit 2, which every host reads back to
 /// the agent.
 pub(super) fn refused(reason: &str) -> u8 {
-    eprintln!("{reason}");
+    out::eprintln(reason);
     2
 }
 

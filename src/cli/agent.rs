@@ -14,6 +14,7 @@ use crate::engine::catalogue;
 use crate::hook::host;
 use crate::hook::host::adapter::{Decision, Event, Kind};
 use crate::hook::{guard, journal, stop, turn};
+use crate::sys::out;
 
 const WORD: &str = "__agent";
 const EVENT: &str = "event";
@@ -58,7 +59,7 @@ fn answer(placed: &Placed) -> ExitCode {
         Ok(Some(event)) => event,
         Ok(None) => return ExitCode::SUCCESS,
         Err(why) => {
-            eprintln!("klin: NOTE: {why}.");
+            out::eprintln(&format!("klin: NOTE: {why}."));
             noted(std::env::current_dir().ok().as_deref(), None, &why);
             return ExitCode::SUCCESS;
         }
@@ -70,8 +71,8 @@ fn answer(placed: &Placed) -> ExitCode {
         return ExitCode::from(refused(&event, start.as_deref()));
     }
     let Some(start) = start else {
-        eprintln!(
-            "klin: NOTE: the working directory could not be read, so this hook answered nothing."
+        out::eprintln(
+            "klin: NOTE: the working directory could not be read, so this hook answered nothing.",
         );
         return failed(event.kind);
     };
@@ -146,15 +147,15 @@ fn named_host(words: &[OsString]) -> Option<String> {
 }
 
 fn answered(event: Event, kind: Kind, start: &Path, root: &Path) -> u8 {
-    let mut out = String::new();
+    let mut printed = String::new();
     let code = match kind {
         Kind::PreTool => guard::run(&event, root),
         Kind::Session | Kind::Prompt => {
-            turn::opened(event, start, &catalogue::sections(), &mut out)
+            turn::opened(event, start, &catalogue::sections(), &mut printed)
         }
-        Kind::Stop => stop::stop(event, start, setup::behind, &mut out),
+        Kind::Stop => stop::stop(event, start, setup::behind, &mut printed),
     };
-    print!("{out}");
+    out::print(&printed);
     code
 }
 

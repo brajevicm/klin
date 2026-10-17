@@ -6,6 +6,7 @@ use super::adapter::{
     Adapter, Decision, Event, Filter, Hook, HookFile, Kind, Stop, input, plugin_named_klin,
     refused, text,
 };
+use crate::sys::out;
 
 /// Cursor's native events, not Claude Code's translated ones. `cursor_version` is the field
 /// Claude Code never sends, and Cursor sends it on every request.
@@ -216,7 +217,7 @@ impl Adapter for Cursor {
             }
             Stop::Pass => 0,
             Stop::Tell(text) => {
-                eprintln!("{text}");
+                out::eprintln(text);
                 0
             }
         }
@@ -272,14 +273,17 @@ fn names_klin(manifest: &Path) -> bool {
 }
 
 fn followup(text: &str) {
-    println!("{}", serde_json::json!({ "followup_message": text }));
+    out::println(&format!(
+        "{}",
+        serde_json::json!({ "followup_message": text })
+    ));
 }
 
 fn deny(reason: &str) -> u8 {
-    println!(
+    out::println(&format!(
         "{}",
         serde_json::json!({ "permission": "deny", "agent_message": reason })
-    );
+    ));
     refused(reason)
 }
 

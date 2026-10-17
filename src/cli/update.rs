@@ -4,6 +4,7 @@
 use std::process::Command;
 
 use crate::cli::setup;
+use crate::sys::out;
 use crate::sys::release;
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -36,18 +37,24 @@ pub fn run(args: &Args) -> u8 {
 fn install() -> u8 {
     match release::update() {
         Ok(Some(tag)) => {
-            println!("klin updated to {tag}. Release notes: {}", tag.notes());
+            out::println(&format!(
+                "klin updated to {tag}. Release notes: {}",
+                tag.notes()
+            ));
             shadowed_hint();
             reconcile_hint();
             0
         }
         Ok(None) => {
-            println!("klin {} is the newest release.", env!("CARGO_PKG_VERSION"));
+            out::println(&format!(
+                "klin {} is the newest release.",
+                env!("CARGO_PKG_VERSION")
+            ));
             shadowed_hint();
             0
         }
         Err(why) => {
-            eprintln!("FAIL: {why}");
+            out::eprintln(&format!("FAIL: {why}"));
             2
         }
     }
@@ -58,10 +65,10 @@ fn install() -> u8 {
 fn shadowed_hint() {
     if let Some(other) = release::shadowed() {
         let other = other.display();
-        println!(
+        out::println(&format!(
             "klin: NOTE: PATH finds another klin first, at {other}, and a shell and klin's hooks \
              run that one. Run {other} update, or remove it."
-        );
+        ));
     }
 }
 
@@ -70,18 +77,18 @@ fn auto(switch: Switch) -> u8 {
     let on = matches!(switch, Switch::On);
     match release::set_auto(on) {
         Ok(()) if on => {
-            println!(
+            out::println(
                 "klin: auto-update is on. A session start installs a newer signed release on \
-                 its own."
+                 its own.",
             );
             0
         }
         Ok(()) => {
-            println!("klin: auto-update is off. klin tells you when a newer release is out.");
+            out::println("klin: auto-update is off. klin tells you when a newer release is out.");
             0
         }
         Err(why) => {
-            eprintln!("FAIL: {why}");
+            out::eprintln(&format!("FAIL: {why}"));
             2
         }
     }
@@ -91,27 +98,30 @@ fn auto(switch: Switch) -> u8 {
 fn check() -> u8 {
     let version = env!("CARGO_PKG_VERSION");
     let Some((tag, saved)) = release::fetch() else {
-        eprintln!("FAIL: klin {version} could not ask GitHub for the newest release.");
+        out::eprintln(&format!(
+            "FAIL: klin {version} could not ask GitHub for the newest release."
+        ));
         return 2;
     };
     if !saved {
-        eprintln!(
+        out::eprintln(
             "klin: NOTE: klin could not save this answer in its cache, so klin status still \
-             shows the earlier one."
+             shows the earlier one.",
         );
     }
     match tag.is_newer() {
-        true => println!(
-            "{}",
-            release::Audience::Person.note(
-                release::route(),
-                &release::News::Available(tag.clone()),
-                None
-            )
+        true => out::println(
+            &release::Audience::Person
+                .note(
+                    release::route(),
+                    &release::News::Available(tag.clone()),
+                    None,
+                )
+                .to_string(),
         ),
-        false => println!("klin {version} is the newest release."),
+        false => out::println(&format!("klin {version} is the newest release.")),
     }
-    println!("Release notes: {}", tag.notes());
+    out::println(&format!("Release notes: {}", tag.notes()));
     0
 }
 
@@ -138,20 +148,20 @@ fn reconcile_hint() {
         .into_iter()
         .partition(|row| row["scope"] == setup::Owner::User.as_str());
     if !project.is_empty() {
-        println!(
+        out::println(&format!(
             "klin: run klin setup to reconcile this repository's integration: {}.",
             described(&project)
-        );
+        ));
     }
     if !user.is_empty() {
         let hosts: String = user
             .iter()
             .map(|row| format!(" --host {}", row["host"].as_str().unwrap_or("")))
             .collect();
-        println!(
+        out::println(&format!(
             "klin: run klin setup --user{hosts} to reconcile your own integration: {}.",
             described(&user)
-        );
+        ));
     }
 }
 

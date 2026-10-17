@@ -8,6 +8,7 @@ use crate::config;
 use crate::hook::host::ADAPTERS;
 use crate::hook::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
 use crate::sys::error::Error;
+use crate::sys::out;
 use crate::sys::release;
 use crate::{
     cli::{baseline, starter},
@@ -637,16 +638,16 @@ fn write_agreed(file: &Path, linked: Option<&Path>) -> Result<bool, Error> {
         return Ok(linked.is_none());
     }
     match linked {
-        Some(to) => eprint!(
+        Some(to) => out::eprint(&format!(
             "{} reaches {} through a link. Write klin's skill at {}? [y/N] ",
             file.display(),
             to.display(),
             to.display()
-        ),
-        None => eprint!(
+        )),
+        None => out::eprint(&format!(
             "{} differs from klin's canonical skill. Replace it? [y/N] ",
             file.display()
-        ),
+        )),
     }
     let mut answer = String::new();
     stdin

@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -7,6 +7,7 @@ use serde_json::{Map, Value};
 use crate::config;
 use crate::config::file::Config;
 use crate::hook::host::adapter::Event;
+use crate::hook::record;
 use crate::sys::state;
 
 /// The journal: one JSON line per hook stop, appended under the state directory. It is the
@@ -340,13 +341,7 @@ pub fn guard(at: &Path, event: &Event, delivered: u8, reason: &'static str) {
 /// costs the record and nothing else, because nothing klin writes for itself may change a
 /// block or a pass, and a note about it would reach the agent instead of a person. Spec 9.6.
 fn append(at: &Path, line: &Value) {
-    let opened = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(at.join(FILE));
-    if let Ok(mut file) = opened {
-        let _ = file.write_all((line.to_string() + "\n").as_bytes());
-    }
+    let _ = record::append(&at.join(FILE), &(line.to_string() + "\n"));
 }
 
 fn now() -> u64 {
@@ -528,7 +523,7 @@ mod tests {
         let text: String = (0..old).map(|_| row(OLD, "stop")).collect::<String>() + tail;
         let at = tempfile::tempdir().expect("a temporary directory");
         let file = at.path().join(FILE);
-        std::fs::write(&file, text).expect("the journal written");
+        record::write(&file, &text).expect("the journal written");
         scan(&file, CUTOFF)
     }
 

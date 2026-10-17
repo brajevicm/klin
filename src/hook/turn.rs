@@ -8,11 +8,11 @@ use crate::hook::handoff;
 use crate::hook::host::adapter::{self, Event};
 use crate::hook::journal;
 use crate::hook::radius;
+use crate::hook::record;
 use crate::sys::error::Error;
 use crate::sys::git::Repo;
 use crate::sys::release::{self, Audience};
 use crate::sys::state;
-use crate::sys::write::{AtomicWrite, atomic_write};
 use crate::window::base::{self, Kind, Window};
 use crate::window::stamp::{self, Here, History, Stamp, Verdict};
 
@@ -771,13 +771,7 @@ fn stamped(root: &Path, tree: &str, reference: &str) -> Option<(String, Option<S
 fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
     let text = stamp::recorded(stamp).to_string() + "\n";
     let target = at.join(stamp::FILE);
-    if atomic_write(AtomicWrite {
-        target: &target,
-        bytes: text.as_bytes(),
-        keep_mode_from: None,
-    })
-    .is_ok()
-    {
+    if record::state(&target, &text).is_ok() {
         return true;
     }
     note(out, &format!("{} could not be written", target.display()));
