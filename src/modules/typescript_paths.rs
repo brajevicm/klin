@@ -327,11 +327,7 @@ fn configurations(topology: &Topology, named: &[&String]) -> BTreeMap<String, Va
             .and_then(|bytes| jsonc::parse(&bytes).ok())
             .unwrap_or(Value::Null);
         for parent in parents(&file, &value) {
-            let parent = if topology.holds(&parent) {
-                parent
-            } else {
-                format!("{parent}.json")
-            };
+            let parent = parent_file(parent, |file| topology.holds(file));
             if topology.holds(&parent) {
                 pending.push(parent);
             }
@@ -355,11 +351,12 @@ fn parents(file: &str, value: &Value) -> Vec<String> {
         .collect()
 }
 
-/// A parent TypeScript reads as a file: one written from `./` or `../`. Any other name is a
-/// package to TypeScript, even `.config/base.json`.
+/// A parent TypeScript reads as a file: one written from `./` or `../`, after backslashes become
+/// slashes. Any other name is a package to TypeScript, even `.config/base.json`.
 fn local(file: &str, extends: &str) -> Option<String> {
+    let extends = extends.replace('\\', "/");
     (extends.starts_with("./") || extends.starts_with("../"))
-        .then(|| joined(directory(file), extends))
+        .then(|| joined(directory(file), &extends))
         .flatten()
 }
 
@@ -474,7 +471,13 @@ fn config_dir(value: &Value) -> bool {
 }
 
 fn held(parent: String, parsed: &BTreeMap<String, Value>) -> String {
-    if parsed.contains_key(&parent) {
+    parent_file(parent, |file| parsed.contains_key(file))
+}
+
+/// The file TypeScript reads for a local parent: the path as written, or else that path with
+/// `.json` added where it does not already end in `.json`.
+fn parent_file(parent: String, holds: impl Fn(&str) -> bool) -> String {
+    if holds(&parent) || parent.ends_with(".json") {
         parent
     } else {
         format!("{parent}.json")

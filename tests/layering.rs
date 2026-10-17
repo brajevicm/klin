@@ -2515,8 +2515,39 @@ fn a_bare_base_url_import_under_a_local_parent_needs_roots_the_child_writes() {
 
 #[test]
 fn a_nested_config_that_only_extends_its_ancestor_resolves_the_alias_the_same_way() {
+    let middle = ("web/tsconfig.json", r#"{"extends":"../tsconfig.json"}"#);
+    let child = (
+        "web/model/tsconfig.json",
+        r#"{"extends":"../tsconfig.json"}"#,
+    );
+    for nested in [vec![middle], vec![middle, child]] {
+        let tree = Tree::new();
+        for (path, config) in &nested {
+            tree.write(path, config);
+        }
+        let run = an_alias_from_model_to_view(&tree, &format!("{{{CHILD_PATHS}}}"));
+        assert_model_to_view(&run);
+    }
+}
+
+#[test]
+fn an_explicit_json_parent_that_is_missing_does_not_fall_back_to_json_json() {
     let tree = Tree::new();
-    tree.write("web/tsconfig.json", r#"{"extends":"../tsconfig.json"}"#);
-    let run = an_alias_from_model_to_view(&tree, &format!("{{{CHILD_PATHS}}}"));
+    tree.write("config/base.json.json", "{}");
+    let run = an_alias_from_model_to_view(
+        &tree,
+        &format!(r#"{{"extends":"./config/base.json","include":["web"],{CHILD_PATHS}}}"#),
+    );
+    assert_a_hole(&run);
+}
+
+#[test]
+fn a_parent_written_with_backslashes_is_a_local_parent() {
+    let tree = Tree::new();
+    tree.write(
+        "config/base.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["../web/*"]}}}"#,
+    );
+    let run = an_alias_from_model_to_view(&tree, r#"{"extends":".\\config\\base.json"}"#);
     assert_model_to_view(&run);
 }

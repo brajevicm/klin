@@ -6225,8 +6225,10 @@ no file the tree holds and the specifier is a valid package name, such as
 `react` or `@scope/pkg`, the import goes on to the workspace step, and is
 external where that step places nothing. A specifier that cannot name
 a package, such as `@/missing`, stays a hole. A whole held local extends chain is a chain of single-string `extends`
-values, each written from `./` or `../`, that names a held, readable config
-and holds no cycle. Any other value, such as `.config/base.json`, is a
+values, each written from `./` or `../` once backslashes read as slashes,
+that names a held, readable config and holds no cycle. A parent that names no
+held file is read with `.json` added, unless its name already ends in
+`.json`. Any other value, such as `.config/base.json`, is a
 package to TypeScript. On a whole chain klin merges each config as
 TypeScript's `parseConfig` does: `baseUrl`, `paths`, `include`, `exclude`,
 `files`, `outDir` and `declarationDir` each come from the nearest config
@@ -6265,7 +6267,11 @@ outside that directory can still bring the file into its program. A config
 whose held local extends chain holds a cycle proves no alias. When two or
 more configs still compete, an alias is a local edge only when every one of
 them proves it and resolves it to the same path, so the edge holds whichever
-program compiles the file. The file must be a proven root of at least one of
+program compiles the file. A nested config that reaches its competing
+ancestor through a whole held local extends chain, and writes no `paths` or
+`baseUrl` of its own, resolves every alias the same way as that ancestor, so
+the alias is an edge. #667 decides the competitors that do not recognize the
+alias. The file must be a proven root of at least one of
 them. An alias that one competing config does not recognize, or that two
 resolve to different paths, is a hole. A `tsconfig.*.json` proves no alias,
 so a competing one leaves every alias under it a hole. A bare `baseUrl`
@@ -6323,6 +6329,8 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `a_bare_import_under_a_base_url_only_a_parent_writes_stays_external`,
 `a_bare_base_url_import_under_a_local_parent_needs_roots_the_child_writes`,
 `a_nested_config_that_only_extends_its_ancestor_resolves_the_alias_the_same_way`,
+`an_explicit_json_parent_that_is_missing_does_not_fall_back_to_json_json`,
+`a_parent_written_with_backslashes_is_a_local_parent`,
 `a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends`,
 `a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
 `files_a_config_writes_under_extends_stay_roots`,
