@@ -71,6 +71,48 @@ and before the chooser ran.
    Rust pull request that klin does not measure in full is not replaced. The
    note counts it. The owner agreed to this on 2026-10-18.
 
+## How the setup applies the labels and the spot-check
+
+These points were fixed after the dry run and before any label on the
+sample. An adversarial review of the dry-run packets found no label that a
+packet defect made wrong. It found code inlined from a deleted helper with
+no source shown, and several latent builder bugs, which `packets.py` fixes.
+
+1. **Packets.** `packets.py` writes one packet per finding that at least one
+   candidate keeps, in the hash order of `697-packet:<commit>:<file>:<line>`.
+   A packet shows the pull request title, the function at the head, the
+   lines of the change inside the function with three lines of context,
+   and its "before". For a `worsened` finding the "before" is the function
+   klin matched at the base. For a `new` finding it names a rename of the
+   file and shows up to three base functions with the same name, the same
+   file first. The labeler decides with rule 3 whether one is an earlier
+   version. Every packet also shows up to three functions of the file that
+   the pull request deleted everywhere, because their code may have moved
+   into the function. A packet shows no klin number and no rule.
+   The labelers' copy of `label-rule.md` starts with one paragraph: a
+   change is a pull request from its merge base to its head, as the Method
+   says. The rule text is otherwise unchanged.
+2. **Labelers.** Agents label in two passes. Each works in a folder that
+   holds only the packets, `label-rule.md` and partial clones of the
+   repositories, and is told to read nothing outside it. The map from
+   packet to finding and candidates, both passes' labels and the worksheet
+   are written beside that folder, never in it. One agent
+   labels five packets, one at a time. The second pass groups the packets
+   differently and does not read the first pass.
+3. **Merge.** `labels.py merge` writes `labels-SET.tsv` with both passes and
+   prints the agreement and kappa. The label of a finding is the second
+   pass, or the person's verdict where there is one.
+4. **Spot-check draw.** `labels.py worksheet` draws 30 findings with the
+   seed `697-spot-v1`: up to 20 that the second pass labeled `appropriate`,
+   then `not-appropriate` ones up to 30, then more `appropriate` ones if
+   the `not-appropriate` ones run out. A fresh draw after a relabel uses
+   `697-spot-v2`.
+5. **N.** `labels.py summary` gives N per candidate, pooled, per language
+   and for single-commit pull requests. The bootstrap draws 10,000 resamples
+   of the changes measured in full, with the seed
+   `697-boot:<candidate>:<stratum>`. The exact Poisson interval is for
+   information only.
+
 ## Counts
 
 The chooser ran on 2026-10-17 and 2026-10-18. `selection.json` holds every
