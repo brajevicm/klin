@@ -290,7 +290,8 @@ impl Package {
 }
 
 /// The role of a Vite app once its `index.html` and the files it owns are read: the TypeScript
-/// files its module scripts name, or the first reason klin cannot judge it.
+/// files its module scripts name that app mode judges, so no test or declaration file, or the
+/// first reason klin cannot judge it.
 fn vite(directory: &str, html: &str, owned: &[&str]) -> Role {
     if owned
         .iter()
@@ -305,12 +306,18 @@ fn vite(directory: &str, html: &str, owned: &[&str]) -> Role {
     };
     let named: Vec<String> = named
         .into_iter()
-        .filter(|file| owned.contains(&file.as_str()) && typescript(file))
+        .filter(|file| startable(file, owned))
         .collect();
     match named.is_empty() {
         true => Role::Unjudged(VITE_UNNAMED),
         false => Role::ViteApp(named),
     }
+}
+
+/// Whether a walk can start from a file a module script names: a TypeScript file the package
+/// owns that app mode judges.
+fn startable(file: &str, owned: &[&str]) -> bool {
+    owned.contains(&file) && typescript(file) && judgeable(file)
 }
 
 /// Every package manifest of a tree with its role. A Vite app's role is read from the

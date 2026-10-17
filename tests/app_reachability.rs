@@ -1059,3 +1059,78 @@ fn an_inline_module_script_gives_the_hole_text_before_a_placeholder() {
         "a Vite app whose index.html holds an inline module script klin does not read",
     );
 }
+
+#[test]
+fn a_percent_encoded_src_is_no_placeholder() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.tsx?values=%20%2F\"></script>",
+    );
+    tree.base();
+    tree.write(
+        "src/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(!run.says("could not prove"), "{}", run.out);
+    assert!(run.says("src/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_vite_app_whose_index_html_names_only_a_test_is_a_hole() {
+    let tree = vite();
+    tree.write(
+        "src/main.test.tsx",
+        "import { App } from \"./app\";\n\nApp();\n",
+    );
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.test.tsx\"></script>",
+    );
+    tree.base();
+
+    a_vite_hole(
+        &tree,
+        "a Vite app whose index.html names no TypeScript module the package holds",
+    );
+}
+
+#[test]
+fn a_module_script_inside_a_template_or_raw_text_makes_no_entry() {
+    let tree = vite();
+    tree.base();
+    tree.write("src/admin.tsx", "console.log(\"admin\");\n");
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.tsx\"></script>\n    <template><script type=\"module\" src=\"/src/admin.tsx\"></script></template>\n    <style>/* <script type=\"module\" src=\"/src/admin.tsx\"></script> */</style>",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/admin.tsx"), "{}", run.out);
+}
+
+#[test]
+fn script_text_in_a_quoted_attribute_is_no_inline_module_script() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <div data-snippet='<script type=\"module\">import \"./x\";</script>'></div>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>",
+    );
+    tree.base();
+    tree.write(
+        "src/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(!run.says("could not prove"), "{}", run.out);
+    assert!(run.says("src/footer.tsx"), "{}", run.out);
+}

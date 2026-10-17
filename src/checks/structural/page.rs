@@ -2,8 +2,20 @@
 
 use crate::modules::resolver::joined;
 
-const OPEN: &str = "<script";
-const CLOSE: &str = "</script";
+const SCRIPT: &str = "script";
+const TEMPLATE: &str = "template";
+/// The elements whose content the HTML parser reads as text, so a `<script>` in one is none.
+const RAW_TEXT: &[&str] = &[
+    "style",
+    "textarea",
+    "title",
+    "xmp",
+    "iframe",
+    "noembed",
+    "noframes",
+    "noscript",
+    "plaintext",
+];
 const COMMENT: &str = "<!--";
 const COMMENT_END: &str = "-->";
 const OFF_SITE: &[&str] = &["http://", "https://", "//"];
@@ -39,35 +51,75 @@ pub(super) fn named(html: &str, package: &str) -> Result<Vec<String>, Unread> {
 }
 
 /// Every module script of an HTML text, in order. A script of any other `type`, or none, and an
-/// inline module script that holds only whitespace, is none.
+/// inline module script that holds only whitespace, is none, and so is a script in a comment, in
+/// a `<template>`, in a raw-text element such as `<style>`, or in another tag's attribute value.
 fn modules(html: &str) -> Vec<Script> {
     let lower = html.to_ascii_lowercase();
     let mut out = Vec::new();
     let mut at = 0;
     while let Some(found) = lower[at..].find('<') {
         let start = at + found;
-        at = start + 1;
         if lower[start..].starts_with(COMMENT) {
             at = lower[start..]
                 .find(COMMENT_END)
                 .map_or(html.len(), |end| start + end + COMMENT_END.len());
             continue;
         }
-        let head = start + OPEN.len();
-        let tag = lower[start..].starts_with(OPEN)
-            && lower[head..].starts_with(|c: char| c.is_whitespace() || c == '>' || c == '/');
-        if !tag {
+        let name = tag(&lower[start + 1..]);
+        if name.is_empty() {
+            at = start + 1;
             continue;
         }
-        let (attributes, body) = attributes(&html[head..]);
+        let (attributes, body) = attributes(&html[start + 1 + name.len()..]);
         let open = html.len() - body.len();
-        let close = lower[open..]
-            .find(CLOSE)
-            .map_or(html.len(), |end| open + end);
-        at = close;
-        out.extend(script(&attributes, &html[open..close]));
+        at = match name {
+            SCRIPT => {
+                let close = closing(&lower, open, SCRIPT);
+                out.extend(script(&attributes, &html[open..close]));
+                close
+            }
+            TEMPLATE => template_end(&lower, open),
+            raw if RAW_TEXT.contains(&raw) => closing(&lower, open, raw),
+            _ => open,
+        };
     }
     out
+}
+
+/// The lowercased name a tag opens with, and the empty name for a closing tag or a declaration.
+fn tag(text: &str) -> &str {
+    let end = text
+        .find(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+        .unwrap_or(text.len());
+    &text[..end]
+}
+
+/// Where the closing tag of an element whose content is text starts, or the text's end.
+fn closing(lower: &str, from: usize, name: &str) -> usize {
+    lower[from..]
+        .find(&format!("</{name}"))
+        .map_or(lower.len(), |end| from + end)
+}
+
+/// Where the `</template>` that closes a template opened before `from` starts, nested templates
+/// counted, or the text's end.
+fn template_end(lower: &str, from: usize) -> usize {
+    let mut depth = 1;
+    let mut at = from;
+    while let Some(found) = lower[at..].find('<') {
+        let start = at + found;
+        at = start + 1;
+        let rest = &lower[at..];
+        match rest.strip_prefix('/') {
+            Some(closed) if tag(closed) == TEMPLATE => depth -= 1,
+            None if tag(rest) == TEMPLATE => depth += 1,
+            _ => continue,
+        }
+        if depth == 0 {
+            return start;
+        }
+    }
+    lower.len()
 }
 
 fn script(attributes: &[(String, &str)], code: &str) -> Option<Script> {
@@ -143,11 +195,16 @@ fn path(src: &str, package: &str) -> Option<String> {
     joined(package, path)
 }
 
-/// Whether a `src` holds a `%...%` placeholder, which Vite replaces from env variables.
+/// Whether a `src` holds a `%NAME%` placeholder, which Vite replaces from env variables. A name
+/// is an identifier, so a percent escape such as `%20` or `%2F` is none.
 fn placeholder(src: &str) -> bool {
     let parts: Vec<&str> = src.split('%').collect();
-    parts.len() > 2
-        && parts[1..parts.len() - 1]
-            .iter()
-            .any(|part| !part.is_empty() && !part.contains(char::is_whitespace))
+    parts.len() > 2 && parts[1..parts.len() - 1].iter().any(|part| env_name(part))
+}
+
+fn env_name(part: &str) -> bool {
+    let escape = part.len() == 2 && part.chars().all(|c| c.is_ascii_hexdigit());
+    !escape
+        && part.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+        && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }

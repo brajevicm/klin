@@ -5409,13 +5409,17 @@ A Vite app also has, as an entry, the file each module script of its
 `index.html` names. A module script is a `<script>` tag whose `type` is
 `module`. Its attributes may come in any order, and a value may use double
 quotes, single quotes or no quotes, so `type=module` counts. A `<script>` with
-any other `type`, or none, and a script inside an HTML comment (`<!-- ... -->`)
-make no entry. A `?query` or `#hash` suffix is stripped from `src`, and a `src`
+any other `type`, or none, makes no entry, and neither does a script inside an
+HTML comment (`<!-- ... -->`), inside a `<template>`, nested ones counted,
+inside the text of a raw-text element (`style`, `textarea`, `title`, `xmp`,
+`iframe`, `noembed`, `noframes`, `noscript` or `plaintext`), or in the
+attribute value of another tag. A `?query` or `#hash` suffix is stripped from `src`, and a `src`
 that starts with `http://`, `https://` or `//` names nothing. A `src` that
 starts with `/` resolves from the package directory, which is Vite's default
 `root`, and any other `src` resolves from the directory of the HTML file. The
 resolved path names a file only where the package owns that exact TypeScript
-file, so `src="/src/main.jsx"` names nothing klin holds.
+file that is no test of 8.2 and no declaration file, so `src="/src/main.jsx"`
+names nothing klin holds, and neither does a module script that names a test.
 
 A test file of 8.2 and a declaration file (`.d.ts`, `.d.mts`, `.d.cts`) is no
 entry and is never judged, so a module only its tests import is unreached.
@@ -5519,11 +5523,12 @@ manifest, where the first of these that applies gives the text:
 2. `index.html` holds an inline module script with code (anything other than
    whitespace) and no `src`, whose imports klin does not read: "a Vite app
    whose index.html holds an inline module script klin does not read";
-3. a module script's `src` holds a `%...%` placeholder, which Vite replaces
-   from env variables: "a Vite app whose index.html names a module through a
+3. a module script's `src` holds a `%NAME%` placeholder, which Vite replaces
+   from env variables. `NAME` is an identifier other than two hex digits, so
+   a percent escape such as `%20` or `%2F` is no placeholder: "a Vite app whose index.html names a module through a
    %...% placeholder klin does not expand";
-4. no module script names a TypeScript file the package owns, so every file
-   would come out unreached: "a Vite app whose index.html names no TypeScript
+4. no module script names a TypeScript file the package owns that is no test
+   and no declaration file, so every file would come out unreached: "a Vite app whose index.html names no TypeScript
    module the package holds".
 
 These holes
@@ -5587,7 +5592,11 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_vite_app_that_holds_a_vue_file_is_a_hole`,
 `a_vite_app_with_an_inline_module_script_is_a_hole`,
 `a_vite_app_whose_module_script_names_a_placeholder_is_a_hole`,
-`an_inline_module_script_gives_the_hole_text_before_a_placeholder` and
+`an_inline_module_script_gives_the_hole_text_before_a_placeholder`,
+`a_percent_encoded_src_is_no_placeholder`,
+`a_vite_app_whose_index_html_names_only_a_test_is_a_hole`,
+`a_module_script_inside_a_template_or_raw_text_makes_no_entry`,
+`script_text_in_a_quoted_attribute_is_no_inline_module_script` and
 `a_package_that_names_next_and_vite_is_judged_as_a_next_app` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
 `tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no
