@@ -109,12 +109,13 @@ fn directories(topology: &Topology) -> Vec<String> {
     };
     let mut patterns = Vec::new();
     for entry in entries {
-        let Some(pattern) = entry.as_str().and_then(|entry| joined("", entry)) else {
+        let Some(pattern) = entry
+            .as_str()
+            .filter(|entry| entry.split('/').all(supported))
+            .and_then(|entry| joined("", entry))
+        else {
             return Vec::new();
         };
-        if !pattern.split('/').all(supported) {
-            return Vec::new();
-        }
         if !pattern.is_empty() {
             patterns.push(pattern);
         }

@@ -52,6 +52,7 @@ struct Config {
     rules: Vec<(String, Value)>,
     roots: Roots,
     uncertain: bool,
+    packages: bool,
 }
 
 impl Paths {
@@ -80,26 +81,42 @@ impl Paths {
 
     /// Select ownership and root membership once per source file, before its imports.
     pub(super) fn for_file(&self, file: &str) -> Option<FilePaths<'_>> {
+        let scope = self.scope(file)?;
+        let owners: Vec<&Program> = scope
+            .owners
+            .iter()
+            .map(|&index| &self.programs[index])
+            .collect();
+        if owners.iter().all(|program| program.is_inert()) {
+            return None;
+        }
+        let root = owners.iter().any(|program| program.roots.contains(file));
+        Some(FilePaths {
+            owners,
+            base_url_unproved: scope.base_url_unproved,
+            root,
+        })
+    }
+
+    /// Whether every config that owns this file looks bare names up among packages, and true
+    /// where none owns it, as TypeScript's defaults do.
+    pub(super) fn packages(&self, file: &str) -> bool {
+        self.scope(file).is_none_or(|scope| {
+            scope
+                .owners
+                .iter()
+                .all(|&index| self.programs[index].packages)
+        })
+    }
+
+    fn scope(&self, file: &str) -> Option<&Scope> {
         if self.scopes.is_empty() {
             return None;
         }
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                let owners: Vec<&Program> = scope
-                    .owners
-                    .iter()
-                    .map(|&index| &self.programs[index])
-                    .collect();
-                if owners.iter().all(|program| program.is_inert()) {
-                    return None;
-                }
-                let root = owners.iter().any(|program| program.roots.contains(file));
-                return Some(FilePaths {
-                    owners,
-                    base_url_unproved: scope.base_url_unproved,
-                    root,
-                });
+                return Some(scope);
             }
             if ancestor.is_empty() {
                 return None;
@@ -131,6 +148,7 @@ struct Program {
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
+    packages: bool,
 }
 
 pub(super) struct FilePaths<'a> {
@@ -214,6 +232,7 @@ impl Program {
             exact: HashMap::new(),
             wildcards: Vec::new(),
             uncertain: config.uncertain,
+            packages: config.packages,
         };
         for (pattern, targets) in &config.rules {
             program.insert(pattern, targets);
@@ -400,20 +419,14 @@ fn held(parent: String, parsed: &BTreeMap<String, Value>) -> String {
     }
 }
 
-fn suffixed(value: &Value) -> Option<bool> {
-    let suffixes = value.pointer("/compilerOptions/moduleSuffixes")?;
-    Some(match suffixes.as_array().map(Vec::as_slice) {
-        Some([]) => false,
-        Some([only]) => only.as_str() != Some(""),
-        _ => true,
-    })
-}
-
-fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
+/// The values TypeScript may give a config for the option at `pointer`: its own, or else the
+/// nearest one each held local `extends` branch writes.
+fn nearest<'a>(file: &str, parsed: &'a BTreeMap<String, Value>, pointer: &str) -> Vec<&'a Value> {
     let value = &parsed[file];
-    if let Some(own) = suffixed(value) {
-        return own;
+    if let Some(own) = value.pointer(pointer) {
+        return vec![own];
     }
+    let mut written = Vec::new();
     let mut seen = BTreeSet::new();
     let mut pending = parents(file, value);
     while let Some(parent) = pending.pop() {
@@ -424,13 +437,52 @@ fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
         if !seen.insert(parent.clone()) {
             continue;
         }
-        match suffixed(value) {
-            Some(true) => return true,
-            Some(false) => {}
+        match value.pointer(pointer) {
+            Some(found) => written.push(found),
             None => pending.extend(parents(&parent, value)),
         }
     }
-    false
+    written
+}
+
+fn suffixes_apply(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    nearest(file, parsed, "/compilerOptions/moduleSuffixes")
+        .into_iter()
+        .any(|suffixes| match suffixes.as_array().map(Vec::as_slice) {
+            Some([]) => false,
+            Some([only]) => only.as_str() != Some(""),
+            _ => true,
+        })
+}
+
+/// Whether TypeScript 5 looks a bare name up among packages under this config: a written
+/// `moduleResolution` other than `classic`, or else a `module` that implies one, or else no
+/// `target` above ES5, which an unwritten `module` follows. Every value the held chain may give
+/// must agree. A package parent is not read.
+fn looks_up_packages(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
+    let agree = |pointer: &str, looking: &[&str]| {
+        let written = nearest(file, parsed, pointer);
+        (!written.is_empty()).then(|| {
+            written.iter().all(|value| {
+                value
+                    .as_str()
+                    .is_some_and(|mode| looking.contains(&mode.to_ascii_lowercase().as_str()))
+            })
+        })
+    };
+    agree(
+        "/compilerOptions/moduleResolution",
+        &["node", "node10", "node16", "nodenext", "bundler"],
+    )
+    .or_else(|| {
+        agree(
+            "/compilerOptions/module",
+            &[
+                "commonjs", "node16", "node18", "node20", "nodenext", "preserve",
+            ],
+        )
+    })
+    .unwrap_or_else(|| agree("/compilerOptions/target", &["es3", "es5"]).unwrap_or(true))
 }
 
 /// The held local configs one config reaches through `extends`, whether a parent on the way is
@@ -509,6 +561,7 @@ impl Config {
                 value.pointer(pointer).is_none() && !chain.inherits(pointer, parsed)
             }),
             uncertain: chain.cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
+            packages: looks_up_packages(file, parsed),
             reached: chain.reached,
             anchor,
             rules: rules(file, parsed),

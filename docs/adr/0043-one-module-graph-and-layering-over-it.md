@@ -203,7 +203,10 @@ for workspace packages. A bare specifier whose package name equals the `name`
 of exactly one package that the root `package.json` lists under `workspaces`
 resolves inside that package's directory, after `paths` and `baseUrl`, as tsc
 does through the `node_modules` symlink. Only literal entries and one-segment
-`*` entries are read. A package that writes `exports`, a shared name, and
+`*` entries are read. The step runs only where the importing file's owning
+configs look bare names up among packages, so a `classic` resolution, or a
+`module` or `target` that implies it, keeps the import external. A package
+that writes `exports`, a shared name, and
 every other package stay external and make no hole. The owner approved the
 visible change in `reachability`, `layering` and `public-api`: real
 dependencies between workspace packages show up as new `layering` findings.

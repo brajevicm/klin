@@ -2261,6 +2261,7 @@ fn a_package_no_workspaces_entry_lists_or_one_that_writes_exports_stays_external
         (r#"["packages/app"]"#, r#"{"name":"ui"}"#),
         (r#"["packages/ui-*"]"#, r#"{"name":"ui"}"#),
         (r#"["packages/**"]"#, r#"{"name":"ui"}"#),
+        (r#"["packages/**/../*"]"#, r#"{"name":"ui"}"#),
         (r#"["packages/*","shared"]"#, r#"{"name":"ui"}"#),
         (
             r#"["packages/*"]"#,
@@ -2295,4 +2296,57 @@ fn a_scoped_name_and_a_base_url_miss_reach_the_workspace_package() {
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("app → ui: packages/ui/types.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_mode_that_does_not_look_up_packages_leaves_the_workspace_package_external() {
+    for options in [
+        r#"{"moduleResolution":"classic"}"#,
+        r#"{"module":"commonjs","moduleResolution":"Classic"}"#,
+        r#"{"module":"esnext"}"#,
+        r#"{"target":"es2020"}"#,
+    ] {
+        let tree = workspace(r#"["packages/*"]"#, r#"{"name":"ui"}"#, "ui");
+        tree.write("packages/ui/index.ts", BUTTON);
+        tree.write(
+            "packages/app/tsconfig.json",
+            &format!(r#"{{"compilerOptions":{options}}}"#),
+        );
+
+        let run = tree.run(&["check", "layering"]);
+
+        assert_eq!(run.code, 0, "{options}: {}", run.out);
+    }
+}
+
+#[test]
+fn a_mode_that_looks_up_packages_keeps_the_workspace_edge() {
+    for (root, app) in [
+        (
+            None,
+            r#"{"compilerOptions":{"moduleResolution":"bundler"}}"#,
+        ),
+        (None, r#"{"compilerOptions":{"module":"NodeNext"}}"#),
+        (None, r#"{"compilerOptions":{"target":"es5"}}"#),
+        (
+            Some(r#"{"compilerOptions":{"module":"commonjs"},"include":["tools"]}"#),
+            r#"{"extends":"../../tsconfig.json","compilerOptions":{"target":"es2022"}}"#,
+        ),
+    ] {
+        let tree = workspace(r#"["packages/*"]"#, r#"{"name":"ui"}"#, "ui");
+        tree.write("packages/ui/index.ts", BUTTON);
+        if let Some(root) = root {
+            tree.write("tsconfig.json", root);
+        }
+        tree.write("packages/app/tsconfig.json", app);
+
+        let run = tree.run(&["check", "layering"]);
+
+        assert_eq!(run.code, 1, "{app}: {}", run.out);
+        assert!(
+            run.says("app → ui: packages/ui/index.ts"),
+            "{app}: {}",
+            run.out
+        );
+    }
 }

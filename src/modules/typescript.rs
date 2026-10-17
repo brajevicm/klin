@@ -30,15 +30,15 @@ pub(super) fn resolve(builder: &mut Builder) {
         let index = builder.module(file.clone(), &[file], Attachment::File);
         modules.insert(file, index);
     }
-    let targets = Targets {
-        modules: &modules,
-        workspaces: &workspaces,
-    };
     for (file, from) in &modules {
         let Some(facts) = topology.facts(file) else {
             continue;
         };
         let scope = paths.for_file(file);
+        let targets = Targets {
+            modules: &modules,
+            workspaces: paths.packages(file).then_some(&workspaces),
+        };
         for import in &facts.imports {
             if let Some(specifier) = import.module.as_deref() {
                 let site = Site {
@@ -54,10 +54,11 @@ pub(super) fn resolve(builder: &mut Builder) {
     }
 }
 
-/// What an import resolves against: the tree's TypeScript modules and its workspace packages.
+/// What an import resolves against: the tree's TypeScript modules, and its workspace packages
+/// where the configs that own the importing file look bare names up among packages.
 struct Targets<'a> {
     modules: &'a BTreeMap<&'a str, usize>,
-    workspaces: &'a Workspaces,
+    workspaces: Option<&'a Workspaces>,
 }
 
 struct Site<'a> {
@@ -245,7 +246,7 @@ fn dependency(
 fn packaged(builder: &mut Builder, targets: &Targets, site: &Site, specifier: &str) {
     let held = targets
         .workspaces
-        .bases(specifier)
+        .map_or_else(Vec::new, |workspaces| workspaces.bases(specifier))
         .iter()
         .map(|base| candidates(base))
         .map(|candidates| {

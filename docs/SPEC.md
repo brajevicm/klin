@@ -6088,8 +6088,18 @@ workspace package (#669). Only the tree root `package.json` is read. Its
 entry is a literal directory, or a path whose segments are literal or exactly
 `*`, where a `*` matches one directory segment. A workspace package is a
 matched directory below the root that holds a `package.json` with a string
-`name`. Where any entry uses another glob form, such as `**`, `?`, `[...]`,
-`{...}`, `!` or `pkg-*`, the tree resolves no workspace name. A specifier's
+`name`. Where any entry as written uses another glob form, such as `**`, `?`,
+`[...]`, `{...}`, `!` or `pkg-*`, the tree resolves no workspace name, even where
+`..` would remove that segment. The step applies only where every config that
+owns the importing file looks bare names up among packages, as TypeScript 5
+does: the nearest written `moduleResolution` is `node`, `node10`, `node16`,
+`nodenext` or `bundler`, or, with none written, the nearest `module` is
+`commonjs`, `node16`, `node18`, `node20`, `nodenext` or `preserve`, or, with
+neither written, no `target` above `es5` is written. Each value is read along
+held local `extends` as for `moduleSuffixes`, and every branch must agree. A
+`classic` resolution, and a `module` or `target` that implies it, leaves the
+import external. A file that no config owns uses TypeScript's defaults and
+takes the step. A specifier's
 package name is its first segment, or its first two segments where the first
 starts with `@`, and it must equal the `name` of exactly one workspace package.
 A subpath resolves from that package's directory with the candidate rule. A
@@ -6101,8 +6111,9 @@ else stays external and makes no hole: a package whose `package.json` writes
 `exports`, a name that reaches no held file, a name two workspace packages
 share, and a name no entry lists. Pinned by
 `a_subpath_import_of_another_workspace_package_is_a_forbidden_edge` and
-`a_missing_paths_target_falls_through_to_the_workspace_package` in
-`tests/layering.rs`. Known limits: package copies under `node_modules`, Yarn
+`a_missing_paths_target_falls_through_to_the_workspace_package` and
+`a_mode_that_does_not_look_up_packages_leaves_the_workspace_package_external`
+in `tests/layering.rs`. Known limits: package copies under `node_modules`, Yarn
 PnP, pnpm `pnpm-workspace.yaml`, a nested npm copy that shadows a workspace
 package, `exports`, and `workspaces` globs beyond a one-segment `*` are not
 read.
