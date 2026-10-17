@@ -11,48 +11,24 @@ pub(super) struct Paths {
     scopes: HashMap<String, Scope>,
 }
 
-/// The directory paths targets resolve from: a written `baseUrl`, or the config's own directory.
-enum Anchor {
-    Config(String),
-    BaseUrl(String),
-}
-
-impl Anchor {
-    fn read(file: &str, value: &Value) -> Option<Self> {
-        match value.pointer("/compilerOptions/baseUrl") {
-            None => Some(Anchor::Config(directory(file).to_string())),
-            Some(value) => value
-                .as_str()
-                .filter(|path| !absolute(path))
-                .and_then(|path| joined(directory(file), path))
-                .map(Anchor::BaseUrl),
-        }
-    }
-
-    fn path(&self) -> &str {
-        match self {
-            Anchor::Config(path) | Anchor::BaseUrl(path) => path,
-        }
-    }
-
-    fn base_url(&self) -> Option<&str> {
-        match self {
-            Anchor::BaseUrl(path) => Some(path),
-            Anchor::Config(_) => None,
-        }
-    }
-}
-
-struct Config {
+struct Config<'a> {
     file: String,
     directory: String,
     reached: BTreeSet<String>,
     settings_only: bool,
-    anchor: Option<Anchor>,
-    rules: Vec<(String, Value)>,
-    roots: Roots,
-    uncertain: bool,
+    rules: Vec<(&'a str, &'a Value)>,
+    aliases: Proof,
+    bare: Proof,
     packages: bool,
+}
+
+/// What proves one kind of import under a config: the directory it resolves from, the roots
+/// that prove the importing file, and whether klin cannot prove the config at all. Aliases read
+/// the merged chain; bare imports under a `baseUrl` read only what the config writes itself.
+struct Proof {
+    base: Option<String>,
+    roots: Roots,
+    unproved: bool,
 }
 
 impl Paths {
@@ -90,11 +66,17 @@ impl Paths {
         if owners.iter().all(|program| program.is_inert()) {
             return None;
         }
-        let root = owners.iter().any(|program| program.roots.contains(file));
+        let root = owners
+            .iter()
+            .any(|program| program.aliases.roots.contains(file));
+        let bare_root = owners
+            .iter()
+            .any(|program| program.bare.roots.contains(file));
         Some(FilePaths {
             owners,
             base_url_unproved: scope.base_url_unproved,
             root,
+            bare_root,
         })
     }
 
@@ -143,11 +125,10 @@ struct Scope {
 
 /// The roots and alias rules of one owning config.
 struct Program {
-    roots: Roots,
-    anchor: Option<Anchor>,
+    aliases: Proof,
+    bare: Proof,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
-    uncertain: bool,
     packages: bool,
 }
 
@@ -155,6 +136,7 @@ pub(super) struct FilePaths<'a> {
     owners: Vec<&'a Program>,
     base_url_unproved: bool,
     root: bool,
+    bare_root: bool,
 }
 
 impl FilePaths<'_> {
@@ -187,9 +169,9 @@ impl FilePaths<'_> {
         let bases: Vec<String> = self
             .owners
             .iter()
-            .filter_map(|program| joined(program.anchor.as_ref()?.base_url()?, specifier))
+            .filter_map(|program| joined(program.bare.base.as_deref()?, specifier))
             .collect();
-        (!bases.is_empty()).then_some((bases, !self.base_url_unproved && self.root))
+        (!bases.is_empty()).then_some((bases, !self.base_url_unproved && self.bare_root))
     }
 }
 
@@ -200,21 +182,21 @@ struct Wildcard {
 }
 
 impl Scope {
-    fn compile(directory: &str, configs: &[Config]) -> Self {
+    fn compile(directory: &str, configs: &[Config<'_>]) -> Self {
         let candidates: Vec<usize> = (0..configs.len())
             .filter(|&index| {
                 let config = &configs[index].directory;
                 config == directory || contains(config, directory)
             })
             .collect();
-        let competing: Vec<&Config> = candidates.iter().map(|&index| &configs[index]).collect();
+        let competing: Vec<&Config<'_>> = candidates.iter().map(|&index| &configs[index]).collect();
         let owners: Vec<usize> = candidates
             .into_iter()
             .filter(|&index| !configs[index].extended(&competing))
             .collect();
         Self {
             base_url_unproved: owners.len() != 1
-                || owners.iter().any(|&index| configs[index].uncertain),
+                || owners.iter().any(|&index| configs[index].bare.unproved),
             owners,
         }
     }
@@ -225,16 +207,15 @@ fn unproved(specifier: &str) -> String {
 }
 
 impl Program {
-    fn compile(config: Config) -> Self {
+    fn compile(config: Config<'_>) -> Self {
         let mut program = Self {
-            roots: config.roots,
-            anchor: config.anchor,
+            aliases: config.aliases,
+            bare: config.bare,
             exact: HashMap::new(),
             wildcards: Vec::new(),
-            uncertain: config.uncertain,
             packages: config.packages,
         };
-        for (pattern, targets) in &config.rules {
+        for (pattern, targets) in config.rules {
             program.insert(pattern, targets);
         }
         program
@@ -245,9 +226,7 @@ impl Program {
 
     /// Whether the config gives neither an alias rule nor a `baseUrl`.
     fn is_inert(&self) -> bool {
-        self.exact.is_empty()
-            && self.wildcards.is_empty()
-            && self.anchor.as_ref().and_then(Anchor::base_url).is_none()
+        self.exact.is_empty() && self.wildcards.is_empty() && self.bare.base.is_none()
     }
 
     fn insert(&mut self, pattern: &str, targets: &Value) {
@@ -292,15 +271,15 @@ impl Program {
         specifier: &str,
         ambiguous: bool,
     ) -> Result<String, String> {
-        if self.uncertain || ambiguous {
+        if self.aliases.unproved || ambiguous {
             return Err(unproved(specifier));
         }
-        let (Some(anchor), Some(target)) = (&self.anchor, target) else {
+        let (Some(base), Some(target)) = (&self.aliases.base, target) else {
             return Err(format!(
                 "{specifier} is a local paths alias whose target klin cannot prove"
             ));
         };
-        joined(anchor.path(), &target.replace('*', wild))
+        joined(base, &target.replace('*', wild))
             .ok_or_else(|| format!("{specifier} is a local paths alias that leaves the tree"))
     }
 }
@@ -332,8 +311,8 @@ fn config_name(file: &str) -> bool {
     name == "tsconfig.json" || (name.starts_with("tsconfig.") && name.ends_with(".json"))
 }
 
-/// Follow only held, relative configuration references, to recognize inherited local names.
-/// Inheritance is never used to prove an edge. The visited map bounds cycles and reads each once.
+/// Read every held config that a held config reaches through local `extends`, once each. The
+/// visited map bounds cycles.
 fn configurations(topology: &Topology, named: &[&String]) -> BTreeMap<String, Value> {
     let mut parsed = BTreeMap::new();
     let mut pending: Vec<String> = named.iter().map(|file| (*file).clone()).collect();
@@ -346,11 +325,7 @@ fn configurations(topology: &Topology, named: &[&String]) -> BTreeMap<String, Va
             .and_then(|bytes| jsonc::parse(&bytes).ok())
             .unwrap_or(Value::Null);
         for parent in parents(&file, &value) {
-            let parent = if topology.holds(&parent) {
-                parent
-            } else {
-                format!("{parent}.json")
-            };
+            let parent = parent_file(parent, |file| topology.holds(file));
             if topology.holds(&parent) {
                 pending.push(parent);
             }
@@ -370,49 +345,137 @@ fn parents(file: &str, value: &Value) -> Vec<String> {
     };
     names
         .into_iter()
-        .filter_map(|value| {
-            let path = value.as_str()?;
-            path.starts_with('.')
-                .then(|| joined(directory(file), path))
-                .flatten()
-        })
+        .filter_map(|value| local(file, value.as_str()?))
         .collect()
 }
 
-/// Only the nearest paths object in a single held local extends chain supplies names.
-/// Multiple/package parents supply no inherited names; the visited set bounds cycles.
-fn rules(file: &str, parsed: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
-    let mut seen = BTreeSet::new();
-    let mut file = file.to_string();
-    while seen.insert(file.clone()) {
-        let Some(value) = parsed.get(&file) else {
-            break;
+/// A parent TypeScript reads as a file: one written from `./` or `../`, after backslashes become
+/// slashes. Any other name is a package to TypeScript, even `.config/base.json`.
+fn local(file: &str, extends: &str) -> Option<String> {
+    let extends = extends.replace('\\', "/");
+    (extends.starts_with("./") || extends.starts_with("../"))
+        .then(|| joined(directory(file), &extends))
+        .flatten()
+}
+
+/// The configs one config reaches through single-string held local `extends`, nearest first,
+/// as TypeScript's `parseConfig` merges them, and whether that is the whole chain: no package,
+/// unreadable or array-form parent and no cycle. Every value a config inherits is read here.
+struct Lineage<'a> {
+    configs: Vec<(&'a str, &'a Value)>,
+    whole: bool,
+}
+
+impl<'a> Lineage<'a> {
+    fn read(file: &str, parsed: &'a BTreeMap<String, Value>) -> Self {
+        let mut lineage = Self {
+            configs: Vec::new(),
+            whole: false,
         };
-        if let Some(paths) = value.pointer("/compilerOptions/paths") {
-            return paths
-                .as_object()
-                .into_iter()
-                .flatten()
-                .map(|(name, target)| (name.clone(), target.clone()))
-                .collect();
+        let mut next = parsed.get_key_value(file);
+        while let Some((file, value)) = next {
+            if lineage.configs.iter().any(|&(seen, _)| seen == file) {
+                break;
+            }
+            lineage.configs.push((file, value));
+            let Some(extends) = value.get("extends") else {
+                lineage.whole = !value.is_null();
+                break;
+            };
+            next = extends
+                .as_str()
+                .and_then(|extends| local(file, extends))
+                .and_then(|parent| parsed.get_key_value(&held(parent, parsed)));
         }
-        let Some(extends) = value.get("extends").and_then(Value::as_str) else {
-            break;
-        };
-        let Some(parent) = extends
-            .starts_with('.')
-            .then(|| joined(directory(&file), extends))
-            .flatten()
-        else {
-            break;
-        };
-        file = held(parent, parsed);
+        lineage
     }
-    Vec::new()
+
+    /// The config alone, whole only where it extends nothing.
+    fn own(&self) -> Self {
+        Self {
+            configs: self.configs.iter().take(1).copied().collect(),
+            whole: self.whole && self.configs.len() == 1,
+        }
+    }
+
+    fn directory(&self) -> &'a str {
+        self.configs
+            .first()
+            .map_or("", |&(file, _)| directory(file))
+    }
+
+    /// The nearest value written at `pointer` and the directory it resolves from. Where the chain
+    /// is not whole, a parent klin cannot read may supply it, so only the config's own counts.
+    fn written(&self, pointer: &str) -> Option<(&'a Value, &'a str)> {
+        let read = if self.whole { self.configs.len() } else { 1 };
+        self.configs
+            .iter()
+            .take(read)
+            .find_map(|&(file, value)| Some((value.pointer(pointer)?, directory(file))))
+    }
+
+    /// The nearest paths object. It names local aliases even where the chain is not whole; an
+    /// empty or malformed one names none.
+    fn rules(&self) -> Vec<(&'a str, &'a Value)> {
+        self.configs
+            .iter()
+            .find_map(|(_, value)| value.pointer("/compilerOptions/paths"))
+            .and_then(Value::as_object)
+            .into_iter()
+            .flatten()
+            .map(|(name, target)| (name.as_str(), target))
+            .collect()
+    }
+
+    /// TypeScript's `baseUrl ?? pathsBasePath`: the nearest `baseUrl`, resolved from the config
+    /// that writes it, or else the directory of the config that writes the nearest paths. A
+    /// `null` `baseUrl` gives none.
+    fn paths_base(&self) -> Option<String> {
+        match self.written("/compilerOptions/baseUrl") {
+            Some((value, directory)) => value
+                .as_str()
+                .filter(|path| !absolute(path))
+                .and_then(|path| joined(directory, path)),
+            None => self
+                .written("/compilerOptions/paths")
+                .map(|(_, directory)| directory.to_string()),
+        }
+    }
+
+    /// Whether a value the paths rules or the roots read starts with `${configDir}`, which klin
+    /// does not substitute.
+    fn names_config_dir(&self, rules: &[(&str, &Value)]) -> bool {
+        [
+            "/compilerOptions/baseUrl",
+            "/compilerOptions/outDir",
+            "/compilerOptions/declarationDir",
+            "/include",
+            "/exclude",
+            "/files",
+        ]
+        .into_iter()
+        .filter_map(|pointer| self.written(pointer))
+        .any(|(value, _)| config_dir(value))
+            || rules.iter().any(|(_, targets)| config_dir(targets))
+    }
+}
+
+fn config_dir(value: &Value) -> bool {
+    match value {
+        Value::String(path) => path.starts_with("${configDir}"),
+        Value::Array(values) => values.iter().any(config_dir),
+        _ => false,
+    }
 }
 
 fn held(parent: String, parsed: &BTreeMap<String, Value>) -> String {
-    if parsed.contains_key(&parent) {
+    parent_file(parent, |file| parsed.contains_key(file))
+}
+
+/// The file TypeScript reads for a local parent: the path as written, or else that path with
+/// `.json` added where it does not already end in `.json`.
+fn parent_file(parent: String, holds: impl Fn(&str) -> bool) -> String {
+    if holds(&parent) || parent.ends_with(".json") {
         parent
     } else {
         format!("{parent}.json")
@@ -549,29 +612,46 @@ fn default_project(file: &str) -> bool {
     file.ends_with("/tsconfig.json") || file == "tsconfig.json"
 }
 
-impl Config {
-    fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
+impl<'a> Config<'a> {
+    fn read(file: &str, parsed: &'a BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
-        let anchor = Anchor::read(file, value);
         let chain = Chain::walk(file, parsed);
+        let lineage = Lineage::read(file, parsed);
+        let rules = lineage.rules();
+        let base_url = value
+            .pointer("/compilerOptions/baseUrl")
+            .and_then(Value::as_str)
+            .filter(|path| !absolute(path))
+            .and_then(|path| joined(directory(file), path));
+        let unprovable = chain.cyclic || Self::unprovable(file, parsed);
+        let partial = Self::partial(value, base_url.is_some());
         Self {
             file: file.to_string(),
             directory: directory(file).to_string(),
             settings_only: OWN_PROJECT.into_iter().all(|pointer| {
                 value.pointer(pointer).is_none() && !chain.inherits(pointer, parsed)
             }),
-            uncertain: chain.cyclic || Self::uncertain(file, parsed, anchor.as_ref()),
+            aliases: Proof {
+                base: lineage.paths_base(),
+                roots: Roots::read(&lineage),
+                unproved: unprovable
+                    || (partial && !lineage.whole)
+                    || lineage.names_config_dir(&rules),
+            },
+            bare: Proof {
+                base: base_url,
+                roots: Roots::read(&lineage.own()),
+                unproved: unprovable || partial,
+            },
             packages: looks_up_packages(file, parsed),
             reached: chain.reached,
-            anchor,
-            rules: rules(file, parsed),
-            roots: Roots::read(file, value, value.get("extends").is_some()),
+            rules,
         }
     }
 
     /// A `tsconfig.*.json` with no roots and no alias names that another config in its directory
     /// extends, outside a cycle, only supplies settings.
-    fn extended(&self, candidates: &[&Config]) -> bool {
+    fn extended(&self, candidates: &[&Config<'_>]) -> bool {
         self.settings_only
             && !default_project(&self.file)
             && candidates.iter().any(|other| {
@@ -581,13 +661,17 @@ impl Config {
             })
     }
 
-    fn uncertain(file: &str, parsed: &BTreeMap<String, Value>, anchor: Option<&Anchor>) -> bool {
+    /// Whether a config that extends another takes its paths or `baseUrl` from a parent. Under a
+    /// parent klin cannot read whole, only a child that writes both proves its aliases.
+    fn partial(value: &Value, own_base_url: bool) -> bool {
+        value.get("extends").is_some()
+            && !(value.pointer("/compilerOptions/paths").is_some() && own_base_url)
+    }
+
+    fn unprovable(file: &str, parsed: &BTreeMap<String, Value>) -> bool {
         let value = &parsed[file];
-        let own_paths = value.pointer("/compilerOptions/paths").is_some()
-            && anchor.and_then(Anchor::base_url).is_some();
         !default_project(file)
             || value.is_null()
-            || (value.get("extends").is_some() && !own_paths)
             || value.get("references").is_some()
             || suffixes_apply(file, parsed)
     }
@@ -615,40 +699,56 @@ enum RootPattern {
 }
 
 impl Roots {
-    fn read(file: &str, value: &Value, inherits: bool) -> Self {
-        let directory = directory(file);
-        let files = value
-            .get("files")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
+    fn read(lineage: &Lineage) -> Self {
+        Self {
+            files: Self::files(lineage),
+            include: Self::include(lineage),
+            exclude: Self::exclude(lineage),
+        }
+    }
+
+    fn files(lineage: &Lineage) -> BTreeSet<String> {
+        let Some((Value::Array(values), directory)) = lineage.written("/files") else {
+            return BTreeSet::new();
+        };
+        values
+            .iter()
             .filter_map(|value| {
                 let path = value.as_str()?;
                 (!absolute(path)).then(|| joined(directory, path)).flatten()
             })
-            .collect();
-        let default_include = RootPatterns {
-            matching: if value.get("files").is_some() {
-                Vec::new()
-            } else {
-                vec![RootPattern::Subtree(directory.to_string())]
-            },
-            unknown: false,
+            .collect()
+    }
+
+    /// The nearest `include`, or else TypeScript's default: nothing beside `files`, or the
+    /// config's own directory. None where a parent klin cannot read may write one.
+    fn include(lineage: &Lineage) -> Option<RootPatterns> {
+        if let Some((value, directory)) = lineage.written("/include") {
+            return root_patterns(directory, value);
+        }
+        let matching = match lineage.written("/files") {
+            Some(_) => Vec::new(),
+            None => vec![RootPattern::Subtree(lineage.directory().to_string())],
         };
-        let include = value
-            .get("include")
-            .map_or((!inherits).then_some(default_include), |value| {
-                root_patterns(directory, value)
-            });
-        let mut exclude = value.get("exclude").map_or(
-            (!inherits).then_some(RootPatterns {
+        lineage.whole.then_some(RootPatterns {
+            matching,
+            unknown: false,
+        })
+    }
+
+    /// The nearest `exclude`, or else none, and the nearest `outDir` and `declarationDir` either
+    /// way, each resolved from the config that writes it.
+    fn exclude(lineage: &Lineage) -> Option<RootPatterns> {
+        let mut exclude = match lineage.written("/exclude") {
+            Some((value, directory)) => root_patterns(directory, value),
+            None => lineage.whole.then_some(RootPatterns {
                 matching: Vec::new(),
                 unknown: false,
             }),
-            |value| root_patterns(directory, value),
-        );
+        };
         for option in ["outDir", "declarationDir"] {
-            if let Some(value) = value.pointer(&format!("/compilerOptions/{option}")) {
+            if let Some((value, directory)) = lineage.written(&format!("/compilerOptions/{option}"))
+            {
                 exclude = exclude.and_then(|mut patterns| {
                     patterns.matching.push(RootPattern::Subtree(joined(
                         directory,
@@ -658,11 +758,7 @@ impl Roots {
                 });
             }
         }
-        Self {
-            files,
-            include,
-            exclude,
-        }
+        exclude
     }
 
     fn contains(&self, file: &str) -> bool {

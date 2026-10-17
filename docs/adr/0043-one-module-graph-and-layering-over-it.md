@@ -4,6 +4,10 @@
 > `compilerOptions.paths` and `compilerOptions.baseUrl` proves its aliases,
 > because TypeScript takes those values from the child alone (spec B.8.2.1).
 
+> #662 amends this record. Under a whole held local `extends` chain, klin
+> merges `baseUrl`, `paths` and the roots as TypeScript does and proves the
+> aliases from that merged config (spec B.8.2.1).
+
 Issue #50 asks for a gate that names one agent failure: the agent solved a local
 problem by reaching across a declared architectural boundary, or by closing a
 dependency cycle, instead of using the intended interface. Spec 8.5 deferred

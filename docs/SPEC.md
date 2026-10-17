@@ -6178,16 +6178,20 @@ the base, and its finding names the current path, so a move into another layer
 is new debt and a move inside a layer is held.
 
 TypeScript explicit `compilerOptions.paths` aliases are local dependencies.
-One conventional ancestor `tsconfig.json`, with no references and either no
-extends or its own `compilerOptions.paths` and `compilerOptions.baseUrl`,
+One conventional ancestor `tsconfig.json`, with no references and either a
+whole held local extends chain or its own `compilerOptions.paths` and
+`compilerOptions.baseUrl`,
 proves an exact or single-`*` alias only for a proven project root and when
 its single target reduces to
 exactly one held TypeScript module under the relative candidate rule. JSONC
 comments, trailing commas and a UTF-8 BOM are supported. Exact rules precede
 wildcards; the longest matching wildcard prefix wins. Equal-priority rules
 are unresolved. Absolute specifiers stay outside V1 and are never remapped.
-Targets are relative to a directly known `baseUrl`, or to the
-config directory without one. The tree still holds every source module, but
+Targets are relative to TypeScript's `baseUrl ?? pathsBasePath`: the
+nearest `baseUrl` on the chain, resolved from the directory of the config
+that writes it, or else the directory of the config that writes the nearest
+`paths`. A `baseUrl` from a parent wins over the child's own directory. A
+`null` `baseUrl` leaves the targets unproved. The tree still holds every source module, but
 ancestry alone does not prove that a source belongs to the alias config.
 Root proof accepts an explicit `files` entry, regardless of `exclude`, or a
 supported `include` match not filtered by `exclude`. Supported patterns are
@@ -6197,8 +6201,9 @@ after a directory. Paths are relative to the config. An unsupported include
 entry adds no roots and leaves other include entries in force. An unsupported
 exclude entry might remove any file, so it declines all include proof for
 that config. Explicit files still prove roots. A malformed include/exclude
-list declines include proof. With neither files nor include nor extends, the config directory is the
-default include; with files but no include, include is empty. Dot paths, dependency
+list declines include proof. With no files and no include anywhere in the chain, the config directory is
+the default include; with files but no include anywhere in the chain, include
+is empty. Dot paths, dependency
 directories and outDir/declarationDir are conservatively outside include
 proof, even when an explicit exclude list would admit them. Explicit files
 can still prove these roots. An excluded or non-root file might enter a
@@ -6219,14 +6224,29 @@ normal package lookup after the paths targets: when a rule's target names
 no file the tree holds and the specifier is a valid package name, such as
 `react` or `@scope/pkg`, the import goes on to the workspace step, and is
 external where that step places nothing. A specifier that cannot name
-a package, such as `@/missing`, stays a hole. A config that extends another
-and writes both its own `paths` and `baseUrl` proves its aliases, because
-TypeScript takes those two values from the child alone, and a bare import
-under that `baseUrl` is proven too. Under extends, an `include` or `exclude`
-the child does not write comes from the parent, so include proof needs both
-written by the child. The child's own `files` still prove roots. An `outDir`
-or `declarationDir` the child inherits is not read, so only the child's own
-`exclude` keeps such a directory out. A config whose own
+a package, such as `@/missing`, stays a hole. A whole held local extends chain is a chain of single-string `extends`
+values, each written from `./` or `../` once backslashes read as slashes,
+that names a held, readable config and holds no cycle. A parent that names no
+held file is read with `.json` added, unless its name already ends in
+`.json`. Any other value, such as `.config/base.json`, is a
+package to TypeScript. On a whole chain klin merges each config as
+TypeScript's `parseConfig` does: `baseUrl`, `paths`, `include`, `exclude`,
+`files`, `outDir` and `declarationDir` each come from the nearest config
+that writes them, resolved from that config's directory, and `include` and
+`files` combine. Where no config writes `exclude`, the merged `outDir` and
+`declarationDir` stay outside include proof, and klin keeps them outside
+where one does. A config with a package, unreadable or array-form parent, or
+a cycle, proves its aliases only when it writes both its own `paths` and
+`baseUrl`, because TypeScript takes those two values from the child alone,
+and a bare import under that `baseUrl` is proven too. Under such a parent an
+`include` or `exclude` the child does not write may come from the parent, so
+include proof needs both written by the child. The child's own `files` still
+prove roots, and an `outDir` or `declarationDir` it inherits is not read. A
+bare import under a config's own `baseUrl` keeps these rules on any chain:
+its root proof reads only the roots the config writes itself. A
+`baseUrl`, `paths` target, `include`, `exclude`, `files`, `outDir` or
+`declarationDir` value that starts with `${configDir}` proves no alias, with
+or without extends. A config whose own
 `compilerOptions.moduleSuffixes`, or that of a held local parent it extends,
 is anything but `[]` or `[""]` proves no alias and no `baseUrl` import,
 because the candidate rule does not model suffixes. On each extends chain,
@@ -6247,7 +6267,11 @@ outside that directory can still bring the file into its program. A config
 whose held local extends chain holds a cycle proves no alias. When two or
 more configs still compete, an alias is a local edge only when every one of
 them proves it and resolves it to the same path, so the edge holds whichever
-program compiles the file. The file must be a proven root of at least one of
+program compiles the file. A nested config that reaches its competing
+ancestor through a whole held local extends chain, and writes no `paths` or
+`baseUrl` of its own, resolves every alias the same way as that ancestor, so
+the alias is an edge. #667 decides the competitors that do not recognize the
+alias. The file must be a proven root of at least one of
 them. An alias that one competing config does not recognize, or that two
 resolve to different paths, is a hole. A `tsconfig.*.json` proves no alias,
 so a competing one leaves every alias under it a hole. A bare `baseUrl`
@@ -6255,8 +6279,9 @@ import under two competing configs stays a hole.
 Other multiple/nested or alternate
 tsconfigs, any other extends,
 project references, multiple fallback targets and invalid anchors are not
-used to guess edges. Held relative extends files are read once, with cycles
-bounded, to recognize local names only. The nearest defined paths object
+used to guess edges. Held local extends files are read once, with cycles
+bounded. Where the chain is not whole, its held local part only recognizes
+local names. The nearest defined paths object
 in a single local extends chain replaces the parent's entire object; an
 empty or malformed object supplies no parent keys. Array-form extends
 supplies no inherited names, though direct child paths remain recognized.
@@ -6277,7 +6302,7 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `alias_targets_of_other_kinds_and_packages_stay_outside_the_graph`,
 `nested_configs_and_ambiguous_alias_candidates_are_not_guessed`,
 `jsonc_paths_use_exact_then_longest_wildcard_prefix`,
-`local_extends_aliases_are_recognized_without_guessing_inheritance`,
+`local_extends_aliases_resolve_from_the_parent_that_writes_them`,
 `absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard`,
 `sibling_typescript_configs_keep_each_files_aliases_and_rule_priority` and
 `equally_specific_typescript_wildcards_remain_unproved`,
@@ -6293,7 +6318,19 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `multiple_extends_do_not_supply_inherited_alias_names` and
 `a_config_only_edit_changes_root_proof_for_an_unchanged_import`,
 `output_and_dot_sources_need_explicit_files_for_root_proof` and
-`local_extends_recognition_uses_the_nearest_paths_object`,
+`local_extends_resolution_uses_the_nearest_paths_object`,
+`paths_under_a_local_parent_with_no_base_url_resolve_from_the_child_directory`,
+`a_base_url_from_a_local_parent_wins_over_the_child_directory`,
+`a_null_base_url_under_a_local_parent_with_one_leaves_the_alias_a_hole`,
+`roots_a_local_parent_writes_are_inherited_from_its_directory`,
+`paths_under_a_parent_klin_cannot_read_whole_leave_the_alias_a_hole`,
+`a_parent_named_without_a_dot_slash_is_a_package_and_names_no_alias`,
+`a_config_dir_value_leaves_the_alias_a_hole`,
+`a_bare_import_under_a_base_url_only_a_parent_writes_stays_external`,
+`a_bare_base_url_import_under_a_local_parent_needs_roots_the_child_writes`,
+`a_nested_config_that_only_extends_its_ancestor_resolves_the_alias_the_same_way`,
+`an_explicit_json_parent_that_is_missing_does_not_fall_back_to_json_json`,
+`a_parent_written_with_backslashes_is_a_local_parent`,
 `a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends`,
 `a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
 `files_a_config_writes_under_extends_stay_roots`,
