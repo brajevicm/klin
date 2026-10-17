@@ -1,0 +1,144 @@
+{
+  "changes": [
+    {
+      "repo": "https://github.com/oxidezap/whatsapp-rust",
+      "commit": "885adc4284852756b7f390c1b8222705c69b4c51",
+      "base": "147a2f74c3e9f99478812fe8c47ff4c847e094c4",
+      "pull": 112,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/gluesql/gluesql",
+      "commit": "df5230da0c7c9bdc27d18ed97d89a2c057222d65",
+      "base": "8e9dc01d925893323ef1b0efd405cacd19c8eebe",
+      "pull": 1726,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/nyx-space/hifitime",
+      "commit": "daad31266189245f2b52ed330176e74a1bd9293a",
+      "base": "9fad3b03cdea1e80333e9e2c1f5a1455c058bbbc",
+      "pull": 398,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/jstime/jstime",
+      "commit": "8362905fae675cf506349d7a992212058c2ad3ba",
+      "base": "c33051e7c18ab6b83ec8ff87cd2883c0987ee03f",
+      "pull": 330,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/omerbenamram/evtx",
+      "commit": "7e46179ce619c23197eed0b08d4ac7f619ebbcb8",
+      "base": "cc7f1e46f1c308d938496027863d15c3f6391365",
+      "pull": 254,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/harrisonwang/wharf",
+      "commit": "a9c815da45d8c4f8d576d124398db7c0aec4295a",
+      "base": "21bd384ea93c997a869ac3c98f1051afba4ac420",
+      "pull": 2,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Jij-Inc/pyo3-stub-gen",
+      "commit": "9f9649a50fe338c3f4a6db441c2f9daa85b52965",
+      "base": "45505ff07d3fd19d8110791a656f4ca30f7e75af",
+      "pull": 330,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/jdx/hk",
+      "commit": "00dbac20c2444f868e2341d717f74e930180a3e5",
+      "base": "83f0e115882b56074ac1f7159116392c90b60970",
+      "pull": 319,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/joamag/boytacean",
+      "commit": "d35602e0b69c127035c8caeeffa46b103e0f4edd",
+      "base": "e644e57fb909c47abc6195a91024efd8f73bc2a5",
+      "pull": 11,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/sqlpage/SQLPage",
+      "commit": "e7c1e94045cc7808113c19efaa068103011ccd1c",
+      "base": "558b578f2a4a62a841f74addc61d2db7509864e5",
+      "pull": 977,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/modelcontextprotocol/servers",
+      "commit": "3e5af3271622ce7032415bd325a224d0aac0034a",
+      "base": "e247123893df338d565d5fb4fa221a7de7a68a7b",
+      "pull": 2307,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/markeljan/web3gpt",
+      "commit": "7cb99234d41fc933abb1727b7a9d08ab874cbabf",
+      "base": "959f034fb349f5e59c84bdeab21ee2a52d26c10c",
+      "pull": 23,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/CopilotKit/open-research-ANA",
+      "commit": "d6b1e4237000a06c0a22a76fe6e3ae019760f64f",
+      "base": "b5ebe98a22072069efcce3444b7a6c6d39fa93bf",
+      "pull": 43,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/posva/unplugin-vue-router",
+      "commit": "cdb584fbb39906e0edba13865ebd88c63a08501a",
+      "base": "4e5015e1196fb2fdfc58bbb65fa8dc2e776fdc85",
+      "pull": 693,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/fireproof-storage/fireproof",
+      "commit": "308b4b61c122609a64ff45c8a7eded88e968d269",
+      "base": "65a0e09907137b053989db2ef50a17ca277ec09d",
+      "pull": 1067,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/bytebot-ai/bytebot",
+      "commit": "856e38cc99ebefd5ee18ad34a1b281402e9f31d1",
+      "base": "484a625be125b17cfea1f1e6139b165ac3cef0fb",
+      "pull": 37,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/seasonedcc/composable-functions",
+      "commit": "f58cfd06c36cfe2933f3242e37ea6cdca2f9b448",
+      "base": "8b5a89fd232fe23384b7303adff60c5bd8612e54",
+      "pull": 178,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Sls0n/Prismify",
+      "commit": "fbf7aa7f44e4b72861561ab29f6c920a3856646c",
+      "base": "18dc2ede9fe27eccf96373140d8408463484c9c2",
+      "pull": 39,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/MaxAst/expo-share-extension",
+      "commit": "11a363775e60a587e80fa1260278815323d7ba2d",
+      "base": "75e4855aba036c3f08c3162061d5965a93afc19f",
+      "pull": 85,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ObservedObserver/async-code",
+      "commit": "fb0ec5de20375a995e2fde626a482c1cefdea07f",
+      "base": "c810c58051b4e5ade07484aa7c11e246e6632b2d",
+      "pull": 5,
+      "language": "TypeScript"
+    }
+  ]
+}
