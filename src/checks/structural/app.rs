@@ -1,6 +1,7 @@
 //! App mode of `reachability`. In a TypeScript package whose manifest states no entry point (ADR
-//! 0044) and depends on `next`, a file is reached when the module graph leads to it from a file
-//! Next.js or a package script runs, and an export is used when a reached file imports it. The
+//! 0044) and depends on `next`, or on `vite` beside an `index.html`, a file is reached when the
+//! module graph leads to it from a file Next.js, the `index.html` or a package script runs, and an
+//! export is used when a reached file imports it. The
 //! walk follows imports, re-exports and literal `import()` calls, type-only ones included, so a
 //! re-export reaches its target only when the file that writes it is reached (ADR 0061, amended).
 //! A package with no entry point and no framework klin recognizes is a hole and judges nothing,
@@ -12,6 +13,7 @@ use std::rc::Rc;
 
 use serde_json::Value;
 
+use super::page::{self, Unread};
 use crate::config::scope::{Scope, under_or_at};
 use crate::contract::coverage::Unresolved;
 use crate::facts::{files, survey};
@@ -25,6 +27,10 @@ use crate::syntax::structural::{self, facts::DeclarationKind, facts::FileFacts};
 const MANIFEST: &str = "package.json";
 const KIT: &str = "components.json";
 const FRAMEWORK: &str = "next";
+const VITE: &str = "vite";
+const PAGE: &str = "index.html";
+/// The single-file components a Vite app may hold whose imports klin does not read.
+const UNREAD: &[&str] = &[".vue", ".svelte", ".astro"];
 const DEPENDENCIES: &[&str] = &["dependencies", "devDependencies", "peerDependencies"];
 /// The base tree, which every exemption app mode grants is read from: its `.gitattributes`
 /// marks, its `components.json` and the paths rules that resolve it, its package scripts, and the
@@ -186,7 +192,8 @@ const CONVENTION_EXPORTS: &[(&str, &[&[&str]])] = &[
     ("sitemap", &[&["generateSitemaps"]]),
 ];
 
-/// What kind of entry Next.js or a script makes of a file, which decides the exports it reads.
+/// What kind of entry Next.js, `index.html` or a script makes of a file, which decides the exports
+/// it reads.
 #[derive(Clone, Copy)]
 enum Kind {
     Convention(&'static str),
@@ -215,16 +222,27 @@ impl Kind {
     }
 }
 
-/// What a package manifest makes of its package: a Next.js app, an app of a UI framework klin
-/// does not judge, or anything else, such as a library that states an entry point, a command a
-/// `bin` names, a workspace root, a package of tools, or a manifest klin cannot read. A package
-/// with an entry point, a `bin` or `workspaces` is no app. ADR 0044.
-#[derive(Clone, Copy, PartialEq, Eq)]
+/// What a package manifest makes of its package: a Next.js app, a Vite app with the files its
+/// `index.html` module scripts name, an app klin does not judge with why, or anything else, such
+/// as a library that states an entry point, a command a `bin` names, a workspace root, a package
+/// of tools, or a manifest klin cannot read. A package with an entry point is no app, nor, unless
+/// it is a Next or Vite app, one with a `bin` or `workspaces`. ADR 0044.
+#[derive(PartialEq, Eq)]
 enum Role {
     Library,
     NextApp,
-    UnknownApp,
+    ViteApp(Vec<String>),
+    Unjudged(&'static str),
 }
+
+const UNRECOGNIZED: &str = "a package with no entry point whose framework klin does not recognize";
+const VITE_UNREAD: &str = "a Vite app that holds .vue, .svelte or .astro files klin does not read";
+const VITE_INLINE: &str =
+    "a Vite app whose index.html holds an inline module script klin does not read";
+const VITE_PLACEHOLDER: &str =
+    "a Vite app whose index.html names a module through a %...% placeholder klin does not expand";
+const VITE_UNNAMED: &str =
+    "a Vite app whose index.html names no TypeScript module the package holds";
 
 /// One package manifest: where it is, and what it makes of its package.
 struct Package {
@@ -233,8 +251,17 @@ struct Package {
     role: Role,
 }
 
+/// What a manifest alone makes of its package: its role, or a Vite app whose `index.html`, at
+/// this path, is still to be read.
+enum Read {
+    Role(Role),
+    Vite(String),
+}
+
 impl Package {
-    fn read(manifest: &str, bytes: Option<Vec<u8>>) -> Package {
+    /// What a manifest makes of its package, with the path of the `index.html` beside it where
+    /// the tree holds one.
+    fn read(bytes: Option<Vec<u8>>, page: Option<String>) -> Read {
         let parsed: Option<Value> = bytes.and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let fields = parsed.as_ref().and_then(Value::as_object);
         let depends = |names: &[&str]| {
@@ -247,32 +274,100 @@ impl Package {
         let entryless = fields.is_some_and(|held| !surface::declares_entry(held));
         let tool =
             fields.is_some_and(|held| held.contains_key("bin") || held.contains_key("workspaces"));
-        let role = match entryless {
-            true if depends(&[FRAMEWORK]) => Role::NextApp,
-            true if !tool && depends(UI_FRAMEWORKS) => Role::UnknownApp,
-            _ => Role::Library,
-        };
-        Package {
-            manifest: manifest.to_string(),
-            directory: directory(manifest).to_string(),
-            role,
+        match (entryless, page) {
+            (true, _) if depends(&[FRAMEWORK]) => Read::Role(Role::NextApp),
+            (true, Some(page)) if depends(&[VITE]) => Read::Vite(page),
+            (true, _) if !tool && depends(UI_FRAMEWORKS) => {
+                Read::Role(Role::Unjudged(UNRECOGNIZED))
+            }
+            _ => Read::Role(Role::Library),
         }
     }
 
     fn judged(&self) -> bool {
-        self.role == Role::NextApp
+        matches!(self.role, Role::NextApp | Role::ViteApp(_))
     }
 }
 
+/// The role of a Vite app once its `index.html` and the files it owns are read: the TypeScript
+/// files its module scripts name that app mode judges, so no test or declaration file, or the
+/// first reason klin cannot judge it.
+fn vite(directory: &str, html: &str, owned: &[&str]) -> Role {
+    if owned
+        .iter()
+        .any(|file| UNREAD.iter().any(|end| file.ends_with(end)))
+    {
+        return Role::Unjudged(VITE_UNREAD);
+    }
+    let named = match page::named(html, directory) {
+        Ok(named) => named,
+        Err(Unread::Inline) => return Role::Unjudged(VITE_INLINE),
+        Err(Unread::Placeholder) => return Role::Unjudged(VITE_PLACEHOLDER),
+    };
+    let named: Vec<String> = named
+        .into_iter()
+        .filter(|file| startable(file, owned))
+        .collect();
+    match named.is_empty() {
+        true => Role::Unjudged(VITE_UNNAMED),
+        false => Role::ViteApp(named),
+    }
+}
+
+/// Whether a walk can start from a file a module script names: a TypeScript file the package
+/// owns that app mode judges.
+fn startable(file: &str, owned: &[&str]) -> bool {
+    owned.contains(&file) && typescript(file) && judgeable(file)
+}
+
+/// Every package manifest of a tree with its role. A Vite app's role is read from the
+/// `index.html` this tree holds, as a module script ships its file and grants no exemption.
 fn packages(files: &[String], read: impl Fn(&str) -> Option<Vec<u8>>) -> Vec<Package> {
-    files
+    let held: HashSet<&str> = files.iter().map(String::as_str).collect();
+    let manifests: Vec<(&str, Read)> = files
         .iter()
         .filter(|file| basename(file) == MANIFEST && survey::surveyed(file))
-        .map(|manifest| Package::read(manifest, read(manifest)))
+        .map(|manifest| {
+            let page =
+                joined(directory(manifest), PAGE).filter(|page| held.contains(page.as_str()));
+            (manifest.as_str(), Package::read(read(manifest), page))
+        })
+        .collect();
+    let mut owned: HashMap<usize, Vec<&str>> = HashMap::new();
+    if manifests
+        .iter()
+        .any(|(_, read)| matches!(read, Read::Vite(_)))
+    {
+        let directories = || manifests.iter().map(|(manifest, _)| directory(manifest));
+        for file in files.iter().filter(|file| survey::surveyed(file)) {
+            if let Some(at) = owner(directories(), file) {
+                owned.entry(at).or_default().push(file);
+            }
+        }
+    }
+    manifests
+        .into_iter()
+        .enumerate()
+        .map(|(at, (manifest, found))| {
+            let role = match found {
+                Read::Role(role) => role,
+                Read::Vite(page) => {
+                    let html = read(&page).unwrap_or_default();
+                    let owned = owned.get(&at).map_or(&[][..], Vec::as_slice);
+                    vite(directory(manifest), &String::from_utf8_lossy(&html), owned)
+                }
+            };
+            Package {
+                manifest: manifest.to_string(),
+                directory: directory(manifest).to_string(),
+                role,
+            }
+        })
         .collect()
 }
 
-/// Whether a tree holds a package app mode judges, read from its manifests alone.
+/// Whether a tree holds a package app mode judges, read from its manifests and its `index.html`
+/// files.
 pub(super) fn present(root: &Path, files: &[String]) -> bool {
     packages(files, |file| std::fs::read(root.join(file)).ok())
         .iter()
@@ -337,13 +432,14 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
     for (at, files) in &owned {
         let package = &packages[*at];
         let selected = files.iter().any(|file| scope.selects(&current(file)));
-        if package.role == Role::UnknownApp && selected {
+        if let Role::Unjudged(why) = package.role
+            && selected
+        {
             out.holes.push(Unresolved {
                 file: current(&package.manifest),
                 line: 0,
                 text: format!("{} TypeScript file(s)", files.len()),
-                why: "a package with no entry point whose framework klin does not recognize"
-                    .to_string(),
+                why: why.to_string(),
             });
         }
     }
@@ -380,20 +476,28 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
 fn owned<'t>(topology: &'t Topology, packages: &[Package]) -> BTreeMap<usize, Vec<&'t str>> {
     let mut out: BTreeMap<usize, Vec<&str>> = BTreeMap::new();
     for file in topology.files() {
-        if structural::language_of(file) != Some(LanguageId::TypeScript) || !survey::surveyed(file)
-        {
+        if !typescript(file) || !survey::surveyed(file) {
             continue;
         }
-        let deepest = packages
-            .iter()
-            .enumerate()
-            .filter(|(_, package)| within(&package.directory, file))
-            .max_by_key(|(_, package)| package.directory.len());
-        if let Some((at, _)) = deepest {
+        let directories = packages.iter().map(|package| package.directory.as_str());
+        if let Some(at) = owner(directories, file) {
             out.entry(at).or_default().push(file);
         }
     }
     out
+}
+
+/// The position of the package that owns a file: the deepest package directory that holds it.
+fn owner<'d>(directories: impl Iterator<Item = &'d str>, file: &str) -> Option<usize> {
+    directories
+        .enumerate()
+        .filter(|(_, directory)| within(directory, file))
+        .max_by_key(|(_, directory)| directory.len())
+        .map(|(at, _)| at)
+}
+
+fn typescript(file: &str) -> bool {
+    structural::language_of(file) == Some(LanguageId::TypeScript)
 }
 
 /// The module graph of one tree as the walk reads it: each TypeScript file's module, the modules
@@ -628,13 +732,26 @@ impl App<'_, '_> {
             .iter()
             .copied()
             .filter(|file| judgeable(file))
-            .filter_map(|file| {
-                let relative = relative(&self.package.directory, file);
-                let kind =
-                    kind(relative).or_else(|| scripted.contains(file).then_some(Kind::Program))?;
-                Some((file, kind))
-            })
+            .filter_map(|file| Some((file, self.kind(file, &scripted)?)))
             .collect()
+    }
+
+    /// The kind of entry the package's runtime makes of a file, by the package's role: a Next
+    /// app routes its convention files, a Vite app runs what its `index.html` names, and every
+    /// app runs its root `*.config` files and the files its scripts name.
+    fn kind(&self, file: &str, scripted: &HashSet<String>) -> Option<Kind> {
+        let relative = relative(&self.package.directory, file);
+        let routed = match &self.package.role {
+            Role::NextApp => routed(relative),
+            Role::ViteApp(named) => named
+                .iter()
+                .any(|held| held == file)
+                .then_some(Kind::Program),
+            Role::Library | Role::Unjudged(_) => None,
+        };
+        routed
+            .or_else(|| configured(relative))
+            .or_else(|| scripted.contains(file).then_some(Kind::Program))
     }
 
     /// The TypeScript files the scripts of the base's manifest name, joined to its directory.
@@ -809,7 +926,7 @@ fn declared(facts: &FileFacts) -> impl Iterator<Item = (&str, u64)> {
 
 /// The kind of entry Next.js makes of a file at this path under its package, and none for an
 /// ordinary module.
-fn kind(relative: &str) -> Option<Kind> {
+fn routed(relative: &str) -> Option<Kind> {
     let (stem, _) = basename(relative).rsplit_once('.')?;
     if let Some(kind) = rooted(stem, directory(relative)) {
         return Some(kind);
@@ -823,18 +940,24 @@ fn kind(relative: &str) -> Option<Kind> {
     (under_or_at(relative, "pages") || under_or_at(relative, "src/pages")).then_some(Kind::Pages)
 }
 
-/// The kind of a file Next.js or a tool reads at the package root or under `src/`, by its name:
-/// a `*.config` file at the root, such as `next.config.ts` or `tailwind.config.ts`, is a program
-/// its tool runs.
+/// The kind of a file Next.js reads at the package root or under `src/`, by its name.
 fn rooted(stem: &str, at: &str) -> Option<Kind> {
-    let root = matches!(at, "" | "src");
+    if !matches!(at, "" | "src") {
+        return None;
+    }
     match stem {
-        "middleware" | "proxy" if root => Some(Kind::Middleware),
-        "instrumentation" if root => Some(Kind::Instrumentation),
-        "instrumentation-client" if root => Some(Kind::InstrumentationClient),
-        config if at.is_empty() && config.ends_with(".config") => Some(Kind::Program),
+        "middleware" | "proxy" => Some(Kind::Middleware),
+        "instrumentation" => Some(Kind::Instrumentation),
+        "instrumentation-client" => Some(Kind::InstrumentationClient),
         _ => None,
     }
+}
+
+/// A `*.config` file at the package root, such as `next.config.ts` or `vite.config.ts`, is a
+/// program its tool runs.
+fn configured(relative: &str) -> Option<Kind> {
+    let (stem, _) = relative.rsplit_once('.')?;
+    (!relative.contains('/') && stem.ends_with(".config")).then_some(Kind::Program)
 }
 
 /// Whether a file under `app/` or `src/app/` is a convention file a person turned off by
