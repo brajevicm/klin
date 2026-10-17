@@ -13,7 +13,7 @@ pub(crate) struct Adapter {
     pub methods_in: &'static [&'static str],
     /// Names invoked by the runtime without a source reference.
     pub entry_points: &'static [&'static str],
-    pub visible: fn(Node) -> bool,
+    pub visible: fn(Node, &str) -> bool,
     pub imported: fn(Node, &[u8]) -> Imported,
     /// The file a module declaration was remapped to, for a language that writes such a thing.
     pub remapped: fn(Node, &[u8]) -> Option<String>,

@@ -521,14 +521,60 @@ fn a_declaration_in_a_global_block_a_declare_module_holds_is_not_judged() {
     tree.write("klin.json", TYPESCRIPT);
     tree.write(
         "src/globals.d.ts",
-        "declare module \"klin-x\" {\n  global {\n    interface Window { klinX: number }\n    function helper(): void;\n  }\n}\n\ninterface Unused {}\n",
+        "export {};\n\ndeclare module \"klin-x\" {\n  global {\n    interface Window { klinX: number }\n    function helper(): void;\n  }\n}\n\ninterface Unused {}\n",
     );
 
     let run = tree.run(&["check", "dead-symbols"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
-    assert!(run.says("src/globals.d.ts:8"), "{}", run.out);
+    assert!(run.says("src/globals.d.ts:10"), "{}", run.out);
+}
+
+#[test]
+fn a_declaration_in_a_typescript_script_file_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/env.d.ts",
+        "interface ImportMeta {\n  readonly klinX: string;\n  load(): void;\n}\n\ndeclare function helper(): void;\ndeclare const klinGlobal: number;\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_declaration_in_a_module_augmentation_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/augment.d.ts",
+        "export {};\n\ndeclare module \"klin-x\" {\n  interface Options { klinX: number }\n  function helper(): void;\n}\n\ninterface Unused {}\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/augment.d.ts:8"), "{}", run.out);
+}
+
+#[test]
+fn a_class_constructor_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/box.ts",
+        "class Box {\n  constructor(readonly value: number) {}\n}\n\nexport const box = new Box(1);\n\nfunction unused() {}\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/box.ts:7"), "{}", run.out);
 }
 
 #[test]

@@ -5028,7 +5028,18 @@ block a `declare module` holds, is externally visible, because it adds a name
 to the global scope that code reads without an import. The two forms are
 pinned by `a_declaration_in_a_global_augmentation_is_not_judged` and
 `a_declaration_in_a_global_block_a_declare_module_holds_is_not_judged` in
-`tests/dead_symbols.rs`. The `ignore` list adds name
+`tests/dead_symbols.rs`. A declaration inside a module augmentation,
+`declare module "x" { ... }`, is externally visible too, because the compiler
+merges it into the types of that module. A `.d.ts` file with no `import` or
+`export` statement is a script, so each declaration in it is a global and is
+externally visible. Under `moduleDetection: "force"` every other file is a
+module, so a `.ts`, `.tsx`, `.mts` or `.cts` file with no `import` or
+`export` is still judged. A class `constructor` is a TypeScript entry point,
+because `new` calls it and no reference names it. These rules are pinned by
+`a_declaration_in_a_module_augmentation_is_not_judged`,
+`a_declaration_in_a_typescript_script_file_is_not_judged`,
+`a_private_typescript_main_is_judged` and `a_class_constructor_is_not_judged`
+in `tests/dead_symbols.rs`. The `ignore` list adds name
 globs. A glob is matched against each name a declaration binds, so a
 destructuring declaration is left out only when every name it binds matches
 one. The check is name-only: it does not resolve imports, types, reflection,

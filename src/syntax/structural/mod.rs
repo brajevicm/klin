@@ -607,7 +607,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
             text: self.text(node),
-            externally_visible: (self.adapter.visible)(node),
+            externally_visible: (self.adapter.visible)(node, self.path),
             entry_point,
             nesting: (self.adapter.nesting)(node, self.source),
             associated: above(node, self.adapter.methods_in).is_some(),
