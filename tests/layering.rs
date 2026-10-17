@@ -2341,11 +2341,10 @@ fn a_mode_that_looks_up_packages_keeps_the_workspace_edge() {
     }
 }
 
-fn an_alias_under_a_local_parent(base: &str, config: &str) -> (Tree, harness::Run) {
+fn an_alias_under_a_local_parent(base: &str, config: &str) -> harness::Run {
     let tree = Tree::new();
     tree.write("config/base.json", base);
-    let run = an_alias_from_model_to_view(&tree, config);
-    (tree, run)
+    an_alias_from_model_to_view(&tree, config)
 }
 
 fn assert_model_to_view(run: &harness::Run) {
@@ -2359,7 +2358,7 @@ fn assert_model_to_view(run: &harness::Run) {
 
 #[test]
 fn paths_under_a_local_parent_with_no_base_url_resolve_from_the_child_directory() {
-    let (_, run) = an_alias_under_a_local_parent(
+    let run = an_alias_under_a_local_parent(
         r#"{"compilerOptions":{"strict":true}}"#,
         r#"{"extends":"./config/base.json","include":["web"],"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
     );
@@ -2387,7 +2386,7 @@ fn a_base_url_from_a_local_parent_wins_over_the_child_directory() {
 
 #[test]
 fn a_null_base_url_under_a_local_parent_with_one_leaves_the_alias_a_hole() {
-    let (_, run) = an_alias_under_a_local_parent(
+    let run = an_alias_under_a_local_parent(
         r#"{"compilerOptions":{"baseUrl":".."}}"#,
         r#"{"extends":"./config/base.json","include":["web"],"compilerOptions":{"baseUrl":null,"paths":{"@/*":["./web/*"]}}}"#,
     );
@@ -2417,7 +2416,7 @@ fn roots_a_local_parent_writes_are_inherited_from_its_directory() {
             false,
         ),
     ] {
-        let (_, run) = an_alias_under_a_local_parent(
+        let run = an_alias_under_a_local_parent(
             base,
             &format!(r#"{{"extends":"./config/base.json",{roots}{CHILD_PATHS}}}"#),
         );
@@ -2462,8 +2461,10 @@ fn a_parent_named_without_a_dot_slash_is_a_package_and_names_no_alias() {
 #[test]
 fn a_config_dir_value_leaves_the_alias_a_hole() {
     for config in [
-        r#"{"compilerOptions":{"baseUrl":"${configDir}","paths":{"@/*":["./web/*"]}}}"#,
-        r#"{"compilerOptions":{"paths":{"@/*":["${configDir}/web/*"]}}}"#,
+        r#"{"compilerOptions":{"baseUrl":"${configDir}/..","paths":{"@/*":["./web/*"]}}}"#,
+        r#"{"compilerOptions":{"paths":{"@/*":["${configDir}/../web/*"]}}}"#,
+        r#"{"include":["${configDir}/../web"],"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
+        r#"{"files":["${configDir}/../web/model/index.ts"],"include":[],"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
         r#"{"exclude":["${configDir}/web/model"],"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
     ] {
         let tree = Tree::new();
@@ -2474,12 +2475,48 @@ fn a_config_dir_value_leaves_the_alias_a_hole() {
 
 #[test]
 fn a_bare_import_under_a_base_url_only_a_parent_writes_stays_external() {
-    let (tree, _) = an_alias_under_a_local_parent(
+    let tree = Tree::new();
+    tree.write(
+        "config/base.json",
         r#"{"compilerOptions":{"baseUrl":".."}}"#,
+    );
+    a_bare_import_from_model_to_view(
+        &tree,
         &format!(r#"{{"extends":"./config/base.json","include":["web"],{CHILD_PATHS}}}"#),
     );
-    tree.write("web/model/index.ts", "import { x } from \"web/view/x\";\n");
     let run = tree.run(&["check", "layering"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("1 external or unsupported"), "{}", run.out);
+}
+
+fn a_bare_import_from_model_to_view(tree: &Tree, config: &str) {
+    tree.write("klin.json", WEB);
+    tree.write("tsconfig.json", config);
+    tree.write("web/model/index.ts", "import { x } from \"web/view/x\";\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+}
+
+#[test]
+fn a_bare_base_url_import_under_a_local_parent_needs_roots_the_child_writes() {
+    let tree = Tree::new();
+    tree.write("config/base.json", "{}");
+    a_bare_import_from_model_to_view(
+        &tree,
+        &format!(r#"{{"extends":"./config/base.json","include":["web"],{OWN_PATHS}}}"#),
+    );
+    let run = tree.run(&["check", "layering"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW:") && run.says("baseUrl import whose configuration klin cannot prove"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_nested_config_that_only_extends_its_ancestor_resolves_the_alias_the_same_way() {
+    let tree = Tree::new();
+    tree.write("web/tsconfig.json", r#"{"extends":"../tsconfig.json"}"#);
+    let run = an_alias_from_model_to_view(&tree, &format!("{{{CHILD_PATHS}}}"));
+    assert_model_to_view(&run);
 }

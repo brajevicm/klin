@@ -20,8 +20,9 @@ struct Config {
     paths_base: Option<String>,
     rules: Vec<(String, Value)>,
     roots: Roots,
+    own_roots: Roots,
     uncertain: bool,
-    base_url_uncertain: bool,
+    base_url_unproved: bool,
     packages: bool,
 }
 
@@ -61,10 +62,14 @@ impl Paths {
             return None;
         }
         let root = owners.iter().any(|program| program.roots.contains(file));
+        let own_root = owners
+            .iter()
+            .any(|program| program.own_roots.contains(file));
         Some(FilePaths {
             owners,
             base_url_unproved: scope.base_url_unproved,
             root,
+            own_root,
         })
     }
 
@@ -114,6 +119,8 @@ struct Scope {
 /// The roots and alias rules of one owning config.
 struct Program {
     roots: Roots,
+    /// The roots the config writes itself, which prove bare imports under its own `baseUrl`.
+    own_roots: Roots,
     /// The config's own `baseUrl`, which bare imports resolve under.
     base_url: Option<String>,
     /// The directory paths targets resolve from, read through the chain.
@@ -128,6 +135,7 @@ pub(super) struct FilePaths<'a> {
     owners: Vec<&'a Program>,
     base_url_unproved: bool,
     root: bool,
+    own_root: bool,
 }
 
 impl FilePaths<'_> {
@@ -162,7 +170,7 @@ impl FilePaths<'_> {
             .iter()
             .filter_map(|program| joined(program.base_url.as_deref()?, specifier))
             .collect();
-        (!bases.is_empty()).then_some((bases, !self.base_url_unproved && self.root))
+        (!bases.is_empty()).then_some((bases, !self.base_url_unproved && self.own_root))
     }
 }
 
@@ -187,9 +195,7 @@ impl Scope {
             .collect();
         Self {
             base_url_unproved: owners.len() != 1
-                || owners
-                    .iter()
-                    .any(|&index| configs[index].base_url_uncertain),
+                || owners.iter().any(|&index| configs[index].base_url_unproved),
             owners,
         }
     }
@@ -203,6 +209,7 @@ impl Program {
     fn compile(config: Config) -> Self {
         let mut program = Self {
             roots: config.roots,
+            own_roots: config.own_roots,
             base_url: config.base_url,
             paths_base: config.paths_base,
             exact: HashMap::new(),
@@ -388,6 +395,14 @@ impl<'a> Lineage<'a> {
         lineage
     }
 
+    /// The config alone, whole only where it extends nothing.
+    fn own(&self) -> Self {
+        Self {
+            configs: self.configs.iter().take(1).copied().collect(),
+            whole: self.whole && self.configs.len() == 1,
+        }
+    }
+
     fn directory(&self) -> &'a str {
         self.configs
             .first()
@@ -397,9 +412,10 @@ impl<'a> Lineage<'a> {
     /// The nearest value written at `pointer` and the directory it resolves from. Where the chain
     /// is not whole, a parent klin cannot read may supply it, so only the config's own counts.
     fn written(&self, pointer: &str) -> Option<(&'a Value, &'a str)> {
+        let read = if self.whole { self.configs.len() } else { 1 };
         self.configs
             .iter()
-            .take(if self.whole { usize::MAX } else { 1 })
+            .take(read)
             .find_map(|&(file, value)| Some((value.pointer(pointer)?, directory(file))))
     }
 
@@ -617,13 +633,14 @@ impl Config {
             uncertain: unprovable
                 || (partial && !lineage.whole)
                 || lineage.names_config_dir(&rules),
-            base_url_uncertain: unprovable || partial,
+            base_url_unproved: unprovable || partial,
             packages: looks_up_packages(file, parsed),
             reached: chain.reached,
             base_url,
             paths_base: lineage.paths_base(),
             rules,
             roots: Roots::read(&lineage),
+            own_roots: Roots::read(&lineage.own()),
         }
     }
 

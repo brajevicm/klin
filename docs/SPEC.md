@@ -6240,6 +6240,8 @@ and a bare import under that `baseUrl` is proven too. Under such a parent an
 `include` or `exclude` the child does not write may come from the parent, so
 include proof needs both written by the child. The child's own `files` still
 prove roots, and an `outDir` or `declarationDir` it inherits is not read. A
+bare import under a config's own `baseUrl` keeps these rules on any chain:
+its root proof reads only the roots the config writes itself. A
 `baseUrl`, `paths` target, `include`, `exclude`, `files`, `outDir` or
 `declarationDir` value that starts with `${configDir}` proves no alias, with
 or without extends. A config whose own
@@ -6319,6 +6321,8 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `a_parent_named_without_a_dot_slash_is_a_package_and_names_no_alias`,
 `a_config_dir_value_leaves_the_alias_a_hole`,
 `a_bare_import_under_a_base_url_only_a_parent_writes_stays_external`,
+`a_bare_base_url_import_under_a_local_parent_needs_roots_the_child_writes`,
+`a_nested_config_that_only_extends_its_ancestor_resolves_the_alias_the_same_way`,
 `a_config_that_writes_its_own_paths_base_url_and_roots_proves_aliases_under_extends`,
 `a_bare_base_url_import_under_extends_with_own_paths_is_a_local_edge`,
 `files_a_config_writes_under_extends_stay_roots`,
