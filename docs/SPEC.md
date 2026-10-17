@@ -4927,10 +4927,81 @@ person accepts a key with the fingerprint as the entry's `text`. Pinned by
 across a concatenation and a key in a file of no language klin knows, such
 as JSON or YAML, are not read. A file under a directory of the default skip set,
 such as `fixtures/` or `vendor/`, is not read either, because the tree's one
-file list leaves those directories out for every check. Another check whose finding
-text is the source line still prints a key on that line, and a prompt that
-holds a key still lands in the journal's prompt excerpt, which
-`journal.prompt: false` turns off. #653 tracks both.
+file list leaves those directories out for every check.
+
+**Three boundaries keep a key out of what klin prints and keeps.** A key
+can reach klin from a line of the tree, a file name, a SARIF report, a
+build's output, `klin.json` or a hook event. klin redacts it at the three
+places where it would last or leave, and not at each source:
+
+- Identity. The ratchet replaces each token in a finding's file and text
+  with its fingerprint before it matches the finding, for every gate and for
+  the base findings it compares with, and it reads the changed paths of a
+  scoped run the same way. The identity of 11.2 hashes that file and text, so
+  no id holds a key, no accepted entry needs one, and an entry copied from a
+  report matches the site the report named. A check whose finding text is
+  the source line, such as `escapes`, `stubs`, `complexity` or
+  `conventions`, names the line with the fingerprint in place of the key. An
+  accepted entry that holds the key no longer matches. A finding on a line
+  with no token keeps its text and its identity.
+- Output. Every text klin writes to standard output or standard error, in a
+  command, in a hook event and in a response to the host, passes through
+  `sys::out`, which redacts it. The conventions `single-output-boundary` and
+  `single-output-boundary-lines` in klin's own `klin.json` forbid the print
+  macros anywhere else in `src`.
+- Records. Every file the hook writes passes through `hook::record`. A
+  record for a person or a tool, the journal with its prompt excerpt of 11.4
+  and `KLIN_HOOK_REPORT`, is redacted. Machine state that klin reads back
+  and compares, the turn stamp, the handoff, the budget and the told marker,
+  is written as it is, so a branch name that looks like a key reads back
+  unchanged. The one text the turn stamp holds, the error of an `unjudged`
+  verdict, is redacted where the verdict is made. A value klin compares
+  with text it printed or stored redacted is redacted the same way first:
+  the Cursor follow-up hash of 9.1 and the session a Stop looks up in the
+  journal. The conventions
+  `single-record-writer`, `single-record-writer-append` and
+  `single-record-writer-atomic` forbid `fs::write`, `OpenOptions::new` and
+  `atomic_write` anywhere else in `src/hook`. The files klin writes outside
+  `src/hook` hold hashes, commits and the tree's own bytes, and no text a
+  person or a tool wrote.
+
+Redaction matches a token with no word boundary before it, so a key that
+JSON escaping or a longer word runs into, such as the `n` of an escaped
+newline, is still replaced. It matches a vendor's prefix and 8 or more
+characters of its rest, not the usual length, so a key that an excerpt or a
+clip cut before the text reached a boundary is replaced too, and at most 7
+characters of it can show. It also replaces a token that holds a
+placeholder word or that `...` follows, which the `secrets` gate does not
+count, because a live key may hold such a word by chance. Known limits: the
+caches and base snapshots under `.git/klin` keep file paths as the tree
+names them, because they are lookup keys, and klin never prints or exports
+them. A panic's message goes to standard error through Rust's own panic
+hook, not through `sys::out`. Pinned by
+`an_escape_on_a_line_that_holds_a_key_names_the_fingerprint_and_no_part_of_the_key`,
+`an_escape_on_a_line_with_no_token_keeps_its_text_and_its_identity`,
+`the_journal_prompt_excerpt_holds_no_part_of_a_key_typed_into_the_prompt`,
+`an_accepted_entry_that_holds_a_key_matches_nothing_and_no_output_prints_the_key`,
+`policy_prints_an_accepted_entry_that_holds_a_key_with_the_fingerprint`,
+`an_escape_on_a_line_with_a_placeholder_token_still_hides_the_token`,
+`an_accepted_entry_with_a_key_and_no_count_names_no_part_of_the_key_in_its_error`,
+`an_unmatched_accepted_entry_names_no_part_of_a_key_in_its_file_or_any_value`,
+`policy_names_no_part_of_a_key_used_as_a_property_name`,
+`a_convention_remedy_that_holds_a_key_names_no_part_of_it`,
+`a_key_after_an_escaped_character_names_no_part_of_it_in_json`,
+`an_unplaced_sarif_result_that_holds_a_key_names_no_part_of_it_in_a_check`,
+`an_integration_run_command_that_holds_a_key_names_no_part_of_it_in_the_document`,
+`a_finding_in_a_file_whose_name_holds_a_key_names_no_part_of_it_in_the_journal`,
+`a_command_line_that_holds_a_key_names_no_part_of_it_in_the_usage_error`,
+`a_config_error_that_echoes_a_key_names_no_part_of_it_in_the_stop_or_its_state`,
+`a_failing_build_that_prints_a_key_names_no_part_of_it_in_the_stop_or_its_state`,
+`a_plan_error_that_echoes_a_key_names_no_part_of_it_in_the_stop_or_its_state`,
+`an_unknown_host_argument_that_holds_a_key_names_no_part_of_it`,
+`a_key_that_the_prompt_excerpt_cuts_short_leaks_no_more_than_its_prefix`,
+`a_branch_name_shaped_like_a_key_reads_back_from_the_turn_stamp_unchanged`,
+`a_cursor_followup_that_names_a_key_is_recognized_when_the_host_submits_it`,
+`a_session_id_shaped_like_a_key_still_finds_its_prompt_event`,
+`a_finding_in_a_file_whose_name_holds_a_key_is_accepted_as_the_report_names_it` in
+`tests/secrets.rs`, and by the conventions gate on klin's own tree.
 
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and
@@ -7460,7 +7531,8 @@ failure, or an error alike — plus what only the hook knew:
 The `prompt` line is the `UserPromptSubmit` event `klin radius` ran on:
 
 - `prompt`, the counter this event raised it to.
-- `text`, the prompt's first line cut at 80 characters. Absent where
+- `text`, the prompt's first line, with each live-shaped token replaced by
+  its fingerprint (B.8.2.1), cut at 80 characters. Absent where
   `journal.prompt` (5.2) is `false`, where the configuration would not load,
   or where the event carried no prompt text.
 - `radius` `{lines, formatting, moved, directories, wide}`, the facts `klin
