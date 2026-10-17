@@ -6066,8 +6066,8 @@ ancestor configs alike, and the first that reaches a held file or a held
 TypeScript 5 and earlier: TypeScript 6.0 deprecates `baseUrl` and no longer
 looks modules up under it, and TypeScript 7.0 removes the option. Where the
 candidate rule finds no held TypeScript file under the `baseUrl` directory
-and the directory it names holds no `package.json`, the import is external,
-as TypeScript then tries packages. Where that directory holds a
+and the directory it names holds no `package.json`, the import goes on to
+the workspace step below, as TypeScript then tries packages. Where that directory holds a
 `package.json`, whose `types` or `main` may name the entry point, the import
 is a located local hole. Where it finds
 exactly one, the import is a local dependency when that config is proved for
@@ -6075,11 +6075,50 @@ paths aliases below, the file is one of its roots, and the target is not an
 index file of a directory that holds a `package.json`, whose `types` or
 `main` may name another entry point. Otherwise, and where it finds two, such
 as `price.ts` and `price/index.ts`, the import is a located local hole, never
-external. Any other bare specifier and a specifier that names a file of
-another kind are counted as external. Pinned by
+external. A bare specifier with no owning config, or that no paths rule and
+no `baseUrl` places, also goes on to the workspace step. A specifier that names
+a file of another kind is counted as external. Pinned by
 `a_bare_import_under_the_base_url_is_a_local_edge` and
 `a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`
-in `tests/layering.rs`. Explicit paths aliases
+in `tests/layering.rs`.
+
+The workspace step models a package manager's `node_modules` symlink to a
+workspace package (#669). Only the tree root `package.json` is read. Its
+`workspaces` field is an array, or an object with a `packages` array. Each
+entry is a literal directory, or a path whose segments are literal or exactly
+`*`, where a `*` matches one directory segment. A workspace package is a
+matched directory below the root that holds a `package.json` with a string
+`name`. Where any entry as written uses another glob form, such as `**`, `?`,
+`[...]`, `{...}`, `!` or `pkg-*`, the tree resolves no workspace name, even where
+`..` would remove that segment. The step applies only where every config that
+owns the importing file looks bare names up among packages, as TypeScript 5
+does: the nearest written `moduleResolution` is `node`, `node10`, `node16`,
+`nodenext` or `bundler`, or, with none written, the nearest `module` is
+`commonjs`, `node16`, `node18`, `node20`, `nodenext` or `preserve`, or, with
+neither written, no `target` above `es5` is written. Each value is read along
+held local `extends` as for `moduleSuffixes`, and every branch must agree. A
+`classic` resolution, and a `module` or `target` that implies it, leaves the
+import external. A file that no config owns uses TypeScript's defaults and
+takes the step. A specifier's
+package name is its first segment, or its first two segments where the first
+starts with `@`, and it must equal the `name` of exactly one workspace package.
+A subpath resolves from that package's directory with the candidate rule. A
+bare package name tries `types`, then `typings`, then `main`, each with the
+candidate rule, so a `main` of `index.js` reaches a held `index.ts`, and then
+`index` under the package directory. The first that reaches a held file wins.
+Two held candidates are a located hole, as for a relative specifier. Anything
+else stays external and makes no hole: a package whose `package.json` writes
+`exports`, a name that reaches no held file, a name two workspace packages
+share, and a name no entry lists. Pinned by
+`a_subpath_import_of_another_workspace_package_is_a_forbidden_edge` and
+`a_missing_paths_target_falls_through_to_the_workspace_package` and
+`a_mode_that_does_not_look_up_packages_leaves_the_workspace_package_external`
+in `tests/layering.rs`. Known limits: package copies under `node_modules`, Yarn
+PnP, pnpm `pnpm-workspace.yaml`, a nested npm copy that shadows a workspace
+package, `exports`, and `workspaces` globs beyond a one-segment `*` are not
+read.
+
+Explicit paths aliases
 resolve or produce local incompleteness under the rule below. A `mod` declaration is containment and
 never a dependency.
 
@@ -6178,7 +6217,8 @@ A matching paths rule whose target cannot be proved produces located local
 resolution incompleteness. One exception follows TypeScript, which tries
 normal package lookup after the paths targets: when a rule's target names
 no file the tree holds and the specifier is a valid package name, such as
-`react` or `@scope/pkg`, the import is external. A specifier that cannot name
+`react` or `@scope/pkg`, the import goes on to the workspace step, and is
+external where that step places nothing. A specifier that cannot name
 a package, such as `@/missing`, stays a hole. A config that extends another
 and writes both its own `paths` and `baseUrl` proves its aliases, because
 TypeScript takes those two values from the child alone, and a bare import

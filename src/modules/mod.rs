@@ -22,6 +22,7 @@ pub mod resolver;
 mod rust;
 mod typescript;
 mod typescript_paths;
+mod typescript_workspaces;
 
 use resolver::{Attachment, Builder, Dependency, Hole, Module, Target, Topology};
 

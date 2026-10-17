@@ -3,11 +3,13 @@
 //! written where it names a TypeScript extension, the TypeScript file a `.js`, `.jsx`, `.mjs` or
 //! `.cjs` specifier stands for, and otherwise `.ts`, `.tsx`, `index.ts` and `index.tsx`. Two
 //! candidates are a hole, never a choice. Explicit tsconfig paths aliases use that same rule.
-//! Unproved local aliases are holes; packages and targets of another kind stay outside V1.
+//! Unproved local aliases are holes. A bare name that no alias places goes on to the workspace
+//! packages the root lists; other packages and targets of another kind stay outside V1.
 
 use std::collections::BTreeMap;
 
 use super::resolver::{Attachment, Builder, Doubt, Topology, directory, joined};
+use super::typescript_workspaces::Workspaces;
 
 /// Each script extension with the TypeScript extensions a specifier written with it stands for.
 const STANDS_FOR: &[(&str, &[&str])] = &[
@@ -22,6 +24,7 @@ const WITHOUT: &[&str] = &[".ts", ".tsx", "/index.ts", "/index.tsx"];
 pub(super) fn resolve(builder: &mut Builder) {
     let topology = builder.topology;
     let paths = super::typescript_paths::Paths::read(topology);
+    let workspaces = Workspaces::read(topology);
     let mut modules: BTreeMap<&str, usize> = BTreeMap::new();
     for file in topology.files.iter().filter(|file| source(file)) {
         let index = builder.module(file.clone(), &[file], Attachment::File);
@@ -32,6 +35,10 @@ pub(super) fn resolve(builder: &mut Builder) {
             continue;
         };
         let scope = paths.for_file(file);
+        let targets = Targets {
+            modules: &modules,
+            workspaces: paths.packages(file).then_some(&workspaces),
+        };
         for import in &facts.imports {
             if let Some(specifier) = import.module.as_deref() {
                 let site = Site {
@@ -41,10 +48,17 @@ pub(super) fn resolve(builder: &mut Builder) {
                     start_byte: import.start_byte,
                     text: &import.text,
                 };
-                resolved(builder, &modules, scope.as_ref(), &site, specifier);
+                resolved(builder, &targets, scope.as_ref(), &site, specifier);
             }
         }
     }
+}
+
+/// What an import resolves against: the tree's TypeScript modules, and its workspace packages
+/// where the configs that own the importing file look bare names up among packages.
+struct Targets<'a> {
+    modules: &'a BTreeMap<&'a str, usize>,
+    workspaces: Option<&'a Workspaces>,
 }
 
 struct Site<'a> {
@@ -57,12 +71,13 @@ struct Site<'a> {
 
 fn resolved(
     builder: &mut Builder,
-    modules: &BTreeMap<&str, usize>,
+    targets: &Targets,
     paths: Option<&super::typescript_paths::FilePaths<'_>>,
     site: &Site,
     specifier: &str,
 ) {
     let before = builder.holes.len();
+    let modules = targets.modules;
     let reaches = |base: &str| {
         candidates(base)
             .iter()
@@ -70,9 +85,13 @@ fn resolved(
             || builder.topology.holds(&manifest(base))
     };
     match located(paths, site.file, specifier, reaches) {
-        Some(Ok((base, lookup))) => dependency(builder, modules, site, specifier, &base, lookup),
+        Some(Ok((base, lookup))) => {
+            if !dependency(builder, modules, site, specifier, &base, lookup) {
+                packaged(builder, targets, site, specifier);
+            }
+        }
         Some(Err(why)) => hole(builder, site, why, Doubt::Unproved),
-        None => builder.external += 1,
+        None => packaged(builder, targets, site, specifier),
     }
     if !relative(specifier) {
         for hole in &mut builder.holes[before..] {
@@ -108,8 +127,8 @@ fn located(
 }
 
 /// How a path was named. A relative or paths name that reaches no held file is judged by its
-/// form. A `baseUrl` name that reaches none is external, as TypeScript then tries packages, and
-/// one that reaches a held file is a hole where klin cannot prove the config.
+/// form. A `baseUrl` name that reaches none goes on to packages, as TypeScript does, and one
+/// that reaches a held file is a hole where klin cannot prove the config.
 #[derive(Clone, Copy)]
 enum Lookup {
     Named,
@@ -148,10 +167,10 @@ impl Lookup {
         })
     }
 
-    /// Whether a name that reaches no held TypeScript file is external: a `baseUrl` miss with no
-    /// `package.json` that may name an entry point, as TypeScript then tries packages, a file of
-    /// another kind, or a bare name that may be a package.
-    fn misses_outside(
+    /// Whether a name that reaches no held TypeScript file goes on to packages, as TypeScript
+    /// does: a `baseUrl` miss with no `package.json` that may name an entry point, or a bare name
+    /// that may be a package and names no file of another kind.
+    fn tries_packages(
         &self,
         topology: &Topology,
         specifier: &str,
@@ -161,8 +180,9 @@ impl Lookup {
         match self {
             Lookup::BaseUrl { .. } => !topology.holds(&manifest(base)),
             Lookup::Named => {
-                another_kind(topology, base, candidates)
-                    || !relative(specifier) && package_name(specifier)
+                !relative(specifier)
+                    && package_name(specifier)
+                    && !another_kind(topology, base, candidates)
             }
         }
     }
@@ -183,6 +203,7 @@ fn hole(builder: &mut Builder, site: &Site, why: String, doubt: Doubt) {
     );
 }
 
+/// Settles an import whose path klin located, and false where the name goes on to packages.
 fn dependency(
     builder: &mut Builder,
     modules: &BTreeMap<&str, usize>,
@@ -190,7 +211,7 @@ fn dependency(
     specifier: &str,
     base: &str,
     lookup: Lookup,
-) {
+) -> bool {
     let topology = builder.topology;
     let candidates = candidates(base);
     let held: Vec<&String> = candidates
@@ -200,15 +221,10 @@ fn dependency(
     match held.as_slice() {
         [target] => match lookup.doubt(topology, specifier, base, target) {
             Some((why, doubt)) => hole(builder, site, why, doubt),
-            None => builder.depend_at(
-                site.from,
-                modules[target.as_str()],
-                site.file,
-                site.line,
-                site.start_byte,
-            ),
+            None => depend(builder, modules, site, target),
         },
-        [] if lookup.misses_outside(topology, specifier, base, &candidates) => {
+        [] if lookup.tries_packages(topology, specifier, base, &candidates) => return false,
+        [] if matches!(lookup, Lookup::Named) && another_kind(topology, base, &candidates) => {
             builder.external += 1
         }
         [] => hole(
@@ -220,19 +236,55 @@ fn dependency(
             ),
             Doubt::Missing,
         ),
-        _ => hole(
-            builder,
-            site,
-            format!(
-                "{specifier} names more than one TypeScript file: {}",
-                held.iter()
-                    .map(|file| file.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Doubt::Several(held.iter().map(|file| file.to_string()).collect()),
-        ),
+        _ => several(builder, site, specifier, &held),
     }
+    true
+}
+
+/// The workspace step: a name of one workspace package reaches the first of its paths that
+/// names a held file, and anything klin cannot place stays external and makes no hole.
+fn packaged(builder: &mut Builder, targets: &Targets, site: &Site, specifier: &str) {
+    let held = targets
+        .workspaces
+        .map_or_else(Vec::new, |workspaces| workspaces.bases(specifier))
+        .iter()
+        .map(|base| candidates(base))
+        .map(|candidates| {
+            candidates
+                .into_iter()
+                .filter(|file| targets.modules.contains_key(file.as_str()))
+                .collect::<Vec<_>>()
+        })
+        .find(|held| !held.is_empty())
+        .unwrap_or_default();
+    match held.as_slice() {
+        [] => builder.external += 1,
+        [target] => depend(builder, targets.modules, site, target),
+        _ => several(builder, site, specifier, &held),
+    }
+}
+
+fn depend(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site, target: &str) {
+    builder.depend_at(
+        site.from,
+        modules[target],
+        site.file,
+        site.line,
+        site.start_byte,
+    );
+}
+
+fn several(builder: &mut Builder, site: &Site, specifier: &str, held: &[impl AsRef<str>]) {
+    let held: Vec<String> = held.iter().map(|file| file.as_ref().to_string()).collect();
+    hole(
+        builder,
+        site,
+        format!(
+            "{specifier} names more than one TypeScript file: {}",
+            held.join(", ")
+        ),
+        Doubt::Several(held),
+    );
 }
 
 fn source(file: &str) -> bool {
