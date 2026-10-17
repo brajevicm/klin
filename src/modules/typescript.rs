@@ -30,6 +30,10 @@ pub(super) fn resolve(builder: &mut Builder) {
         let index = builder.module(file.clone(), &[file], Attachment::File);
         modules.insert(file, index);
     }
+    let targets = Targets {
+        modules: &modules,
+        workspaces: &workspaces,
+    };
     for (file, from) in &modules {
         let Some(facts) = topology.facts(file) else {
             continue;
@@ -44,18 +48,14 @@ pub(super) fn resolve(builder: &mut Builder) {
                     start_byte: import.start_byte,
                     text: &import.text,
                 };
-                let graph = Graph {
-                    modules: &modules,
-                    workspaces: &workspaces,
-                };
-                resolved(builder, &graph, scope.as_ref(), &site, specifier);
+                resolved(builder, &targets, scope.as_ref(), &site, specifier);
             }
         }
     }
 }
 
 /// What an import resolves against: the tree's TypeScript modules and its workspace packages.
-struct Graph<'a> {
+struct Targets<'a> {
     modules: &'a BTreeMap<&'a str, usize>,
     workspaces: &'a Workspaces,
 }
@@ -70,13 +70,13 @@ struct Site<'a> {
 
 fn resolved(
     builder: &mut Builder,
-    graph: &Graph,
+    targets: &Targets,
     paths: Option<&super::typescript_paths::FilePaths<'_>>,
     site: &Site,
     specifier: &str,
 ) {
     let before = builder.holes.len();
-    let modules = graph.modules;
+    let modules = targets.modules;
     let reaches = |base: &str| {
         candidates(base)
             .iter()
@@ -86,11 +86,11 @@ fn resolved(
     match located(paths, site.file, specifier, reaches) {
         Some(Ok((base, lookup))) => {
             if !dependency(builder, modules, site, specifier, &base, lookup) {
-                packaged(builder, graph, site, specifier);
+                packaged(builder, targets, site, specifier);
             }
         }
         Some(Err(why)) => hole(builder, site, why, Doubt::Unproved),
-        None => packaged(builder, graph, site, specifier),
+        None => packaged(builder, targets, site, specifier),
     }
     if !relative(specifier) {
         for hole in &mut builder.holes[before..] {
@@ -242,8 +242,8 @@ fn dependency(
 
 /// The workspace step: a name of one workspace package reaches the first of its paths that
 /// names a held file, and anything klin cannot place stays external and makes no hole.
-fn packaged(builder: &mut Builder, graph: &Graph, site: &Site, specifier: &str) {
-    let held = graph
+fn packaged(builder: &mut Builder, targets: &Targets, site: &Site, specifier: &str) {
+    let held = targets
         .workspaces
         .bases(specifier)
         .iter()
@@ -251,15 +251,15 @@ fn packaged(builder: &mut Builder, graph: &Graph, site: &Site, specifier: &str) 
         .map(|candidates| {
             candidates
                 .into_iter()
-                .filter(|file| graph.modules.contains_key(file.as_str()))
+                .filter(|file| targets.modules.contains_key(file.as_str()))
                 .collect::<Vec<_>>()
         })
         .find(|held| !held.is_empty())
         .unwrap_or_default();
-    match held.iter().collect::<Vec<_>>().as_slice() {
+    match held.as_slice() {
         [] => builder.external += 1,
-        [target] => depend(builder, graph.modules, site, target),
-        several_held => several(builder, site, specifier, several_held),
+        [target] => depend(builder, targets.modules, site, target),
+        _ => several(builder, site, specifier, &held),
     }
 }
 
@@ -273,18 +273,16 @@ fn depend(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site, t
     );
 }
 
-fn several(builder: &mut Builder, site: &Site, specifier: &str, held: &[&String]) {
+fn several(builder: &mut Builder, site: &Site, specifier: &str, held: &[impl AsRef<str>]) {
+    let held: Vec<String> = held.iter().map(|file| file.as_ref().to_string()).collect();
     hole(
         builder,
         site,
         format!(
             "{specifier} names more than one TypeScript file: {}",
-            held.iter()
-                .map(|file| file.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
+            held.join(", ")
         ),
-        Doubt::Several(held.iter().map(|file| file.to_string()).collect()),
+        Doubt::Several(held),
     );
 }
 

@@ -6077,7 +6077,10 @@ index file of a directory that holds a `package.json`, whose `types` or
 as `price.ts` and `price/index.ts`, the import is a located local hole, never
 external. A bare specifier with no owning config, or that no paths rule and
 no `baseUrl` places, also goes on to the workspace step. A specifier that names
-a file of another kind is counted as external.
+a file of another kind is counted as external. Pinned by
+`a_bare_import_under_the_base_url_is_a_local_edge` and
+`a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`
+in `tests/layering.rs`.
 
 The workspace step models a package manager's `node_modules` symlink to a
 workspace package (#669). Only the tree root `package.json` is read. Its
@@ -6104,10 +6107,7 @@ PnP, pnpm `pnpm-workspace.yaml`, a nested npm copy that shadows a workspace
 package, `exports`, and `workspaces` globs beyond a one-segment `*` are not
 read.
 
-Pinned by
-`a_bare_import_under_the_base_url_is_a_local_edge` and
-`a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`
-in `tests/layering.rs`. Explicit paths aliases
+Explicit paths aliases
 resolve or produce local incompleteness under the rule below. A `mod` declaration is containment and
 never a dependency.
 

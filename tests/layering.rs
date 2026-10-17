@@ -2260,6 +2260,8 @@ fn a_package_no_workspaces_entry_lists_or_one_that_writes_exports_stays_external
     for (workspaces, ui) in [
         (r#"["packages/app"]"#, r#"{"name":"ui"}"#),
         (r#"["packages/ui-*"]"#, r#"{"name":"ui"}"#),
+        (r#"["packages/**"]"#, r#"{"name":"ui"}"#),
+        (r#"["packages/*","shared"]"#, r#"{"name":"ui"}"#),
         (
             r#"["packages/*"]"#,
             r#"{"name":"ui","exports":{"./*":"./src/*.ts"}}"#,
@@ -2267,9 +2269,30 @@ fn a_package_no_workspaces_entry_lists_or_one_that_writes_exports_stays_external
     ] {
         let tree = workspace(workspaces, ui, "ui/src/button");
         tree.write("packages/ui/src/button.ts", BUTTON);
+        tree.write("shared/package.json", r#"{"name":"ui"}"#);
 
         let run = tree.run(&["check", "layering"]);
 
         assert_eq!(run.code, 0, "{workspaces} {ui}: {}", run.out);
     }
+}
+
+#[test]
+fn a_scoped_name_and_a_base_url_miss_reach_the_workspace_package() {
+    let tree = workspace(
+        r#"["packages/*"]"#,
+        r#"{"name":"@acme/ui","types":"types.ts","main":"main.js"}"#,
+        "@acme/ui",
+    );
+    tree.write("packages/ui/main.ts", BUTTON);
+    tree.write("packages/ui/types.ts", BUTTON);
+    tree.write(
+        "packages/app/tsconfig.json",
+        r#"{"compilerOptions":{"baseUrl":"."}}"#,
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("app → ui: packages/ui/types.ts"), "{}", run.out);
 }
