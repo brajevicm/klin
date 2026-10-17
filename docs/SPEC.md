@@ -5374,12 +5374,26 @@ does not reach it and `export { Reset } from "./m"` does.
 **`reachability` judges an app over the module graph.** A TypeScript package
 whose `package.json` states no entry point field (`exports`, `types`,
 `typings`, `main` or `module`, ADR 0044) and names `next` under
-`dependencies`, `devDependencies` or `peerDependencies` is an app. A package
+`dependencies`, `devDependencies` or `peerDependencies` is a Next app. A
+package that states no entry point field, names `vite` under one of these
+fields and not `next`, and holds `index.html` at its directory is a Vite app.
+A package that names both `next` and `vite` is a Next app. Both are apps, and
+`bin` and `workspaces` stop neither from being judged. Each tree's own
+manifests and files decide this (ADR 0044). A package
 owns each TypeScript file under its directory that no deeper package holds,
 outside hidden and skipped directories. In an app the check walks the module
 graph of `layering` (ADR 0043) of each tree from the app's entries, over
 imports, re-exports and `import()` calls whose first argument is a string
-literal, type-only ones included. The entries are:
+literal, type-only ones included. The entries of every app are:
+
+- each `*.config` file at the package root, such as `next.config.ts`,
+  `vite.config.ts` or `tailwind.config.ts`, which its tool reads by name;
+- each TypeScript file a word of a script of the base's copy of the manifest
+  names, joined to the package directory, such as `scripts/seed.ts` in
+  `tsx scripts/seed.ts`. A script a change writes makes no entry until a
+  person makes it part of the base.
+
+A Next app also has these entries, and a Vite app has none of them:
 
 - under `app/` or `src/app/`, a file whose basename less its extension is a
   Next.js convention name: `page`, `layout`, `template`, `loading`, `error`,
@@ -5389,13 +5403,19 @@ literal, type-only ones included. The entries are:
   under `app/`, such as `page-client.tsx`, is an ordinary module;
 - every file under `pages/` or `src/pages/`;
 - `middleware`, `proxy`, `instrumentation` and `instrumentation-client` at
-  the package root or under `src/`, and each `*.config` file at the package
-  root, such as `next.config.ts` or `tailwind.config.ts`, which its tool reads
-  by name;
-- each TypeScript file a word of a script of the base's copy of the manifest
-  names, joined to the package directory, such as `scripts/seed.ts` in
-  `tsx scripts/seed.ts`. A script a change writes makes no entry until a
-  person makes it part of the base.
+  the package root or under `src/`.
+
+A Vite app also has, as an entry, the file each module script of its
+`index.html` names. A module script is a `<script>` tag whose `type` is
+`module`. Its attributes may come in any order, and a value may use double
+quotes, single quotes or no quotes, so `type=module` counts. A `<script>` with
+any other `type`, or none, and a script inside an HTML comment (`<!-- ... -->`)
+make no entry. A `?query` or `#hash` suffix is stripped from `src`, and a `src`
+that starts with `http://`, `https://` or `//` names nothing. A `src` that
+starts with `/` resolves from the package directory, which is Vite's default
+`root`, and any other `src` resolves from the directory of the HTML file. The
+resolved path names a file only where the package owns that exact TypeScript
+file, so `src="/src/main.jsx"` names nothing klin holds.
 
 A test file of 8.2 and a declaration file (`.d.ts`, `.d.mts`, `.d.cts`) is no
 entry and is never judged, so a module only its tests import is unreached.
@@ -5460,7 +5480,11 @@ longer routes, is judged by neither rule where the base held it, under that
 name or under the name a rename moved it from; a new file named so, a folder
 or any other file is judged as usual. Every exemption is read from the base,
 so a change never widens its own: the marks, the kit and the scripts it
-writes count once a person makes them part of the base. The kit and each
+writes count once a person makes them part of the base. A module script of
+`index.html` is no exemption: it ships its file, as a Next convention file is
+routed, so the module scripts are entries read from each tree's own
+`index.html`, and a module script a change adds makes its file an entry in that
+change. The kit and each
 `.gitattributes` apply where the base holds them, and leave a file out by the
 path it has or the path the base held it at. A renamed `.gitattributes` or a
 changed `paths` rule moves no exemption onto other files, and a renamed kit or
@@ -5478,13 +5502,31 @@ klin cannot prove, as 8.2.1 words a `paths` rule or a `baseUrl` it cannot
 prove, or a file the grammar refused, in a file of the app that is no test and
 no declaration file turns the whole app off: the run reports it as a hole and judges no file of the app. A package
 with no entry point that owns a TypeScript file and names a UI framework but
-not `next`, and states neither `bin` nor `workspaces`, (`react`, `vue`, `svelte`, `solid-js`,
+not `next`, is no Vite app, and states neither `bin` nor `workspaces`, (`react`, `vue`, `svelte`, `solid-js`,
 `preact`, `react-router`, `@remix-run/react`, `astro`, `nuxt`,
 `@sveltejs/kit`, `expo` or `react-native`), such as a React Router app, is a
-hole too, and nothing of it is judged. Any other package with no entry point,
+hole too, with the text "a package with no entry point whose framework klin
+does not recognize", and nothing of it is judged. Any other package with no entry point,
 such as a package of tools, a command or a workspace root, is no app and gets
 no note. `bin` and `workspaces` decide only that note: a package with no entry
-point that depends on `next` is an app whatever else it states. These holes
+point that depends on `next` is an app whatever else it states. A Vite app
+that owns a TypeScript file is a hole in the same way, reported at its
+manifest, where the first of these that applies gives the text:
+
+1. the package owns a `.vue`, `.svelte` or `.astro` file: "a Vite app that
+   holds .vue, .svelte or .astro files klin does not read". A `vue`
+   dependency without such a file does not count;
+2. `index.html` holds an inline module script with code (anything other than
+   whitespace) and no `src`, whose imports klin does not read: "a Vite app
+   whose index.html holds an inline module script klin does not read";
+3. a module script's `src` holds a `%...%` placeholder, which Vite replaces
+   from env variables: "a Vite app whose index.html names a module through a
+   %...% placeholder klin does not expand";
+4. no module script names a TypeScript file the package owns, so every file
+   would come out unreached: "a Vite app whose index.html names no TypeScript
+   module the package holds".
+
+These holes
 are notes where the base holds them, review items at `klin check` where the
 change opened them, and notes at the Stop (7.2), and never a FAIL. A member of
 a derived family that an app owns is judged by app mode alone, so one file
@@ -5534,8 +5576,18 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `the_judged_count_includes_the_entries`,
 `a_file_the_section_excepts_is_excluded_and_not_judged`,
 `an_orphan_the_base_held_stays_a_note`,
-`a_file_that_loses_its_last_import_is_worsened` and
-`the_stop_blocks_a_turn_that_adds_an_orphan_component` in
+`a_file_that_loses_its_last_import_is_worsened`,
+`the_stop_blocks_a_turn_that_adds_an_orphan_component`,
+`a_vite_app_is_judged_from_its_index_html_module_script`,
+`a_new_file_nothing_imports_in_a_vite_app_fails`,
+`a_new_file_under_pages_nothing_imports_in_a_vite_app_fails`,
+`a_module_script_a_change_adds_makes_its_file_an_entry`,
+`a_module_script_inside_an_html_comment_makes_no_entry`,
+`a_vite_app_whose_index_html_names_no_held_module_is_a_hole`,
+`a_vite_app_that_holds_a_vue_file_is_a_hole`,
+`a_vite_app_with_an_inline_module_script_is_a_hole`,
+`a_vite_app_whose_module_script_names_a_placeholder_is_a_hole` and
+`a_package_that_names_next_and_vite_is_judged_as_a_next_app` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
 `tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no
 `components.json` exists, and a new `*.config` file at the package root is an
@@ -5547,9 +5599,18 @@ and an `import()` whose specifier is no string literal are no edge; a
 convention file under a private `_folder` still counts as an entry, though
 Next.js routes none; an app whose change removes `next` from its manifest, or
 adds an entry point, leaves app mode with no note, as ADR 0044 reads the
-manifest of each tree; and an import of a
+manifest of each tree, and so does a change that deletes or renames a Vite
+app's `index.html` or removes `vite` from its manifest; an import of a
 directory whose `package.json` may name another entry point reaches its index
-file alone. The performance case is the fixture's `KLIN_PERF_APP=1` variant,
+file alone; a Vite multi-page app, whose other HTML files
+`build.rollupOptions.input` names, and a Vite `root` other than the package
+directory are not read; the route files of a virtual-module file router
+(`vite-plugin-pages`, `@generouted/react-router`, `unplugin-vue-router`) are
+unreached; a package whose `vite` only the workspace root manifest names is no
+Vite app, so it stays a hole where it names a UI framework; `import.meta.glob`, `new URL("...", import.meta.url)` and `?worker`,
+`?raw` and `?url` imports make no edge; and a literal in `vite.config.*`, such
+as a `test.setupFiles` path, makes no entry, though a setup file named like
+`setupTests.ts` is already a test under 8.2. The performance case is the fixture's `KLIN_PERF_APP=1` variant,
 whose web package states no entry point and depends on `next`.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
