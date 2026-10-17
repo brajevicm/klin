@@ -1134,3 +1134,55 @@ fn script_text_in_a_quoted_attribute_is_no_inline_module_script() {
     assert!(!run.says("could not prove"), "{}", run.out);
     assert!(run.says("src/footer.tsx"), "{}", run.out);
 }
+
+#[test]
+fn a_template_tag_in_a_comment_inside_a_template_hides_no_entry() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <template>\n      <!-- <template> -->\n    </template>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>",
+    );
+    tree.base();
+    tree.write(
+        "src/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(!run.says("could not prove"), "{}", run.out);
+    assert!(run.says("src/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_template_end_tag_in_a_quoted_attribute_keeps_the_template_inert() {
+    let tree = vite();
+    tree.base();
+    tree.write("src/admin.tsx", "console.log(\"admin\");\n");
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.tsx\"></script>\n    <template><div title=\"</template>\"></div><script type=\"module\" src=\"/src/admin.tsx\"></script></template>",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/admin.tsx"), "{}", run.out);
+}
+
+#[test]
+fn an_end_tag_whose_name_only_starts_with_the_raw_text_name_keeps_it_raw() {
+    let tree = vite();
+    tree.base();
+    tree.write("src/admin.tsx", "console.log(\"admin\");\n");
+    vite_page(
+        &tree,
+        "    <style>\n      /* </styles>\n      <script type=\"module\" src=\"/src/admin.tsx\"></script>\n      */\n    </style>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/admin.tsx"), "{}", run.out);
+}

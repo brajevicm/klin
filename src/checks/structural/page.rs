@@ -34,6 +34,15 @@ enum Script {
     Inline,
 }
 
+/// What a scanned tag means for the entries: a `<template>` opens or ends, which makes the
+/// module scripts inside it inert, a module script, or nothing.
+enum Token {
+    Template,
+    TemplateEnd,
+    Module(Script),
+    Other,
+}
+
 /// The tree paths the module scripts of the `index.html` at a package directory name, in order.
 /// An inline module script gives the reason before a placeholder does, wherever each sits.
 pub(super) fn named(html: &str, package: &str) -> Result<Vec<String>, Unread> {
@@ -56,34 +65,57 @@ pub(super) fn named(html: &str, package: &str) -> Result<Vec<String>, Unread> {
 fn modules(html: &str) -> Vec<Script> {
     let lower = html.to_ascii_lowercase();
     let mut out = Vec::new();
+    let mut inert = 0usize;
     let mut at = 0;
     while let Some(found) = lower[at..].find('<') {
-        let start = at + found;
-        if lower[start..].starts_with(COMMENT) {
-            at = lower[start..]
-                .find(COMMENT_END)
-                .map_or(html.len(), |end| start + end + COMMENT_END.len());
-            continue;
+        let (kind, next) = token(html, &lower, at + found);
+        at = next;
+        match kind {
+            Token::Template => inert += 1,
+            Token::TemplateEnd => inert = inert.saturating_sub(1),
+            Token::Module(script) if inert == 0 => out.push(script),
+            _ => {}
         }
-        let name = tag(&lower[start + 1..]);
-        if name.is_empty() {
-            at = start + 1;
-            continue;
-        }
-        let (attributes, body) = attributes(&html[start + 1 + name.len()..]);
-        let open = html.len() - body.len();
-        at = match name {
-            SCRIPT => {
-                let close = closing(&lower, open, SCRIPT);
-                out.extend(script(&attributes, &html[open..close]));
-                close
-            }
-            TEMPLATE => template_end(&lower, open),
-            raw if RAW_TEXT.contains(&raw) => closing(&lower, open, raw),
-            _ => open,
-        };
     }
     out
+}
+
+/// The token the `<` at `start` opens, and where the scan goes on after it.
+fn token(html: &str, lower: &str, start: usize) -> (Token, usize) {
+    if lower[start..].starts_with(COMMENT) {
+        let end = lower[start..]
+            .find(COMMENT_END)
+            .map_or(html.len(), |end| start + end + COMMENT_END.len());
+        return (Token::Other, end);
+    }
+    if let Some(closed) = lower[start + 1..].strip_prefix('/') {
+        let kind = match tag(closed) {
+            TEMPLATE => Token::TemplateEnd,
+            _ => Token::Other,
+        };
+        return (kind, start + 2);
+    }
+    match tag(&lower[start + 1..]) {
+        "" => (Token::Other, start + 1),
+        name => element(html, lower, start, name),
+    }
+}
+
+/// The token an element's start tag opens, and where the scan goes on: past the tag, or past
+/// the text of a script or a raw-text element.
+fn element(html: &str, lower: &str, start: usize, name: &str) -> (Token, usize) {
+    let (attributes, body) = attributes(&html[start + 1 + name.len()..]);
+    let open = html.len() - body.len();
+    match name {
+        SCRIPT => {
+            let close = closing(lower, open, SCRIPT);
+            let kind = script(&attributes, &html[open..close]).map_or(Token::Other, Token::Module);
+            (kind, close)
+        }
+        TEMPLATE => (Token::Template, open),
+        raw if RAW_TEXT.contains(&raw) => (Token::Other, closing(lower, open, raw)),
+        _ => (Token::Other, open),
+    }
 }
 
 /// The lowercased name a tag opens with, and the empty name for a closing tag or a declaration.
@@ -94,32 +126,14 @@ fn tag(text: &str) -> &str {
     &text[..end]
 }
 
-/// Where the closing tag of an element whose content is text starts, or the text's end.
+/// Where the end tag of an element whose content is text starts, or the text's end. The end
+/// tag's name must be the element's name whole, so `</styles>` does not end a `<style>`.
 fn closing(lower: &str, from: usize, name: &str) -> usize {
     lower[from..]
-        .find(&format!("</{name}"))
-        .map_or(lower.len(), |end| from + end)
-}
-
-/// Where the `</template>` that closes a template opened before `from` starts, nested templates
-/// counted, or the text's end.
-fn template_end(lower: &str, from: usize) -> usize {
-    let mut depth = 1;
-    let mut at = from;
-    while let Some(found) = lower[at..].find('<') {
-        let start = at + found;
-        at = start + 1;
-        let rest = &lower[at..];
-        match rest.strip_prefix('/') {
-            Some(closed) if tag(closed) == TEMPLATE => depth -= 1,
-            None if tag(rest) == TEMPLATE => depth += 1,
-            _ => continue,
-        }
-        if depth == 0 {
-            return start;
-        }
-    }
-    lower.len()
+        .match_indices("</")
+        .map(|(end, _)| from + end)
+        .find(|&end| tag(&lower[end + 2..]) == name)
+        .unwrap_or(lower.len())
 }
 
 fn script(attributes: &[(String, &str)], code: &str) -> Option<Script> {

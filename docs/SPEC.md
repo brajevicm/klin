@@ -5413,7 +5413,10 @@ any other `type`, or none, makes no entry, and neither does a script inside an
 HTML comment (`<!-- ... -->`), inside a `<template>`, nested ones counted,
 inside the text of a raw-text element (`style`, `textarea`, `title`, `xmp`,
 `iframe`, `noembed`, `noframes`, `noscript` or `plaintext`), or in the
-attribute value of another tag. A `?query` or `#hash` suffix is stripped from `src`, and a `src`
+attribute value of another tag. A `<template>` tag in a comment or an
+attribute value opens or ends no template, and the text of a raw-text element
+ends only at an end tag with its whole name, so `</styles>` does not end a
+`<style>`. A `?query` or `#hash` suffix is stripped from `src`, and a `src`
 that starts with `http://`, `https://` or `//` names nothing. A `src` that
 starts with `/` resolves from the package directory, which is Vite's default
 `root`, and any other `src` resolves from the directory of the HTML file. The
@@ -5596,7 +5599,10 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `a_percent_encoded_src_is_no_placeholder`,
 `a_vite_app_whose_index_html_names_only_a_test_is_a_hole`,
 `a_module_script_inside_a_template_or_raw_text_makes_no_entry`,
-`script_text_in_a_quoted_attribute_is_no_inline_module_script` and
+`script_text_in_a_quoted_attribute_is_no_inline_module_script`,
+`a_template_tag_in_a_comment_inside_a_template_hides_no_entry`,
+`a_template_end_tag_in_a_quoted_attribute_keeps_the_template_inert`,
+`an_end_tag_whose_name_only_starts_with_the_raw_text_name_keeps_it_raw` and
 `a_package_that_names_next_and_vite_is_judged_as_a_next_app` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
 `tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no
