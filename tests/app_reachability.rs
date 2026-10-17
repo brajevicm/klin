@@ -847,3 +847,200 @@ fn the_stop_blocks_a_turn_that_adds_an_orphan_component() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("components/footer.tsx"), "{}", run.out);
 }
+
+const VITE: &str =
+    r#"{"name":"web","private":true,"type":"module","devDependencies":{"vite":"6.0.0"}}"#;
+
+fn vite() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("package.json", VITE);
+    tree.write(
+        "index.html",
+        "<!doctype html>\n<html>\n  <body>\n    <div id=\"root\"></div>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>\n  </body>\n</html>\n",
+    );
+    tree.write("src/main.tsx", "import { App } from \"./app\";\n\nApp();\n");
+    tree.write(
+        "src/app.tsx",
+        "export function App() {\n  return null;\n}\n",
+    );
+    tree
+}
+
+#[test]
+fn a_vite_app_is_judged_from_its_index_html_module_script() {
+    let tree = vite();
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("could not prove"), "{}", run.out);
+    assert!(run.says("1 export(s) judged, 0 unused"), "{}", run.out);
+}
+
+#[test]
+fn a_new_file_nothing_imports_in_a_vite_app_fails() {
+    let tree = vite();
+    tree.base();
+    tree.write(
+        "src/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/footer.tsx"), "{}", run.out);
+}
+
+fn vite_page(tree: &Tree, body: &str) {
+    tree.write(
+        "index.html",
+        &format!("<!doctype html>\n<html>\n  <body>\n{body}\n  </body>\n</html>\n"),
+    );
+}
+
+#[test]
+fn a_new_file_under_pages_nothing_imports_in_a_vite_app_fails() {
+    let tree = vite();
+    tree.base();
+    tree.write(
+        "src/pages/about.tsx",
+        "export default function About() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/pages/about.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_module_script_a_change_adds_makes_its_file_an_entry() {
+    let tree = vite();
+    tree.base();
+    tree.write("src/admin.tsx", "console.log(\"admin\");\n");
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.tsx\"></script>\n    <script src='./src/admin.tsx?v=1' type=module></script>",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/admin.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_module_script_inside_an_html_comment_makes_no_entry() {
+    let tree = vite();
+    tree.base();
+    tree.write("src/admin.tsx", "console.log(\"admin\");\n");
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.tsx\"></script>\n    <!-- <script type=\"module\" src=\"/src/admin.tsx\"></script> -->",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/admin.tsx"), "{}", run.out);
+}
+
+fn a_vite_hole(tree: &Tree, why: &str) {
+    tree.write(
+        "src/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("app package(s) klin could not prove"),
+        "{}",
+        run.out
+    );
+    assert!(run.says(why), "{}", run.out);
+    assert!(!run.says("src/footer.tsx"), "{}", run.out);
+}
+
+#[test]
+fn a_vite_app_whose_index_html_names_no_held_module_is_a_hole() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.jsx\"></script>",
+    );
+    tree.base();
+
+    a_vite_hole(
+        &tree,
+        "a Vite app whose index.html names no TypeScript module the package holds",
+    );
+}
+
+#[test]
+fn a_vite_app_that_holds_a_vue_file_is_a_hole() {
+    let tree = vite();
+    tree.write("src/Widget.vue", "<template><div /></template>\n");
+    tree.base();
+
+    a_vite_hole(
+        &tree,
+        "a Vite app that holds .vue, .svelte or .astro files klin does not read",
+    );
+}
+
+#[test]
+fn a_vite_app_with_an_inline_module_script_is_a_hole() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/main.tsx\"></script>\n    <script type=\"module\">\n      import \"/src/footer.tsx\";\n    </script>",
+    );
+    tree.base();
+
+    a_vite_hole(
+        &tree,
+        "a Vite app whose index.html holds an inline module script klin does not read",
+    );
+}
+
+#[test]
+fn a_vite_app_whose_module_script_names_a_placeholder_is_a_hole() {
+    let tree = vite();
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/src/%VITE_ENTRY%.tsx\"></script>",
+    );
+    tree.base();
+
+    a_vite_hole(
+        &tree,
+        "a Vite app whose index.html names a module through a %...% placeholder klin does not expand",
+    );
+}
+
+#[test]
+fn a_package_that_names_next_and_vite_is_judged_as_a_next_app() {
+    let tree = app();
+    tree.write(
+        "package.json",
+        r#"{"name":"web","private":true,"dependencies":{"next":"15.0.0","vite":"6.0.0"}}"#,
+    );
+    vite_page(
+        &tree,
+        "    <script type=\"module\" src=\"/components/footer.tsx\"></script>",
+    );
+    tree.base();
+    tree.write(
+        "components/footer.tsx",
+        "export function Footer() {\n  return null;\n}\n",
+    );
+
+    let run = reachability(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("components/footer.tsx"), "{}", run.out);
+}
