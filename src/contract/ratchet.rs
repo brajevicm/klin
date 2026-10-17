@@ -3,6 +3,7 @@
 //! `Evaluator` with its `evaluate` call. Everything else here, the matcher and the reporter
 //! included, is private.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use serde_json::Value;
@@ -14,6 +15,7 @@ use crate::contract::check::{
 };
 use crate::sys::error::Error;
 use crate::sys::record::Values;
+use crate::sys::{site, token};
 
 /// The key a finding carries when it matched an accepted entry, which is a record field of spec
 /// 11.2 and not the config key `config::file::ACCEPTED` of the same spelling.
@@ -244,6 +246,7 @@ fn restrict(
     let Some(only) = only else {
         return (findings, entries);
     };
+    let only: Vec<Cow<str>> = only.iter().map(|name| token::redact(name)).collect();
     let wanted = |file: &str| only.iter().any(|name| name == file);
     (
         findings
@@ -516,6 +519,7 @@ impl Evaluator<'_> {
         line: Line,
         out: &mut Sink,
     ) -> u8 {
+        let (findings, prior) = (redacted(findings), redacted(prior));
         let entries: Vec<Values> = accepted
             .into_iter()
             .chain(prior.iter().map(Finding::entry))
@@ -544,6 +548,17 @@ impl Evaluator<'_> {
                     .is_some_and(|value| value.as_u64() != Some(0))
             })
     }
+}
+
+/// The findings with each live-shaped token in their file and their text replaced by its
+/// fingerprint, before the two name a site, so no identity holds a key, and an accepted entry
+/// copied from a report matches the site the report named. Spec 16.3, ADR 0075.
+fn redacted(mut findings: Vec<Finding>) -> Vec<Finding> {
+    for finding in &mut findings {
+        token::redact_in_place(&mut finding.file);
+        token::redact_in_place(&mut finding.text);
+    }
+    findings
 }
 
 /// What the ratchet makes of each finding, without printing or recording anything: `new`,
@@ -780,21 +795,15 @@ fn notes(comparison: &Comparison, evaluator: &Evaluator, at: &Context, out: &mut
 /// The site identity of 4.4 in one token: a hash of the gate, the file and the declaration
 /// text, so a harness follows one site across stops without parsing the rest. It names the
 /// site and not the finding, so two findings 4.4 keys the same way share it. The path is
-/// hashed too, so a rename changes the id while the site of 4.4 survives. FNV-1a, written out
-/// here, so one site keeps one id across builds of klin. Spec 11.2.
+/// hashed too, so a rename changes the id while the site of 4.4 survives. The text is redacted
+/// first, so a caller that holds a finding the ratchet did not judge hashes the same text.
+/// Spec 11.2, 16.3.
 pub fn identity(gate: &str, finding: &Finding) -> String {
-    site_id(gate, &finding.file, &finding.text)
-}
-
-/// The identity of one site of a gate, from its file and its text, for a gate whose sites the
-/// ratchet does not judge.
-pub fn site_id(gate: &str, file: &str, text: &str) -> String {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    let parts = [gate.as_bytes(), file.as_bytes(), text.as_bytes()];
-    for byte in parts.join(&0u8) {
-        hash = (hash ^ u64::from(byte)).wrapping_mul(0x100_0000_01b3);
-    }
-    format!("{hash:016x}")
+    site::id(
+        gate,
+        &token::redact(&finding.file),
+        &token::redact(&finding.text),
+    )
 }
 
 /// The `before` site or accepted entry a failure was matched to, with the values it held there,

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
+use crate::sys::out;
 
 /// A field only Claude Code sends. One of them is enough to place the event.
 const FIELDS: &[&str] = &[
@@ -89,7 +90,7 @@ impl Adapter for Claude {
         match decision {
             Decision::Allow => 0,
             Decision::Ask(reason) if self.asks => {
-                println!("{}", ask(&format!("klin: ask — {reason}")));
+                out::println(&ask(&format!("klin: ask — {reason}")).to_string());
                 0
             }
             Decision::Ask(reason) => refused(&format!(

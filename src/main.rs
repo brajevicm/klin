@@ -11,6 +11,7 @@ mod syntax;
 mod sys;
 mod window;
 
+use std::io::IsTerminal;
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::LazyLock;
@@ -18,7 +19,7 @@ use std::sync::LazyLock;
 use clap::{Parser, Subcommand};
 
 use crate::cli::{agent, check, policy, report, setup, status, update};
-use crate::sys::{error::Error, release, shell};
+use crate::sys::{error::Error, out, release, shell};
 
 #[derive(Parser)]
 #[command(
@@ -63,10 +64,30 @@ fn main() -> ExitCode {
         release::child();
         return ExitCode::SUCCESS;
     }
-    match Cli::parse().command {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(refused) => return said(&refused),
+    };
+    match cli.command {
         Command::Update(args) => ExitCode::from(update::run(&args)),
         command => report(|start, out| public(&command, start, out)),
     }
+}
+
+/// A usage error, help or version, printed where clap would print it, in colour on a terminal
+/// as clap prints it. It can echo an argument, so it goes through `out` like every other text.
+/// Spec 16.3.
+fn said(refused: &clap::Error) -> ExitCode {
+    let rendered = refused.render();
+    let styled = |terminal: bool| match terminal {
+        true => rendered.ansi().to_string(),
+        false => rendered.to_string(),
+    };
+    match refused.use_stderr() {
+        true => out::eprint(&styled(std::io::stderr().is_terminal())),
+        false => out::print(&styled(std::io::stdout().is_terminal())),
+    }
+    ExitCode::from(u8::try_from(refused.exit_code()).unwrap_or(2))
 }
 
 fn public(command: &Command, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -84,17 +105,19 @@ fn report(run: impl FnOnce(&Path, &mut String) -> Result<u8, Error>) -> ExitCode
     let start = match std::env::current_dir() {
         Ok(directory) => directory,
         Err(why) => {
-            eprintln!("FAIL: the working directory could not be read: {why}");
+            out::eprintln(&format!(
+                "FAIL: the working directory could not be read: {why}"
+            ));
             return ExitCode::from(2);
         }
     };
-    let mut out = String::new();
-    let outcome = run(&start, &mut out);
-    print!("{out}");
+    let mut printed = String::new();
+    let outcome = run(&start, &mut printed);
+    out::print(&printed);
     match outcome {
         Ok(code) => ExitCode::from(code),
         Err(problem) => {
-            eprintln!("FAIL: {problem}");
+            out::eprintln(&format!("FAIL: {problem}"));
             ExitCode::from(2)
         }
     }

@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde_json::{Value, json};
 
-use crate::sys::write::{AtomicWrite, atomic_write};
+use crate::hook::record;
+use crate::sys::out;
 use crate::{hook::turn, sys::state, window::stamp};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -289,10 +290,10 @@ fn next(
 
 fn unbounded(why: &str, flags: &mut Vec<&'static str>) -> BuildBlock {
     flags.push(UNWRITABLE);
-    eprintln!(
+    out::eprintln(&format!(
         "klin: NOTE: {why} — so no count could bound the build blocks, and this build failure \
          blocks nothing."
-    );
+    ));
     BuildBlock::Unbounded
 }
 
@@ -404,10 +405,5 @@ fn counted(at: &Path, count: &Count) -> bool {
     })
     .to_string()
         + "\n";
-    atomic_write(AtomicWrite {
-        target: &at.join(BUILD_BLOCKED),
-        bytes: text.as_bytes(),
-        keep_mode_from: None,
-    })
-    .is_ok()
+    record::state(&at.join(BUILD_BLOCKED), &text).is_ok()
 }

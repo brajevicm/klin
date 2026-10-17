@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::sys::git::Repo;
 use crate::sys::state;
+use crate::sys::token;
 
 /// The stamp file in the state directory, and the name it is written under before the rename,
 /// so a hook that dies mid-write leaves the previous stamp rather than a torn one. Spec 6.5.
@@ -61,8 +62,13 @@ impl Verdict {
     }
 
     /// The verdict of a Stop that a run-scope configuration error stopped before it measured.
+    /// The error can echo what `klin.json` holds, and it is the one text in the stamp, which is
+    /// written raw, so it is redacted here. Spec 16.3, ADR 0075.
     pub fn unjudged(error: String) -> Verdict {
-        Verdict::Unjudged { error, kept: false }
+        Verdict::Unjudged {
+            error: token::redact(&error).into_owned(),
+            kept: false,
+        }
     }
 
     /// What a Stop leaves over the verdict before it: an `unjudged` Stop never hides a window it

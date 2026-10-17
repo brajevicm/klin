@@ -18,8 +18,11 @@ use crate::engine::{catalogue, diagnostics, render};
 use crate::hook::budget::{self, Budget, BuildBlock, GateBlock};
 use crate::hook::host;
 use crate::hook::host::adapter::{Event, Stop};
+use crate::hook::record;
 use crate::sys::changed::Change;
 use crate::sys::error::{Error, ErrorKind, Fault, fault};
+use crate::sys::out;
+use crate::sys::token;
 use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
@@ -28,7 +31,6 @@ use crate::{
         clock, release,
         release::{Audience, News, Route},
         state,
-        write::{AtomicWrite, atomic_write},
     },
     window::stamp,
 };
@@ -78,7 +80,7 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         .ok()
         .and_then(|at| state::lock(&at, BUDGET));
     let Some(_lock) = lock else {
-        eprintln!("{said}");
+        out::eprintln(&said);
         return 0;
     };
     let told = [key(&said)];
@@ -299,26 +301,26 @@ fn observe_hook_report(report: Option<&Value>) {
     let Some(report) = report else {
         return;
     };
-    let _ = std::fs::write(path, report.to_string());
+    let _ = record::write(Path::new(&path), &report.to_string());
 }
 
 /// The verdict this stop leaves for the next prompt, or the reason it left none: another event
 /// held the lock for the whole budget, or the stamp could not be read or written. Spec 6.5.
 fn written(root: &Path, lost: bool, left: turn::Left, log: &mut journal::Stop) {
     if lost {
-        eprintln!(
+        out::eprintln(&format!(
             "klin: NOTE: another klin event in this worktree held the state directory for the whole \
              {} ms klin waits, so this stop wrote no verdict, spent no block, and the window \
              stays as it is.",
             BUDGET.as_millis()
-        );
+        ));
         log.why =
             Some("another klin event held the state directory, so this stop wrote no verdict");
         return;
     }
     let mut said = String::new();
     let wrote = turn::verdict(root, left, &mut said);
-    eprint!("{said}");
+    out::eprint(&said);
     match wrote {
         Ok(verdict) => log.verdict = verdict,
         Err(why) => log.why = Some(why),
@@ -368,7 +370,7 @@ fn refreshed(root: &Path, fresh: stamp::Capture, log: &mut journal::Stop) {
             log.why = Some("git could not take a fresh stamp, so this advisory stop wrote none")
         }
     }
-    eprint!("{said}");
+    out::eprint(&said);
 }
 
 /// What a Stop's check document tells that no later Stop under the same stamp repeats: each
@@ -519,11 +521,7 @@ fn expected_part(
 fn told_expected(root: &Path, record: Option<String>, parts: &[(&'static str, String)]) {
     let told = parts.iter().any(|(part, _)| *part == EXPECTED);
     if let (Some(record), true, Ok(at)) = (record, told, state::ready(root)) {
-        let _ = atomic_write(AtomicWrite {
-            target: &at.join(EXPECTED_TOLD),
-            bytes: record.as_bytes(),
-            keep_mode_from: None,
-        });
+        let _ = record::state(&at.join(EXPECTED_TOLD), &record);
     }
 }
 
@@ -577,14 +575,15 @@ const NO_PROMPT_EVENT: &str = "klin: no prompt event reached this session; klin 
 /// Whether no `prompt` line of this stop's session reached the journal. The tail the stop read
 /// reaches back past the turn stamp, which the prompt event that appends that line takes
 /// after appending it, so a tail with no such line is the absence and not a short read.
-/// Spec 16.3.
+/// The journal holds a session redacted, so the session is redacted the same way before it is
+/// compared. Spec 16.3, ADR 0075.
 fn no_prompt_event(tail: &journal::Tail, session: Option<&str>) -> bool {
-    let Some(session) = session else {
+    let Some(session) = session.map(token::redact) else {
         return false;
     };
     !tail.lines.iter().any(|line| {
         line.get("kind").and_then(Value::as_str) == Some("prompt")
-            && line.get("session").and_then(Value::as_str) == Some(session)
+            && line.get("session").and_then(Value::as_str) == Some(&*session)
     })
 }
 
@@ -651,7 +650,7 @@ fn ran(
         None => {
             let judged = judge(args, project, window, &said, unbuilt.as_deref(), out);
             if let (Err(_), Some(note)) = (&judged, &unbuilt) {
-                eprintln!("klin: {note}");
+                out::eprintln(&format!("klin: {note}"));
             }
             let verdict = judged_verdict(&judged);
             let reported = judged
@@ -785,7 +784,7 @@ fn reported(failure: &str, built: &[Said], blocks: &BuildBlock) -> (u8, String) 
     if let Some(note) = &note {
         let _ = writeln!(text, "klin: {note}");
     }
-    eprint!("{text}");
+    out::eprint(&text);
     (code, text)
 }
 
@@ -948,7 +947,7 @@ fn hook(
         return nothing_blocks(args, doc.told() + doc.errored(), report, event);
     }
     let Some(event) = event else {
-        eprint!("{report}");
+        out::eprint(report);
         return (1, None);
     };
     let gate_block =
@@ -970,8 +969,8 @@ fn hook(
              limitation of this stop and asks for no change to the source:"
         ),
     };
-    eprintln!("{lead}");
-    eprint!("{report}");
+    out::eprintln(&lead);
+    out::eprint(report);
     let code = block(root, Some(event), format!("{lead}\n{report}"));
     if code == BLOCKED {
         log.gate_block = Some(number);
@@ -1003,12 +1002,15 @@ fn not_blocked(
     event: &Event,
     why: &str,
 ) -> (u8, Option<String>) {
-    eprintln!("klin: {} — this stop is not blocked:", lead(doc.errored()));
-    eprint!("{report}");
-    eprintln!(
+    out::eprintln(&format!(
+        "klin: {} — this stop is not blocked:",
+        lead(doc.errored())
+    ));
+    out::eprint(report);
+    out::eprintln(&format!(
         "klin: not blocking again; {why}, and the window stays open until a person \
          fixes, accepts or resets it."
-    );
+    ));
     let person = (!args.json()).then(|| person_note(doc, report)).flatten();
     (event.host.stop(&Stop::Pass), person)
 }
@@ -1045,7 +1047,7 @@ fn nothing_blocks(
     }
     let said = format!("klin: nothing blocks the stop, and the run left a note:\n{report}");
     if args.json() || event.is_none() {
-        eprint!("{said}");
+        out::eprint(&said);
         return (1, None);
     }
     (0, Some(said))
@@ -1063,9 +1065,9 @@ fn nothing_blocks(
 fn block(root: &Path, event: Option<&Event>, said: String) -> u8 {
     let host = host::answering(event);
     if host.follows_up() && !handoff::expect_followup(root, session(event), &said) {
-        eprintln!(
+        out::eprintln(
             "klin: NOTE: klin could not record the report the host will submit as its next \
-             prompt, so this stop is not blocked."
+             prompt, so this stop is not blocked.",
         );
         return host.stop(&Stop::Pass);
     }
@@ -1076,10 +1078,10 @@ fn block(root: &Path, event: Option<&Event>, said: String) -> u8 {
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.
 fn unwritable(root: &Path) {
     if let Err(why) = state::ready(root) {
-        eprintln!(
+        out::eprintln(&format!(
             "klin: NOTE: {why} — so this stop wrote no verdict, and a state klin cannot \
              keep blocks nothing."
-        );
+        ));
     }
 }
 

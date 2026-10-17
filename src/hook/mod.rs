@@ -7,6 +7,7 @@ pub mod host;
 pub mod journal;
 mod lexer;
 pub mod radius;
+pub mod record;
 pub mod stats;
 pub mod stop;
 pub mod turn;

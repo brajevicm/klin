@@ -8,6 +8,7 @@ use std::io::{IsTerminal, Read};
 
 use serde_json::Value;
 
+use crate::sys::out;
 use adapter::{Adapter, Event};
 
 /// The fields that scope an event within its session: a prompt, a turn, a message, a tool call,
@@ -81,10 +82,10 @@ fn placed(flag: Option<&str>, payload: &Value) -> &'static dyn Adapter {
 }
 
 fn fell_back(why: &str) -> &'static dyn Adapter {
-    eprintln!(
+    out::eprintln(&format!(
         "klin: NOTE: {why} — reading it as {}, and asking it nothing.",
         UNPLACED.name()
-    );
+    ));
     UNPLACED
 }
 

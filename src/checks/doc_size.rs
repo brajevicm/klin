@@ -18,10 +18,10 @@ use crate::contract::check::{Context, Counted, Derived, Line, Provenance, Sink, 
 use crate::contract::coverage::Coverage;
 use crate::contract::holes;
 use crate::contract::project::Project;
-use crate::contract::ratchet;
 use crate::facts::survey;
 use crate::sys::changed;
 use crate::sys::error::Error;
+use crate::sys::site;
 use crate::window::base;
 
 pub const SECTION: &str = "doc_size";
@@ -257,7 +257,7 @@ fn judge(gate: &str, document: &Document, words: u64, held: Option<u64>, out: &m
 
 fn failed(gate: &str, document: &Document, words: u64, out: &mut Sink) -> bool {
     let over = Standing::Over {
-        id: ratchet::site_id(gate, &document.name, ""),
+        id: site::id(gate, &document.name, ""),
         condition: "over its word ceiling",
         fix_advice: REMEDY,
     };

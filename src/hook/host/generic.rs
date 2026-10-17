@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use super::adapter::{Adapter, Decision, Event, Hook, Kind, Stop, flag, refused, text};
+use crate::sys::out;
 
 /// The field that names an event klin's own, and the one protocol version klin speaks. No host
 /// klin maintains sends the field, so it places the event before any of them. Spec 19.4.
@@ -48,10 +49,10 @@ fn told(held: Option<&Value>) -> &'static dyn Adapter {
         Some(held) => format!("version {held}"),
         None => "no version".to_string(),
     };
-    eprintln!(
+    out::eprintln(&format!(
         "klin: NOTE: this event names {named} of klin's harness protocol, and klin speaks version \
          {VERSION} — so klin refuses the event rather than guessing its shape."
-    );
+    ));
     REFUSES
 }
 
@@ -195,6 +196,6 @@ fn answered(action: &str, key: &str, said: &str, code: u8) -> u8 {
     if !key.is_empty() {
         answer.insert(key.to_string(), said.into());
     }
-    println!("{}", Value::Object(answer));
+    out::println(&format!("{}", Value::Object(answer)));
     code
 }

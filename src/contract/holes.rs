@@ -25,7 +25,7 @@ pub const UNMEASURED: &str = "unmeasured";
 /// The identity of the finding of a lost file: the hash of the built-in row's name and the file,
 /// the same whatever gates a run selects. Spec 7.2.
 pub fn lost_id(file: &str) -> String {
-    crate::contract::ratchet::site_id(MEASUREMENT_LOST, file, "")
+    crate::sys::site::id(MEASUREMENT_LOST, file, "")
 }
 
 /// The files the accepted list holds for every capability while klin cannot measure them: the

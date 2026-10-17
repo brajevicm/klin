@@ -45,6 +45,36 @@
       "in": "src",
       "except": "src/syntax",
       "remedy": "Use the shared syntax parser."
+    },
+    "single-output-boundary": {
+      "text": "print!(",
+      "in": "src",
+      "except": "src/sys/out.rs",
+      "remedy": "Print through sys::out, which redacts live tokens."
+    },
+    "single-output-boundary-lines": {
+      "text": "println!(",
+      "in": "src",
+      "except": "src/sys/out.rs",
+      "remedy": "Print through sys::out, which redacts live tokens."
+    },
+    "single-record-writer": {
+      "text": "fs::write(",
+      "in": "src/hook",
+      "except": "src/hook/record.rs",
+      "remedy": "Write a record through hook::record, which redacts live tokens."
+    },
+    "single-record-writer-append": {
+      "text": "OpenOptions::new(",
+      "in": "src/hook",
+      "except": "src/hook/record.rs",
+      "remedy": "Write a record through hook::record, which redacts live tokens."
+    },
+    "single-record-writer-atomic": {
+      "text": "atomic_write(",
+      "in": "src/hook",
+      "except": "src/hook/record.rs",
+      "remedy": "Write a record through hook::record, which redacts live tokens."
     }
   },
   "layering": {
