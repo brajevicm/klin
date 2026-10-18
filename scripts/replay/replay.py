@@ -62,7 +62,10 @@ def clone(url):
 def checkout(change):
     source = clone(change["repo"])
     if "pull" in change:
-        git(source, "fetch", "--quiet", "origin", f"+pull/{change['pull']}/head:refs/pull/{change['pull']}")
+        try:
+            git(source, "fetch", "--quiet", "origin", change["commit"])
+        except subprocess.CalledProcessError:
+            git(source, "fetch", "--quiet", "origin", f"+pull/{change['pull']}/head:refs/pull/{change['pull']}")
     for commit in (base_of(change), change["commit"]):
         git(source, "checkout", "--quiet", "--force", "--detach", commit)
     into = WORK / "trees" / slug(change["repo"])
@@ -74,6 +77,10 @@ def checkout(change):
 
 def base_of(change):
     return change.get("base", f"{change['commit']}^")
+
+
+def cached_at(runs, change):
+    return runs / (f"{change['commit']}-{change['base']}.json" if "base" in change else f"{change['commit']}.json")
 
 
 def remove(url):
@@ -107,7 +114,7 @@ def prepare(cwd, change):
 
 
 def report(klin, version, change, check):
-    cached = WORK / "runs" / version / check / f"{change['commit']}.json"
+    cached = cached_at(WORK / "runs" / version / check, change)
     if cached.exists():
         return json.loads(cached.read_text())
     try:

@@ -42,6 +42,10 @@ def keeps(finding):
     ]
 
 
+def cached_at(runs, change):
+    return runs / (f"{change['commit']}-{change['base']}.json" if "base" in change else f"{change['commit']}.json")
+
+
 def findings(result):
     return [item for item in result.get("findings", []) if item.get("check") == "complexity"]
 
@@ -54,7 +58,7 @@ def run(args):
     measured = 0
     print("commit\tfile\tline\toutcome\tvalues\tbase\tcandidates")
     for change in changes:
-        cached = runs / f"{change['commit']}.json"
+        cached = cached_at(runs, change)
         if not cached.exists():
             continue
         result = json.loads(cached.read_text())

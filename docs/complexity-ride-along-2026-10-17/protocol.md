@@ -166,6 +166,11 @@ in place of a person. Their weighted verdicts are in the `person` column of
 `labels-agents697.tsv`, and `spot-check-agents697.tsv` holds every vote. The
 final numbers are in `../complexity-ride-along-2026-10-17.md`.
 
+After the review of #709, `packets.py` stops on any failed git command, and
+the replay cache keys a change by its head and its base. A rebuild of all
+281 packets with the strict `packets.py` was byte-identical to the packets
+the labelers saw, so no git command failed in the first build.
+
 ## Counts
 
 The chooser ran on 2026-10-17 and 2026-10-18. `selection.json` holds every

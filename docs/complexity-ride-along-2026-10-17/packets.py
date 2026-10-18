@@ -30,8 +30,11 @@ commits. Use them, not the parent commit, when you check with git.
 """
 
 
-def git(cwd, *args):
-    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True).stdout
+def git(cwd, *args, ok=(0,)):
+    done = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True)
+    if done.returncode not in ok:
+        raise RuntimeError(f"git {' '.join(args)} failed in {cwd}: {done.stderr.strip()}")
+    return done.stdout
 
 
 def repository(out, change):
@@ -39,7 +42,10 @@ def repository(out, change):
     into = out / "repos" / name.replace("/", "__")
     if not into.exists():
         subprocess.run(["git", "clone", "--quiet", "--no-tags", "--no-checkout", "--filter=blob:none", change["repo"], str(into)], check=True)
-    git(into, "fetch", "--quiet", "origin", f"+pull/{change['pull']}/head:refs/pull/{change['pull']}")
+    try:
+        git(into, "fetch", "--quiet", "origin", change["commit"])
+    except RuntimeError:
+        git(into, "fetch", "--quiet", "origin", f"+pull/{change['pull']}/head:refs/pull/{change['pull']}")
     return name, into
 
 
@@ -77,6 +83,8 @@ def extent(lines, start, length, path):
 
 
 def show(cwd, commit, path, start, length):
+    if not git(cwd, "ls-tree", "--name-only", commit, "--", path).strip():
+        return None, None
     text = git(cwd, "show", f"{commit}:{path}")
     if not text:
         return None, None
@@ -141,7 +149,7 @@ def name_of(text):
 def definitions(cwd, commit, name):
     """Every (file, line) at commit whose line defines a function called name."""
     found = []
-    for line in git(cwd, "grep", "-I", "-n", "-w", "-e", name, commit).splitlines():
+    for line in git(cwd, "grep", "-I", "-n", "-w", "-e", name, commit, ok=(0, 1)).splitlines():
         parts = line.removeprefix(f"{commit}:").split(":", 2)
         if len(parts) == 3 and name_of(parts[2]) == name:
             found.append((parts[0], int(parts[1])))
@@ -267,7 +275,7 @@ def main():
     runs = ROOT / "target/replay/runs" / version / "complexity"
     kept = []
     for change in changes:
-        cached = runs / f"{change['commit']}.json"
+        cached = rules.cached_at(runs, change)
         if not cached.exists():
             continue
         result = json.loads(cached.read_text())
