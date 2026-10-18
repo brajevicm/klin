@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use tree_sitter::Node;
 
 use crate::syntax::structural::adapter::{
-    Adapter, Exported, Imported, Spelling, above, spelled, text_of,
+    Adapter, Exported, Imported, Scope, Spelling, above, spelled, text_of,
 };
 use crate::syntax::structural::facts::{ExportLeaf, Visibility};
 use crate::syntax::walk;
@@ -24,8 +24,9 @@ pub(crate) const ADAPTER: Adapter = Adapter {
         "shorthand_property_identifier",
     ],
     methods_in: &[],
-    entry_points: &[],
+    entry_points: &["constructor"],
     visible,
+    script,
     imported,
     remapped,
     nesting,
@@ -114,18 +115,56 @@ const INFERRED: &str = ": ?";
 const EVERY: &str = "*";
 
 /// Whether this declaration leaves the file: an `export` above it says so, and a member of an
-/// exported class leaves with the class, and a global augmentation adds what it holds to the
-/// global scope.
-fn visible(node: Node) -> bool {
-    above(node, &["export_statement"]).is_some() || in_a_global_augmentation(node)
+/// exported class leaves with the class. Otherwise the nearest ambient context decides, and a
+/// declaration outside every one leaves a script as a global.
+fn visible(node: Node, scope: &mut Scope) -> bool {
+    above(node, &["export_statement"]).is_some()
+        || ambient(node, &mut scope.implicit).unwrap_or(scope.script)
 }
 
-/// Whether `declare global { ... }`, or a `global { ... }` block a module declaration holds,
-/// encloses this node.
-fn in_a_global_augmentation(node: Node) -> bool {
-    std::iter::successors(node.parent(), Node::parent).any(|found| {
-        found.kind() == "global_namespace"
-            || (found.kind() == "ambient_declaration" && has_token(found, "global"))
+/// Whether this is a `.d.ts` file that `tsc` reads as a script under every `moduleDetection`,
+/// because no `import` or `export` statement makes it a module, so it declares globals. A
+/// `.d.mts` or `.d.cts` file is always a module.
+fn script(root: Node, path: &str) -> bool {
+    let mut cursor = root.walk();
+    declaration_file(path)
+        && !path.ends_with(".d.mts")
+        && !path.ends_with(".d.cts")
+        && !root
+            .children(&mut cursor)
+            .any(|statement| matches!(statement.kind(), "import_statement" | "export_statement"))
+}
+
+/// What the nearest ambient context around this node says: `declare global { ... }` and a
+/// `global { ... }` block make it global, and a `declare module "x" { ... }` exports it where
+/// the module exports implicitly. `None` outside every ambient context.
+fn ambient(node: Node, implicit: &mut HashMap<usize, bool>) -> Option<bool> {
+    std::iter::successors(node.parent(), Node::parent).find_map(|found| match found.kind() {
+        "global_namespace" => Some(true),
+        "ambient_declaration" if has_token(found, "global") => Some(true),
+        "module"
+            if found
+                .child_by_field_name("name")
+                .is_some_and(|name| name.kind() == "string") =>
+        {
+            Some(*implicit.entry(found.start_byte()).or_insert_with(|| {
+                found
+                    .child_by_field_name("body")
+                    .is_some_and(exports_implicitly)
+            }))
+        }
+        _ => None,
+    })
+}
+
+/// Whether an ambient module exports every declaration it holds, as `tsc` reads it: an export
+/// clause, `export * from`, `export =` or `export default` an expression ends that, and an
+/// exported declaration does not.
+fn exports_implicitly(body: Node) -> bool {
+    let mut cursor = body.walk();
+    !body.children(&mut cursor).any(|statement| {
+        statement.kind() == "export_statement"
+            && statement.child_by_field_name("declaration").is_none()
     })
 }
 
