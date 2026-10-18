@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use tree_sitter::Node;
 
 use super::facts::{ExportLeaf, Visibility};
@@ -13,9 +15,9 @@ pub(crate) struct Adapter {
     pub methods_in: &'static [&'static str],
     /// Names invoked by the runtime without a source reference.
     pub entry_points: &'static [&'static str],
-    pub visible: fn(Node) -> bool,
-    /// Whether a file, by its root node and its path, declares only globals, so every
-    /// declaration in it leaves the file.
+    /// Whether a declaration leaves its file, given what its file says.
+    pub visible: fn(Node, &mut Scope) -> bool,
+    /// Whether a file, by its root node and its path, is a script that declares globals.
     pub script: fn(Node, &str) -> bool,
     pub imported: fn(Node, &[u8]) -> Imported,
     /// The file a module declaration was remapped to, for a language that writes such a thing.
@@ -48,6 +50,14 @@ pub(crate) struct Adapter {
     /// What an `@export` capture in the file at this path exposes, and `None` where the node
     /// exports nothing a declaration does not already say for itself.
     pub exported: fn(Node, &[u8], &str) -> Option<Exported>,
+}
+
+/// What a file says about every declaration in it: whether it is a script, and what each
+/// ambient module in it was found to export, by the module's start byte, so each is read once.
+#[derive(Default)]
+pub(crate) struct Scope {
+    pub script: bool,
+    pub implicit: HashMap<usize, bool>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept

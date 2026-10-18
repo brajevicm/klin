@@ -581,6 +581,52 @@ fn a_declaration_in_a_module_augmentation_is_not_judged() {
 }
 
 #[test]
+fn a_private_declaration_in_an_ambient_module_with_an_export_assignment_is_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    let ambient = "declare module \"legacy-widget\" {\n  interface UnusedInternal {}\n  const createWidget: () => void;\n  export default createWidget;\n}\n";
+    tree.write("src/ambient.ts", ambient);
+    tree.write("src/ambient.d.ts", ambient);
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/ambient.ts:2"), "{}", run.out);
+    assert!(run.says("src/ambient.d.ts:2"), "{}", run.out);
+}
+
+#[test]
+fn an_exported_declaration_keeps_an_ambient_modules_other_declarations_exported() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/ambient.d.ts",
+        "declare module \"klin-x\" {\n  interface Internal {}\n  export interface Options {}\n  export default function create(): void;\n}\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_global_block_in_an_ambient_module_with_an_export_assignment_stays_global() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/globals.d.ts",
+        "export {};\n\ndeclare module \"klin-x\" {\n  const value: number;\n  export default value;\n  global {\n    interface Window { klinX: number }\n  }\n}\n\ninterface Unused {}\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/globals.d.ts:11"), "{}", run.out);
+}
+
+#[test]
 fn a_class_constructor_is_not_judged() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);

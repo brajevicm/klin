@@ -5030,9 +5030,15 @@ pinned by `a_declaration_in_a_global_augmentation_is_not_judged` and
 `a_declaration_in_a_global_block_a_declare_module_holds_is_not_judged` in
 `tests/dead_symbols.rs`. A declaration inside a module augmentation,
 `declare module "x" { ... }`, is externally visible too, because the compiler
-merges it into the types of that module. A namespace that `declare module`
-names with an identifier is no augmentation, so what it holds is still
-judged. A `.d.ts` file with no `import` or `export` statement is a script
+merges it into the types of that module. As `tsc` reads it, an export clause,
+`export * from`, `export =` or `export default` an expression in the module
+body ends that, so only what the module exports leaves and every other
+declaration in it is judged. An exported declaration, such as `export
+interface` or `export default function`, keeps the rest exported, and a
+`global { ... }` block inside such a module stays global. The module's rule
+decides for what it holds in a script file too. A namespace that `declare
+module` names with an identifier is no augmentation, so what it holds is
+still judged. A `.d.ts` file with no `import` or `export` statement is a script
 under every `moduleDetection` setting, so each declaration in it is a global
 and is externally visible. klin reads no `tsconfig.json`. A `.ts` or `.tsx`
 file with no `import` or `export` is a module under `moduleDetection:
@@ -5043,6 +5049,9 @@ TypeScript declaration named `constructor` is an entry point, as Rust `main`
 is, because `new` calls a class constructor and no reference names it. These
 rules are pinned by `a_declaration_in_a_module_augmentation_is_not_judged`,
 `a_declaration_in_a_namespace_declare_module_names_is_judged`,
+`a_private_declaration_in_an_ambient_module_with_an_export_assignment_is_judged`,
+`an_exported_declaration_keeps_an_ambient_modules_other_declarations_exported`,
+`a_global_block_in_an_ambient_module_with_an_export_assignment_stays_global`,
 `a_declaration_in_a_typescript_script_file_is_not_judged`,
 `a_private_typescript_main_is_judged` and `a_class_constructor_is_not_judged`
 in `tests/dead_symbols.rs`. The `ignore` list adds name

@@ -7,7 +7,7 @@ use tree_sitter::Node;
 use crate::syntax::tolerant;
 
 use crate::syntax::structural::adapter::{
-    Adapter, Exported, Imported, Spelling, above, spelled, text_of,
+    Adapter, Exported, Imported, Scope, Spelling, above, spelled, text_of,
 };
 use crate::syntax::structural::facts::{ExportLeaf, Visibility};
 
@@ -88,7 +88,7 @@ const SERDE_CALLABLES: &[&str] = &[
 
 /// Whether this declaration is reachable past the file that holds it: it says so itself, a
 /// trait states it, or a trait implementation carries it and the trait exposes it.
-fn visible(node: Node) -> bool {
+fn visible(node: Node, _: &mut Scope) -> bool {
     marked(node) || above(node, &["trait_item"]).is_some() || implements_a_trait(node)
 }
 
