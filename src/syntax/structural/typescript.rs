@@ -26,6 +26,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     methods_in: &[],
     entry_points: &["constructor"],
     visible,
+    script,
     imported,
     remapped,
     nesting,
@@ -114,29 +115,23 @@ const INFERRED: &str = ": ?";
 const EVERY: &str = "*";
 
 /// Whether this declaration leaves the file: an `export` above it says so, and a member of an
-/// exported class leaves with the class, and an augmentation or a script file adds what it holds
-/// to the global scope or to another module.
-fn visible(node: Node, path: &str) -> bool {
-    above(node, &["export_statement"]).is_some()
-        || in_an_augmentation(node)
-        || in_a_script(node, path)
+/// exported class leaves with the class, and an augmentation adds what it holds to the global
+/// scope or to another module.
+fn visible(node: Node) -> bool {
+    above(node, &["export_statement"]).is_some() || in_an_augmentation(node)
 }
 
-/// Whether this node sits in a `.d.ts` file that `tsc` reads as a script, because no `import`
-/// or `export` statement makes it a module, so it declares globals. Under `moduleDetection:
-/// "force"` every other file is a module, and a `.d.mts` or `.d.cts` file always is one.
-// ponytail: rescans the top level for each declaration of a script, cache per file if scripts grow large
-fn in_a_script(node: Node, path: &str) -> bool {
-    path.ends_with(".ts")
-        && declaration_file(path)
-        && std::iter::successors(Some(node), Node::parent)
-            .last()
-            .is_some_and(|program| {
-                let mut cursor = program.walk();
-                !program.children(&mut cursor).any(|statement| {
-                    matches!(statement.kind(), "import_statement" | "export_statement")
-                })
-            })
+/// Whether this is a `.d.ts` file that `tsc` reads as a script under every `moduleDetection`,
+/// because no `import` or `export` statement makes it a module, so it declares globals. A
+/// `.d.mts` or `.d.cts` file is always a module.
+fn script(root: Node, path: &str) -> bool {
+    let mut cursor = root.walk();
+    declaration_file(path)
+        && !path.ends_with(".d.mts")
+        && !path.ends_with(".d.cts")
+        && !root
+            .children(&mut cursor)
+            .any(|statement| matches!(statement.kind(), "import_statement" | "export_statement"))
 }
 
 /// Whether `declare global { ... }`, a `global { ... }` block, or a `declare module "x" { ... }`
