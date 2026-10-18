@@ -5055,7 +5055,7 @@ rules are pinned by `a_declaration_in_a_module_augmentation_is_not_judged`,
 `a_declaration_in_a_typescript_script_file_is_not_judged`,
 `a_private_typescript_main_is_judged` and `a_class_constructor_is_not_judged`
 in `tests/dead_symbols.rs`. A TypeScript method that is called without a
-reference that names it is not judged either: a method of an object literal,
+reference that names it is an entry point too: a method of an object literal,
 which whoever receives the object calls, a member marked `override`, which
 its base class calls, and a member whose name is a string, a number or a
 computed key, which no reference can write. The object literal itself is

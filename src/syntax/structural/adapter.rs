@@ -15,6 +15,8 @@ pub(crate) struct Adapter {
     pub methods_in: &'static [&'static str],
     /// Names invoked by the runtime without a source reference.
     pub entry_points: &'static [&'static str],
+    /// Whether a runtime or a framework calls this declaration without a reference that names it.
+    pub called_without_its_name: fn(Node) -> bool,
     /// Whether a declaration leaves its file, given what its file says.
     pub visible: fn(Node, &mut Scope) -> bool,
     /// Whether a file, by its root node and its path, is a script that declares globals.
