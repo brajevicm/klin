@@ -113,6 +113,54 @@ no source shown, and several latent builder bugs, which `packets.py` fixes.
    `697-boot:<candidate>:<stratum>`. The exact Poisson interval is for
    information only.
 
+## The run on the sample
+
+The owner approved the run on 2026-10-18. These are the numbers before the
+person's spot-check, so no N here is final.
+
+1. **Replay.** klin measured all 380 changes in full and found 526
+   findings. The first run lost one clone (coconut-svsm/svsm) to a network
+   timeout. A second run took the other 379 from the cache and measured
+   it. The peak disk use of the clones and trees was 283 MB.
+2. **Candidates.** `rules.py` keeps 147 findings for the first rule, 192
+   for the second and 261 for the `cc` row. 281 findings have at least one
+   candidate, so there are 281 packets.
+3. **Labels.** 56 agents in pass 1 and 57 in pass 2 labeled the packets.
+   Pass 2 put every 57th packet in one group. The passes agree on 94%, with
+   kappa 0.88. `labels-agents697.tsv` holds both passes.
+4. **Review.** An adversarial review checked all 281 packets with scripts
+   and at least 45 by hand with git. It found no label that a packet
+   defect made wrong. Only one disagreement (P143) is partly explained by
+   a defect. The defects it found:
+   - P006: the head listing stops after 41 of 582 lines, because klin
+     gives no `lines` and the brace count stops at its 400-line cap.
+   - P057, P170: klin reported `components/Settings/`. git also holds
+     `components/settings/`, and the replay ran on a case-insensitive
+     disk, so the packet cannot read the head and shows no diff. klin's
+     `new` outcome for these two comes from the same path mismatch.
+   - P021, P070, P083, P099, P143, P178, P236, P244, P281: the "before"
+     leaves out a copied, moved or renamed source. The same-name search
+     cannot find a source with another name, a cross-file move, or a
+     source that still exists somewhere at the head.
+   - P103: klin matched the head `add` builder to the base `update`
+     builder, and the packet shows that match as the "before".
+   - Ten packets list call sites or trait declarations among the
+     same-name functions.
+   - 89 packets show up to five added lines just outside the function, and
+     17 hunks in them touch no line of the function. This differs from
+     point 1 above.
+   In every case the labelers found the source or the missing lines with
+   git, and their reasons name it. No packet was rebuilt and no finding was
+   labeled again.
+5. **Spot-check.** `labels.py worksheet` drew 30 findings with the seed
+   `697-spot-v1` for the person.
+
+| Candidate | Kept | `appropriate` | N, agent labels | Bootstrap 95% |
+|---|---|---|---|---|
+| first | 147 | 80 | 17.6 | 10.5 to 26.8 |
+| second | 192 | 87 | 27.6 | 18.9 to 38.4 |
+| `cc` | 261 | 94 | 43.9 | 33.2 to 56.6 |
+
 ## Counts
 
 The chooser ran on 2026-10-17 and 2026-10-18. `selection.json` holds every
