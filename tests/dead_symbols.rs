@@ -627,6 +627,39 @@ fn a_global_block_in_an_ambient_module_with_an_export_assignment_stays_global() 
 }
 
 #[test]
+fn a_method_of_an_object_literal_is_not_judged_and_its_unused_object_is() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/config.ts",
+        "function configure(config: object) {\n  return config;\n}\n\nexport const config = configure({\n  redirects() {\n    return [];\n  },\n});\n\nconst settings = {\n  load() {},\n};\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/config.ts:11"), "{}", run.out);
+}
+
+#[test]
+fn an_override_and_a_member_no_name_can_reach_are_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write("src/base.ts", "export class Base {\n  redo(): void {}\n}\n");
+    tree.write(
+        "src/editor.ts",
+        "import { Base } from \"./base\";\n\nclass Editor extends Base {\n  override redo(): void {}\n  [Symbol.dispose](): void {}\n  \"label text\"(): void {}\n  unused(): void {}\n}\n\nexport const editor = new Editor();\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/editor.ts:7"), "{}", run.out);
+}
+
+#[test]
 fn a_class_constructor_is_not_judged() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);
