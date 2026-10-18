@@ -139,18 +139,19 @@ def summary(args):
     selection = json.loads((HERE / "selection.json").read_text())
     commits = {record["head"]: record["commits"] for language in selection.values() for part in language.values() for record in part if "head" in record}
     measured = []
-    expected = set()
+    expected = {}
     for change in changes:
         cached = rules.cached_at(runs, change)
         result = json.loads(cached.read_text()) if cached.exists() else {}
         if result.get("measurement") == "complete":
             measured.append(change)
-            expected |= {(change["commit"], finding["file"], str(finding["line"])) for finding in rules.findings(result) if rules.keeps(finding)}
+            expected |= {(change["commit"], finding["file"], str(finding["line"])): ",".join(rules.keeps(finding)) for finding in rules.findings(result) if rules.keeps(finding)}
     rows = read(HERE / f"labels-{args.set}.tsv")
     found = {(row["commit"], row["file"], row["line"]) for row in rows}
     unlabeled = [row["packet"] for row in rows if label(row) not in ("appropriate", "not-appropriate")]
-    if found != expected or len(found) != len(rows) or unlabeled:
-        sys.exit(f"labels do not cover the kept findings: {len(expected - found)} missing, {len(found - expected)} extra, {len(rows) - len(found)} repeated, {len(unlabeled)} without a valid label")
+    mismatched = [row["packet"] for row in rows if (row["commit"], row["file"], row["line"]) in expected and row["candidates"] != expected[(row["commit"], row["file"], row["line"])]]
+    if found != expected.keys() or len(found) != len(rows) or unlabeled or mismatched:
+        sys.exit(f"labels do not cover the kept findings: {len(expected.keys() - found)} missing, {len(found - expected.keys())} extra, {len(rows) - len(found)} repeated, {len(unlabeled)} without a valid label, {len(mismatched)} with other candidates")
     print(f"{len(measured)} of {len(changes)} changes measured in full; {len(rows)} labeled findings")
     strata = {
         "pooled": lambda change: True,

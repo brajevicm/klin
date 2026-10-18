@@ -95,8 +95,9 @@ holds 13 of the `not-appropriate` findings of every candidate.
   suggests that a later design measured per turn may find a rule that
   passes.
 - A `not-appropriate` ride-along finding asks an agent that is already
-  stopped for a refactor nobody wanted. At N 18.2, the best candidate does
-  that about once in every five or six pull requests.
+  stopped for a refactor nobody wanted. The best candidate keeps 69 such
+  findings, which is N 18.2. They fall in 41 of the 380 pull requests, so
+  about one pull request in nine gets at least one.
 
 ## Where the noise comes from
 

@@ -116,7 +116,9 @@ def prepare(cwd, change):
 def report(klin, version, change, check):
     cached = cached_at(WORK / "runs" / version / check, change)
     if cached.exists():
-        return json.loads(cached.read_text())
+        result = json.loads(cached.read_text())
+        if result.get("measurement") == "complete":
+            return result
     try:
         cwd = checkout(change)
         prepare(cwd, change)
@@ -128,8 +130,9 @@ def report(klin, version, change, check):
         result = json.loads(done.stdout)
     except json.JSONDecodeError:
         result = {"failed": done.stdout + done.stderr}
-    cached.parent.mkdir(parents=True, exist_ok=True)
-    cached.write_text(json.dumps(result))
+    if result.get("measurement") == "complete":
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_text(json.dumps(result))
     return result
 
 
