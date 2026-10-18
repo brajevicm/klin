@@ -161,6 +161,11 @@ person's spot-check, so no N here is final.
 | second | 192 | 87 | 27.6 | 18.9 to 38.4 |
 | `cc` | 261 | 94 | 43.9 | 33.2 to 56.6 |
 
+By the owner's decision of 2026-10-18, five model judges did the spot-check
+in place of a person. Their weighted verdicts are in the `person` column of
+`labels-agents697.tsv`, and `spot-check-agents697.tsv` holds every vote. The
+final numbers are in `../complexity-ride-along-2026-10-17.md`.
+
 ## Counts
 
 The chooser ran on 2026-10-17 and 2026-10-18. `selection.json` holds every

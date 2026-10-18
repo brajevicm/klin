@@ -1,7 +1,8 @@
 # Complexity ride-along validation, 2026-10-17
 
-After this note, `complexity` stops a person for nothing: no candidate rule
-passed, so its findings belong in the report-only tier of #696.
+No candidate rule passed, so once the follow-up ticket ships, `complexity`
+stops a person for nothing and its findings go to the report-only tier of
+#696. Until then the shipped binary still blocks on `cc`.
 
 This note belongs to #697. It tests two candidate rules for the ride-along
 row of `complexity`, and the `cc` row that blocks today, on a frozen sample of
@@ -54,10 +55,12 @@ means over the `cc` ceiling that the finding carries.
   holds every vote.
 - The verdict differs from the agent label on 2 of the 30: P083 (weight 7)
   and P143 (weight 9), both from `appropriate` to `not-appropriate`. That is
-  within the limit of 3, so no relabel round was due. Both agent labels rest
-  on code that the function copies from a function that still exists. The
-  judges read only the structure, so the label rule may be read two ways on
-  duplication.
+  within the limit of 3, so no relabel round was due. Both packets are in
+  the protocol's list of defects: their "before" leaves out the source that
+  the function copies. Both agent labels rest on that copy. The judges'
+  reasons judge the function's own structure and do not count the copy. So
+  the packet defect, or a second reading of the label rule on duplication,
+  may explain both changes.
 - The two Opus runs agreed on 24 of 30 rows, the two Codex runs on 29.
 
 ## Result
@@ -109,6 +112,16 @@ holds 13 of the `not-appropriate` findings of every candidate.
 - The `new` findings are the same in all three candidates, and 58 of 98 are
   `not-appropriate`. They alone give N 15.3, so no rule that keeps every
   `new` finding over the ceiling can pass on this sample.
+- By the labelers' own reasons, at least 30 of those 58 are functions that
+  existed at the base: moved, ported, renamed, or an earlier version under
+  rule 3. Twelve come from one pull request that ports `TinyMDE.js` to
+  TypeScript. Two (P057, P170) come from the path-case mismatch in the
+  protocol. klin's function identity does not follow these, so it calls
+  them `new`.
+- Without those 30, N would be 10.3 for the first rule, 20.3 for the second
+  and 36.6 for the `cc` row. No candidate would pass even then, but the
+  first rule would miss by less than one point. Function identity across
+  moves and renames is the largest single source of noise on this sample.
 
 ## Decision
 
@@ -120,6 +133,9 @@ holds 13 of the `not-appropriate` findings of every candidate.
   tier. Because it did not pass, they stay in the report-only tier of #696.
 - The shipped binary still blocks on `cc` until the follow-up ticket changes
   it. That ticket is #696, or a new ticket if the owner prefers.
+- This decision rests on the model-judge spot-check. Acceptance criterion 2
+  of #697 names a person, so the owner's decision of 2026-10-18 stands in
+  for it.
 
 ## Cases for CLI tests
 
@@ -130,7 +146,7 @@ All five judges and the agent label agree on these. The ticket that changes
 |---|---|---|---|---|
 | P131 | `new` | a ~270-line migration function with a per-language if/else chain | `appropriate` | New code that is tangled when written |
 | P197 | `worsened` | a long file-list function that gains a three-level nested closure | `appropriate` | A new responsibility, nested, in a long function |
-| P218 | `new` | a 47-line argument function at `cc` 11 that gains one flag | `not-appropriate` | klin calls it `new`, but the change adds no branch or nesting |
+| P100 | `worsened` | a command function over the `cc` ceiling where four calls gain `?` | `not-appropriate` | The change adds no branch, nesting or responsibility |
 | P268 | `worsened` | a scanner loop that gains one early-return guard | `not-appropriate` | Rule 6: a guard adds no nesting |
 | P121 | `worsened` | a long `main()` that gains one field in an object literal | `not-appropriate` | The function was long before, and the change adds no logic |
 
@@ -140,10 +156,14 @@ All five judges and the agent label agree on these. The ticket that changes
   agent labels, so a person's check is more likely to raise N than to lower
   it, but that is an inference.
 - The packet defects in the protocol were not repaired. The review found
-  that none changed a label.
+  that none made an agent label wrong, but both labels that the spot-check
+  changed sit on defective packets.
 - The verdict holds for pull requests, not for single turns.
 
 ## Reproduce
+
+Build the pinned binary as `protocol.md` says. The `person` column of
+`labels-agents697.tsv` is the `verdict` column of `spot-check-agents697.tsv`.
 
 ```sh
 python3 scripts/replay/replay.py run agents697 complexity --klin target/ride-along/klin-2adfde08
