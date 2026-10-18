@@ -134,11 +134,10 @@ fn script(root: Node, path: &str) -> bool {
             .any(|statement| matches!(statement.kind(), "import_statement" | "export_statement"))
 }
 
-/// Whether `declare global { ... }`, a `global { ... }` block, or a `declare module "x" { ... }`
-/// encloses this node.
+/// Whether `declare global { ... }` or a `declare module "x" { ... }` encloses this node. A
+/// `global { ... }` block is only valid inside the latter.
 fn in_an_augmentation(node: Node) -> bool {
     std::iter::successors(node.parent(), Node::parent).any(|found| match found.kind() {
-        "global_namespace" => true,
         "ambient_declaration" => has_token(found, "global"),
         "module" => found
             .child_by_field_name("name")

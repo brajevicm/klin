@@ -539,10 +539,29 @@ fn a_declaration_in_a_typescript_script_file_is_not_judged() {
         "src/env.d.ts",
         "interface ImportMeta {\n  readonly klinX: string;\n  load(): void;\n}\n\ndeclare function helper(): void;\ndeclare const klinGlobal: number;\n",
     );
+    tree.write("src/main.ts", "function unused() {}\n");
 
     let run = tree.run(&["check", "dead-symbols"]);
 
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/main.ts:1"), "{}", run.out);
+}
+
+#[test]
+fn a_declaration_in_a_namespace_declare_module_names_is_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/types.d.ts",
+        "export {};\n\ndeclare module Inner {\n  function helper(): void;\n}\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/types.d.ts:4"), "{}", run.out);
 }
 
 #[test]
