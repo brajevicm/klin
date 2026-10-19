@@ -160,37 +160,26 @@ fn owner_named(node: Node, source: &[u8], scope: &mut Scope) -> bool {
     let Some(body) = statement.parent() else {
         return false;
     };
-    scope.names(body, &text_of(name, source), || named(body, source))
+    scope.names(body, &text_of(name, source), || {
+        exported_by_name(body, source)
+    })
 }
 
 /// The local names the statements of one body export by name: each name an export clause
 /// without a source lists, and the identifier `export =` assigns.
-fn named(body: Node, source: &[u8]) -> HashSet<String> {
+fn exported_by_name(body: Node, source: &[u8]) -> HashSet<String> {
     let mut cursor = body.walk();
-    let mut out = HashSet::new();
-    for statement in body
+    let (assigned, clauses): (Vec<Node>, Vec<Node>) = body
         .named_children(&mut cursor)
         .filter(|held| declares_nothing(*held) && held.child_by_field_name("source").is_none())
-    {
-        if has_token(statement, "=") {
-            out.extend(
-                statement
-                    .named_child(0)
-                    .filter(|value| value.kind() == "identifier")
-                    .map(|value| text_of(value, source)),
-            );
-            continue;
-        }
-        walk(statement, &mut |node| {
-            if let Some(name) = node
-                .child_by_field_name("name")
-                .filter(|_| node.kind() == "export_specifier")
-            {
-                out.insert(text_of(name, source));
-            }
-        });
-    }
-    out
+        .partition(|statement| has_token(*statement, "="));
+    assigned
+        .iter()
+        .filter_map(|statement| statement.named_child(0))
+        .filter(|value| value.kind() == "identifier")
+        .map(|value| text_of(value, source))
+        .chain(clause_names(&clauses, source).into_keys())
+        .collect()
 }
 
 /// Whether a method is called without a reference that names it: whoever receives an object

@@ -1405,7 +1405,7 @@ fn a_member_of_a_class_an_export_clause_exposes_is_not_judged() {
     );
     tree.write(
         "src/socket.d.ts",
-        "declare class Socket {\n  send(data: string): void;\n}\n\nexport { Socket };\n",
+        "declare class Socket {\n  send(data: string): void;\n}\n\ninterface Options {\n  timeout(): number;\n}\n\nexport { Socket, type Options };\n",
     );
 
     let run = tree.run(&["check", "dead-symbols"]);
