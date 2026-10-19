@@ -191,7 +191,7 @@ fn evaluator() -> Evaluator<'static> {
         ceiling: None,
         format_metrics: show,
         nested: None,
-        rides_along: ratchet::every_row_blocks,
+        tier: &ratchet::every_row_blocks,
         worsened: ratchet::Worsened::Fails,
         fails: None,
     }

@@ -2117,3 +2117,148 @@ fn a_fail_counts_no_accepted_entry_as_held_by_the_base() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("beyond the 2 the base holds"), "{}", run.out);
 }
+
+/// A tree whose `lines` ceiling is derived, at the floor of 25, and whose `cc` is pinned, with
+/// a base that holds one short function.
+fn derived_lines() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src", "cc": 8 } }"#);
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree
+}
+
+/// A long public function, which no other check names.
+fn exported(name: &str, lines: usize) -> String {
+    format!("pub {}", long(name, lines))
+}
+
+#[test]
+fn a_function_over_the_derived_lines_ceiling_alone_does_not_block_the_stop() {
+    let tree = derived_lines();
+    tree.write("src/long.rs", &exported("stretched", 30));
+
+    let run = tree.stop();
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/long.rs"), "{}", run.out);
+}
+
+#[test]
+fn at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note() {
+    let tree = derived_lines();
+    tree.write("src/long.rs", &exported("stretched", 30));
+
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(
+            "INFO: 1 function(s) over a derived ceiling only. Information only: no change is \
+             needed."
+        ),
+        "{}",
+        run.out
+    );
+    assert!(run.says("src/long.rs:1  cc 1, 30 lines"), "{}", run.out);
+    let json = tree.run(&["check", "complexity", "--json"]).json();
+    assert_eq!(json["judgement"], "pass", "{json}");
+    assert_eq!(json["findings"], serde_json::json!([]), "{json}");
+    let notes = json["notes"].as_array().expect("notes");
+    assert!(
+        notes
+            .iter()
+            .any(|note| note["kind"] == "report-only" && note["file"] == "src/long.rs"),
+        "{json}"
+    );
+}
+
+#[test]
+fn a_function_over_a_pinned_lines_ceiling_blocks_the_stop() {
+    let tree = derived_lines();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": "src", "cc": 8, "lines": 25 } }"#,
+    );
+    tree.base();
+    tree.write("src/long.rs", &exported("stretched", 30));
+
+    let run = tree.stop();
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("src/long.rs:1  cc 1, 30 lines"), "{}", run.out);
+}
+
+#[test]
+fn a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "test_lines": 25 } }"#);
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("tests/long.rs", &long("long_test", 30));
+
+    let run = tree.stop();
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("tests/long.rs:1  cc 1, 30 test lines"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_function_over_the_cc_ceiling_whose_length_grew_under_a_derived_lines_blocks_the_stop() {
+    let tree = derived_lines();
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/knot.rs", &stretched(TANGLED, 2));
+
+    let run = tree.stop();
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("cc 9, 15 lines, was cc 9, 13 lines"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_function_held_over_the_cc_ceiling_that_falls_under_it_and_grows_is_report_only() {
+    let tree = derived_lines();
+    let knot = stretched(TANGLED, 20);
+    tree.write("src/knot.rs", &knot);
+    tree.base();
+    tree.write(
+        "src/knot.rs",
+        &stretched(&knot.replace("a == 0 || a == -1", "a == 0"), 1),
+    );
+
+    let stop = tree.stop();
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("INFO: 1 function(s)"), "{}", run.out);
+}
+
+#[test]
+fn policy_names_the_derived_lines_ceiling_as_report_only() {
+    let tree = derived_lines();
+
+    let run = tree.run(&["policy", "complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: complexity lines 25"), "{}", run.out);
+    assert!(run.says("report only: pin it to block"), "{}", run.out);
+}
+
+#[test]
+fn suggest_says_a_complexity_value_it_suggests_blocks_once_pinned() {
+    let tree = derived_lines();
+    tree.write("klin.json", "{}");
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: complexity lines 25 (the floor of 25"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("Pinned, it blocks."), "{}", run.out);
+}

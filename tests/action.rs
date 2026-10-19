@@ -214,6 +214,30 @@ fn a_green_job_still_annotates_its_review_items() {
 }
 
 #[test]
+fn a_report_only_finding_is_no_annotation_and_one_line_of_the_summary() {
+    let tree = tree();
+    tree.write("klin.json", r#"{ "complexity": { "cc": 8 } }"#);
+    tree.base();
+    let stretched = "    let a = 1;\n".repeat(28);
+    tree.write(
+        "src/lib.rs",
+        &format!("{CLEAN}pub fn stretched() {{\n{stretched}}}\n"),
+    );
+
+    let gated = gated(&tree, "");
+
+    assert_eq!(gated.code, 0, "{}", gated.printed);
+    assert!(gated.levels().is_empty(), "{}", gated.printed);
+    assert!(
+        gated
+            .summary
+            .contains("information only: 1 report-only finding(s)"),
+        "{}",
+        gated.summary
+    );
+}
+
+#[test]
 fn a_green_job_warns_of_a_klin_json_change_klin_could_not_judge() {
     let tree = tree();
     tree.write(

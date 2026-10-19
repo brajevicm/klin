@@ -11,7 +11,7 @@ use serde_json::Value;
 use crate::config;
 use crate::config::file::Config;
 use crate::contract::check::{
-    Context, Entry, Failed, Held, Line, Matched, Plain, Ratchet, Sink, Told, Unmatched, Was,
+    Context, Entry, Failed, Held, Line, Matched, Plain, Ratchet, Sink, Tier, Told, Unmatched, Was,
 };
 use crate::sys::error::Error;
 use crate::sys::record::Values;
@@ -211,13 +211,13 @@ struct Comparison {
 
 impl Comparison {
     /// Whether a failure is of a row that blocks, so the gate fails. A failure of a ride-along
-    /// row alone leaves the gate's exit at 0. Spec 9.6.
+    /// row or a report-only row alone leaves the gate's exit at 0. Spec 9.6.
     fn blocks(&self, evaluator: &Evaluator) -> bool {
         let rose = self.rose.iter().map(|(finding, _)| finding);
         self.unmatched_findings
             .iter()
             .chain(rose)
-            .any(|finding| !(evaluator.rides_along)(&finding.values))
+            .any(|finding| (evaluator.tier)(&finding.values) == Tier::Blocks)
     }
 
     fn failed(&self) -> bool {
@@ -483,9 +483,8 @@ pub struct Evaluator<'a> {
     /// groups what one change took away. A lead is a finding that prints inside no group.
     /// Presentation only: every finding keeps its own identity, record and count.
     pub nested: Option<Nesting>,
-    /// Whether a finding's row is in the ride-along tier of ADR 0073, read from its values.
-    /// Spec 9.6.
-    pub rides_along: fn(&Values) -> bool,
+    /// The tier of ADR 0073 a finding's row is in, read from its values. Spec 9.6.
+    pub tier: &'a dyn Fn(&Values) -> Tier,
     /// What a finding whose value rose is: a failure, or a question the Stop asks and does
     /// not judge. Spec 9.2.
     pub worsened: Worsened,
@@ -504,8 +503,8 @@ pub enum Worsened {
 }
 
 /// The tier of a gate whose every row blocks.
-pub fn every_row_blocks(_: &Values) -> bool {
-    false
+pub fn every_row_blocks(_: &Values) -> Tier {
+    Tier::Blocks
 }
 
 impl Evaluator<'_> {
@@ -704,7 +703,7 @@ fn failed(gate: &str, finding: &Finding, entry: Option<&Values>, evaluator: &Eva
         matched,
         ceiling: evaluator.ceiling.map(str::to_string),
         lead: None,
-        rides_along: (evaluator.rides_along)(&finding.values),
+        tier: (evaluator.tier)(&finding.values),
     }
 }
 

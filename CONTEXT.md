@@ -184,6 +184,12 @@ own. They appear only in a Stop that already blocks for another finding,
 and at `klin check` each one is a review item.
 _Avoid_: soft rule, warning row
 
+**Report-only row**:
+A row in the tier of ADR 0073 that runs at `klin check` only, such as a
+derived `lines` ceiling of `complexity`. Each of its findings is a note there,
+and the Stop never measures it. A person pins the ceiling to make it block.
+_Avoid_: info rule, advisory row
+
 **Hole**:
 One explicit reason why a required measurement is not complete, such as
 `tool-error` or `nothing-measured`.

@@ -32,7 +32,8 @@ same gate still found does.
 `klin check` exits 2 when klin or any one check could not run, even beside a
 FAIL. Otherwise it exits 1 when a finding failed, 3 when a measurement was
 incomplete, and 0. Read the rows, not only the exit code. A REVIEW row never
-changes the exit code.
+changes the exit code. An INFO row names functions over a derived complexity
+ceiling only. It asks for no change, so do not change code for it.
 
 A gate failure blocks at most two stops per turn, and each block names its
 number. After the first, a stop over a tree you did not change reports the
@@ -115,8 +116,10 @@ it.
 3. Explain each suggested value from the `derived:` and `held:` lines under
    the JSON. Say what pinning the value changes compared with the value klin
    derives without it: a pinned value stays fixed, and a derived value moves
-   with the tree. A suggested `layering` section has no derived value. Its
-   `held:` line names the findings that section holds today.
+   with the tree. A complexity value you write makes that ceiling block,
+   where the derived `lines` ceiling only reports. A suggested `layering`
+   section has no derived value. Its `held:` line names the findings that
+   section holds today.
 4. Write a suggestion the person picks unchanged, because that is their exact
    change. A value you chose or edited is yours, and the rule above applies.
    `--suggest` prints only the values the file does not state yet, so merge
@@ -201,7 +204,7 @@ names an integration that is not current. The standalone
 route copies this skill only; plugin slash commands remain plugin-owned.
 
 klin setup --pin also writes derived ceilings into klin.json as policy a
-person reviews.
+person reviews. A pinned complexity ceiling blocks.
 
 ## Asking klin about its state
 

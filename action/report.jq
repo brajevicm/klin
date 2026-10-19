@@ -7,6 +7,8 @@ def failing: [.findings[] | select(.outcome != "held")];
 
 def unjudged: [(.notes // [])[] | select(.kind == "config-loosened")];
 
+def reported: [(.notes // [])[] | select(.kind == "report-only")];
+
 def loosening: [.reviews[] | select(.kind == "config-loosened")];
 
 def ordinary: [.reviews[] | select(.kind != "config-loosened")];
@@ -69,6 +71,9 @@ def summary:
   "failing findings: \(failing | length), review items: \(.reviews | length), holes: \(holes | length), errors: \(.errors | length), files not measured: \(.not_measured)",
   "",
   "klin.json loosenings: \(loosening | length), unjudged klin.json changes: \(unjudged | length)",
+  (if (reported | length) > 0
+   then "", "information only: \(reported | length) report-only finding(s). `klin check` lists them."
+   else empty end),
   "",
   "Not annotated: \([(failing | length) - per_level, 0] | max) failing finding(s) and \([(.reviews | length) - ([per_level - (unjudged | length), 0] | max), 0] | max) review item(s) over GitHub's limit of \(per_level) annotations per level, and every hole and error. The lists below hold them, up to the summary's size budget.",
   ([section("Unjudged klin.json changes"; [unjudged[] | .message]),

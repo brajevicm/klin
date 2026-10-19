@@ -354,7 +354,9 @@ Terms marked *new* are added by vNext. The others are in `CONTEXT.md` or the
 
 The set of execution paths at which the engine runs a capability: `{stop,
 check}` or `{check}`. The catalogue owns placement. Configuration cannot
-change it. Section 6.2.
+change it. Section 6.2. One row of a check may be placed `{check}` while the
+check is `{stop, check}`: a report-only row (9.7), whose placement follows
+where its ceiling came from.
 
 ### 4.4 Evidence items
 
@@ -497,7 +499,8 @@ retires no key. A configuration that 0.x accepted is valid in vNext.
 `klin setup --pin` writes today's derived guardrails as policy a person
 reviews, with the rules of B.5.7 for `init --pin`: complexity `cc` and
 `lines`, a `doc_size` ceiling for each instruction file the derivation commit
-holds, and the `radius` values history gives. It writes a value only where
+holds, and the `radius` values history gives. A complexity value it writes is
+pinned, so that ceiling blocks (9.7), and its `derived:` line says so. It writes a value only where
 the configuration states none. It MUST NOT write topology.
 
 ## 6. Execution Model and State
@@ -546,6 +549,8 @@ Rules:
 5. Local feedback that is not a capability, such as the build (section 6.4)
    and the radius note (section 10.3), is not subject to placement and is
    never part of a `klin check` result.
+6. A report-only row (9.7) is placed `{check}`. The Stop does not resolve its
+   ceiling, so the row adds no work to the Stop.
 
 ### 6.3 Side effects
 
@@ -1318,7 +1323,7 @@ measurement rules are section B.8, amended below and by section 7.
 | `stubs` | check | Automatic | `{stop, check}` | None. File-and-kind marker identity (ADR 0064). |
 | `secrets` | check | Automatic | `{stop, check}` | New (#582). A live-shaped vendor token, keyed by a redacted fingerprint (B.8.2.1). |
 | `inventory` | check | Automatic | `{stop, check}` | A deleted test is a review item (section 9.2). |
-| `complexity` | check | Automatic | `{stop, check}` | None. Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). |
+| `complexity` | check | Automatic | `{stop, check}` | Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). A derived `lines` is a report-only row placed `{check}` (9.7). |
 | `dead-symbols` | check | Automatic | `{stop, check}` | None. |
 | `reachability` | check | Automatic | `{stop, check}` | None. Named re-export is a reference (ADR 0061). App mode over the module graph (#580). |
 | `layering` | check | Automatic | `{stop, check}` | None. |
@@ -1477,6 +1482,50 @@ condition the row breaks. The text prints it under a `REVIEW:` line, and a
 gate whose only findings ride along prints no remedy. CI shows it in the job
 summary and as an annotation (section 16.2).
 
+### 9.7 A report-only row
+
+A row in the report-only tier of ADR 0073 has an N above 10 per 100 changes,
+and a person still wants its data. The `lines` ceiling of `complexity` is
+this tier when klin derives it. A ceiling a person pinned is policy and
+blocks, including one that `klin setup --pin` or `klin policy --suggest`
+wrote, and `test_lines` is always pinned. A `complexity` finding blocks when a
+ceiling it is over blocks, and is report-only otherwise.
+
+1. The row is placed `{check}` (6.2). The Stop resolves only the ceilings
+   that block, so a function over only a report-only ceiling is no finding
+   there: it does not block, the Stop prints nothing for it, and the
+   journal, `klin report` and `klin status` never hold it. The Stop takes no
+   derivation sample for such a ceiling. Pinned by
+   `a_function_over_the_derived_lines_ceiling_alone_does_not_block_the_stop`.
+2. The ratchet does not change. A function over a ceiling that blocks still
+   carries its `lines`, so a rise of them is `worsened` at the Stop too
+   (B.7.1). Pinned by
+   `a_function_over_the_cc_ceiling_whose_length_grew_under_a_derived_lines_blocks_the_stop`.
+   A function the base holds over a blocking ceiling that falls under it and
+   grows is report-only. Pinned by
+   `a_function_held_over_the_cc_ceiling_that_falls_under_it_and_grows_is_report_only`.
+3. At `klin check`, a new or worsened finding of the row is a note of kind
+   `report-only`, with its `file`, `line` and `values`. It is no finding and
+   no review item, so the gate judgement and the exit code do not change. The
+   text prints it under one `INFO:` line that says no change is needed and
+   that pinning the ceiling enforces it. Pinned by
+   `at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note`.
+4. A pinned ceiling blocks the Stop and fails `klin check`. Pinned by
+   `a_function_over_a_pinned_lines_ceiling_blocks_the_stop`,
+   `a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop` and
+   `a_function_over_the_length_ceiling_alone_fails`.
+5. `klin policy` adds `report only: pin it to block` to the `derived:` line of
+   the ceiling, and the `derived:` lines of `--pin` and `--suggest` end with
+   `Pinned, it blocks.` Pinned by
+   `policy_names_the_derived_lines_ceiling_as_report_only` and
+   `suggest_says_a_complexity_value_it_suggests_blocks_once_pinned`.
+6. CI makes no annotation for the note. The job summary counts the notes on
+   one line. Pinned by
+   `a_report_only_finding_is_no_annotation_and_one_line_of_the_summary` in
+   `tests/action.rs`.
+
+The tests of rules 1 to 5 are in `tests/complexity.rs`.
+
 ## 10. Host Protocol
 
 ### 10.1 One hidden ingress
@@ -1558,6 +1607,8 @@ The block budget of B.9.3 and ADR 0052 carries forward. In each prompt:
 - **Deleted test**: section 9.2. It shares the FAIL's block.
 - **Ride-along finding**: section 9.6. It appears only in a block that
   another finding spends, and spends no block on its own.
+- **Report-only finding**: section 9.7. The Stop never measures it, so it
+  spends no block.
 - **Review item**: spends no block, except the ask of section 9.2.
 - **Opened gap, coverage note, hole, error**: spends **no** gate block, at
   block 1 or block 2, and does not keep the stamp red. A run-scope
@@ -2200,7 +2251,8 @@ note), optional `file`, `line` and `text`, and `message`. A coverage note's
 `config`, `window` for what choosing the base found (section 6.5),
 `no-source-root` for a Stop in a tree whose survey found no source root, and
 `config-loosened` for a changed `klin.json` whose base policy could not be
-judged (section 16.2).
+judged (section 16.2), and `report-only` for a finding of a report-only row
+at `klin check` (section 9.7).
 
 A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail, text}`,
@@ -4404,7 +4456,8 @@ Three outcomes (ADR 0009):
 
 A `complexity` site ratchets both `cc` and `lines`, so a function over its
 `cc` ceiling is `worsened` when only its `lines` rise, even under the `lines`
-ceiling. A function in test code with no `test_lines` pinned ratchets `cc`
+ceiling. A `new` or `worsened` site over only a report-only ceiling is a note
+at `klin check` and no finding at the Stop (9.7). A function in test code with no `test_lines` pinned ratchets `cc`
 alone, because nothing judges its length (8.2.1). Pinned by
 `a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lines`.
 A function over its `cc` ceiling that leaves test code, such as one whose
