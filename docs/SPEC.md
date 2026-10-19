@@ -5573,7 +5573,9 @@ manifest, where the first of these that applies gives the text:
 
 These holes
 are notes where the base holds them, review items at `klin check` where the
-change opened them, and notes at the Stop (7.2), and never a FAIL. A member of
+change opened them, and notes at the Stop (7.2), and never a FAIL. Each block
+of them counts the app packages its forms keep from being judged, not the
+forms, and lists every form under it. A member of
 a derived family that an app owns is judged by app mode alone, so one file
 has one finding. A changed run walks both trees whole and compares findings by
 identity, as the family rule does; the walk reads the facts the run already
@@ -5639,8 +5641,9 @@ Pinned by `a_new_component_nothing_imports_fails`,
 `script_text_in_a_quoted_attribute_is_no_inline_module_script`,
 `a_template_tag_in_a_comment_inside_a_template_hides_no_entry`,
 `a_template_end_tag_in_a_quoted_attribute_keeps_the_template_inert`,
-`an_end_tag_whose_name_only_starts_with_the_raw_text_name_keeps_it_raw` and
-`a_package_that_names_next_and_vite_is_judged_as_a_next_app` in
+`an_end_tag_whose_name_only_starts_with_the_raw_text_name_keeps_it_raw`,
+`a_package_that_names_next_and_vite_is_judged_as_a_next_app` and
+`the_app_hole_note_counts_packages_not_the_aliases_inside_them` in
 `tests/app_reachability.rs`, and by the recall suite of #572 in
 `tests/recall.rs`. Known limits: a new file under `components/ui` is no finding where no
 `components.json` exists, and a new `*.config` file at the package root is an

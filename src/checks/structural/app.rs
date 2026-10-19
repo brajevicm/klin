@@ -413,9 +413,33 @@ pub(super) struct Judged {
     pub owned: HashSet<String>,
     pub judged: HashSet<String>,
     pub excluded: HashSet<String>,
-    pub holes: Vec<Unresolved>,
+    holes: Vec<Unresolved>,
+    /// The manifest of the package each file of a hole lies in.
+    owners: HashMap<String, String>,
     /// What reading the tree's module graph cost, and none where no app package asked for it.
     pub graph: Option<GraphCost>,
+}
+
+impl Judged {
+    /// The holes that kept a package from being judged.
+    pub fn holes(&self) -> &[Unresolved] {
+        &self.holes
+    }
+
+    /// The package a file of a hole lies in. Every hole is recorded with its package.
+    pub fn owner<'a>(&'a self, file: &'a str) -> &'a str {
+        let owner = self.owners.get(file);
+        debug_assert!(owner.is_some(), "a hole with no package: {file}");
+        owner.map_or(file, String::as_str)
+    }
+
+    /// The holes that keep the package at `manifest` from being judged.
+    fn unjudged(&mut self, manifest: &str, holes: impl IntoIterator<Item = Unresolved>) {
+        for hole in holes {
+            self.owners.insert(hole.file.clone(), manifest.to_string());
+            self.holes.push(hole);
+        }
+    }
 }
 
 pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
@@ -435,12 +459,14 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
         if let Role::Unjudged(why) = package.role
             && selected
         {
-            out.holes.push(Unresolved {
-                file: current(&package.manifest),
+            let manifest = current(&package.manifest);
+            let hole = Unresolved {
+                file: manifest.clone(),
                 line: 0,
                 text: format!("{} TypeScript file(s)", files.len()),
                 why: why.to_string(),
-            });
+            };
+            out.unjudged(&manifest, [hole]);
         }
     }
     if !packages.iter().any(Package::judged) {
@@ -649,7 +675,7 @@ impl App<'_, '_> {
     fn judge(&self, out: &mut Judged) {
         let unproved = self.unproved();
         if !unproved.is_empty() {
-            out.holes.extend(unproved);
+            out.unjudged(&(self.current)(&self.package.manifest), unproved);
             return;
         }
         let kinds = self.kinds();

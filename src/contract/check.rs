@@ -655,11 +655,13 @@ pub enum Hole {
     },
     /// A manifest klin could not parse, which the gate already classed against the base.
     Manifest { site: Site, class: Class },
-    /// Forms the gate supports and could not resolve, `opened` where the base held none of them.
+    /// Forms the gate supports and could not resolve, `opened` where the base held none of them,
+    /// and how many of what `kind` names they are.
     Unresolved {
         opened: bool,
         kind: Unresolvable,
         forms: Vec<(Located, String)>,
+        units: usize,
     },
 }
 

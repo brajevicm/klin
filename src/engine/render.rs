@@ -106,6 +106,7 @@ fn holed(hole: &Hole, out: &mut String) {
         opened,
         kind,
         forms,
+        units,
     } = hole
     else {
         return;
@@ -116,7 +117,7 @@ fn holed(hole: &Hole, out: &mut String) {
     };
     block(
         out,
-        &format!("{word}: {} {}:", forms.len(), unresolved(*kind)),
+        &format!("{word}: {units} {}:", unresolved(*kind)),
         forms
             .iter()
             .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text)),
