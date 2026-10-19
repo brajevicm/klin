@@ -5025,7 +5025,19 @@ field name reads as a reference too (ADR 0035), and so does a TypeScript
 `tests/dead_symbols.rs`. A name
 resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
-shared test convention recognizes are not judged. A TypeScript declaration
+shared test convention recognizes are not judged. A member of a TypeScript
+class or interface leaves the file with it, whether `export class Box` writes
+the export on it or a statement beside it, `export { Box }`, `export { Box as
+Crate }`, `export = Box` or `export default Box`, names it, also through
+parentheses, `as` or `satisfies`, as in `export default (Box)`. An export clause
+with a source, such as `export { Box } from "./other"`, names no local class,
+so the members of such a class are still judged. These rules are pinned by
+`a_member_of_a_class_an_export_clause_exposes_is_not_judged`,
+`a_member_of_a_class_an_export_assignment_exposes_is_not_judged`,
+`a_member_of_a_class_a_default_export_exposes_is_not_judged`,
+`a_member_of_a_class_a_grouped_or_asserted_export_names_is_not_judged` and
+`an_unused_member_of_a_class_no_export_exposes_is_dead` in
+`tests/dead_symbols.rs`. A TypeScript declaration
 inside a global augmentation, `declare global { ... }` or a `global { ... }`
 block a `declare module` holds, is externally visible, because it adds a name
 to the global scope that code reads without an import. The two forms are

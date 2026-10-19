@@ -610,7 +610,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
             text: self.text(node),
-            externally_visible: (self.adapter.visible)(node, &mut self.scope),
+            externally_visible: (self.adapter.visible)(node, self.source, &mut self.scope),
             entry_point,
             nesting: (self.adapter.nesting)(node, self.source),
             associated: above(node, self.adapter.methods_in).is_some(),

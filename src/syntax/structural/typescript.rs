@@ -106,6 +106,20 @@ const METHODS: &[&str] = &[
     "abstract_method_signature",
 ];
 
+/// The declarations whose members leave the file with them.
+const OWNERS: &[&str] = &[
+    "class_declaration",
+    "abstract_class_declaration",
+    "interface_declaration",
+];
+
+/// The expressions that wrap a value without changing which value it is.
+const TRANSPARENT: &[&str] = &[
+    "parenthesized_expression",
+    "as_expression",
+    "satisfies_expression",
+];
+
 /// The members a class or an interface body lists in its contract.
 const MEMBERS: &[&str] = &[
     "method_definition",
@@ -124,10 +138,68 @@ const INFERRED: &str = ": ?";
 const EVERY: &str = "*";
 
 /// Whether this declaration leaves the file: an `export` above it says so, and a member of an
-/// exported class leaves with the class. Otherwise the nearest ambient context decides, and a
-/// declaration outside every one leaves a script as a global.
-fn visible(node: Node, scope: &mut Scope) -> bool {
-    above(node, &["export_statement"]).is_some() || ambient(node, scope).unwrap_or(scope.script)
+/// exported class leaves with the class, also where a later export clause or `export =` names
+/// the class. Otherwise the nearest ambient context decides, and a declaration outside every one
+/// leaves a script as a global.
+fn visible(node: Node, source: &[u8], scope: &mut Scope) -> bool {
+    above(node, &["export_statement"]).is_some()
+        || owner_named(node, source, scope)
+        || ambient(node, scope).unwrap_or(scope.script)
+}
+
+/// Whether the statements beside the class or interface that holds this member export it by
+/// its name.
+fn owner_named(node: Node, source: &[u8], scope: &mut Scope) -> bool {
+    let Some(owner) = node
+        .parent()
+        .and_then(|body| body.parent())
+        .filter(|held| OWNERS.contains(&held.kind()))
+    else {
+        return false;
+    };
+    let Some(name) = owner.child_by_field_name("name") else {
+        return false;
+    };
+    let statement = owner
+        .parent()
+        .filter(|held| held.kind() == "ambient_declaration")
+        .unwrap_or(owner);
+    let Some(body) = statement.parent() else {
+        return false;
+    };
+    scope.names(body, &text_of(name, source), || {
+        exported_by_name(body, source)
+    })
+}
+
+/// The local names the statements of one body export by name: each name an export clause
+/// without a source lists, and the identifier `export =` or `export default` gives.
+fn exported_by_name(body: Node, source: &[u8]) -> HashSet<String> {
+    let mut cursor = body.walk();
+    let (assigned, clauses): (Vec<Node>, Vec<Node>) = body
+        .named_children(&mut cursor)
+        .filter(|held| declares_nothing(*held) && held.child_by_field_name("source").is_none())
+        .partition(|statement| has_token(*statement, "=") || has_token(*statement, "default"));
+    assigned
+        .iter()
+        .filter_map(|statement| statement.named_child(0))
+        .map(unwrapped)
+        .filter(|value| value.kind() == "identifier")
+        .map(|value| text_of(value, source))
+        .chain(clause_names(&clauses, source).into_keys())
+        .collect()
+}
+
+/// The expression inside the parentheses, `as` and `satisfies` that wrap it, which leave the
+/// value it names unchanged.
+fn unwrapped(mut value: Node) -> Node {
+    while TRANSPARENT.contains(&value.kind()) {
+        let Some(inner) = value.named_child(0) else {
+            break;
+        };
+        value = inner;
+    }
+    value
 }
 
 /// Whether a method is called without a reference that names it: whoever receives an object

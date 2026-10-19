@@ -1394,3 +1394,87 @@ fn a_changed_file_that_keeps_its_reference_names_widens_nothing() {
         "the unchanged declarations were judged: {report}"
     );
 }
+
+#[test]
+fn a_member_of_a_class_an_export_clause_exposes_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/box.ts",
+        "class Box {\n  open(): void {}\n}\n\nexport { Box as Crate };\n",
+    );
+    tree.write(
+        "src/socket.d.ts",
+        "declare class Socket {\n  send(data: string): void;\n}\n\ninterface Options {\n  timeout(): number;\n}\n\nexport { Socket, type Options };\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_member_of_a_class_an_export_assignment_exposes_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/box.ts",
+        "class Box {\n  open(): void {}\n}\n\nexport = Box;\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn an_unused_member_of_a_class_no_export_exposes_is_dead() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/box.ts",
+        "class Box {\n  open(): void {}\n}\n\nclass Crate {}\n\nexport { Crate };\nexport { Box } from \"./other\";\nexport const box = new Box();\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/box.ts:2"), "{}", run.out);
+}
+
+#[test]
+fn a_member_of_a_class_a_default_export_exposes_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/box.ts",
+        "class Box {\n  open(): void {}\n}\n\nexport default Box;\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_member_of_a_class_a_grouped_or_asserted_export_names_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/box.ts",
+        "class Box {\n  open(): void {}\n}\n\nexport default (Box);\n",
+    );
+    tree.write(
+        "src/crate.ts",
+        "class Crate {\n  open(): void {}\n}\n\nexport = (Crate);\n",
+    );
+    tree.write(
+        "src/chest.ts",
+        "class Chest {\n  open(): void {}\n}\n\nexport default (Chest as typeof Chest) satisfies object;\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}

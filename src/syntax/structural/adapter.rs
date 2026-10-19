@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use tree_sitter::Node;
 
@@ -18,7 +18,7 @@ pub(crate) struct Adapter {
     /// Whether a runtime or a framework calls this declaration without a reference that names it.
     pub called_without_its_name: fn(Node) -> bool,
     /// Whether a declaration leaves its file, given what its file says.
-    pub visible: fn(Node, &mut Scope) -> bool,
+    pub visible: fn(Node, &[u8], &mut Scope) -> bool,
     /// Whether a file, by its root node and its path, is a script that declares globals.
     pub script: fn(Node, &str) -> bool,
     pub imported: fn(Node, &[u8]) -> Imported,
@@ -55,10 +55,12 @@ pub(crate) struct Adapter {
 }
 
 /// What a file says about every declaration in it: whether it is a script, and what each
-/// ambient module in it was found to export, by the module's start byte, so each is read once.
+/// ambient module in it was found to export, and the names the statements of each body expose
+/// by name, by the start byte of the module or the body, so each is read once.
 pub(crate) struct Scope {
     pub script: bool,
     implicit: HashMap<usize, bool>,
+    named: HashMap<usize, HashSet<String>>,
 }
 
 impl Scope {
@@ -66,6 +68,7 @@ impl Scope {
         Scope {
             script,
             implicit: HashMap::new(),
+            named: HashMap::new(),
         }
     }
 
@@ -75,6 +78,20 @@ impl Scope {
             .implicit
             .entry(module.start_byte())
             .or_insert_with(read)
+    }
+
+    /// Whether the statements of the body at `body` expose `name` by name, read once for each
+    /// body.
+    pub fn names(
+        &mut self,
+        body: Node,
+        name: &str,
+        read: impl FnOnce() -> HashSet<String>,
+    ) -> bool {
+        self.named
+            .entry(body.start_byte())
+            .or_insert_with(read)
+            .contains(name)
     }
 }
 
