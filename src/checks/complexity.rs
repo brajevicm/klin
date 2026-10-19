@@ -33,6 +33,8 @@ pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
 const CC_FLOOR: u64 = 10;
 const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
+const BLOCKS: &str = "; blocks";
+const REPORTS: &str = "; report only: pin it to block";
 const PERCENTILE: usize = 95;
 
 /// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
@@ -701,7 +703,7 @@ fn pinned(
     let said = contract::check::Provenance::Pinned {
         section: SECTION,
         key: key.name.to_string(),
-        shown: format!("{ceiling}; blocks"),
+        shown: format!("{ceiling}{BLOCKS}"),
     };
     Ok((ceiling, said))
 }
@@ -762,8 +764,8 @@ fn derived(
         .map(|_| format!("; recorded scope: {}", found.scope.description()))
         .unwrap_or_default();
     recorded.push_str(match rule.reports_when_derived {
-        true => "; report only: pin it to block",
-        false => "; blocks",
+        true => REPORTS,
+        false => BLOCKS,
     });
     let said = contract::check::Derived::sampled(
         (SECTION, rule.key.name),
