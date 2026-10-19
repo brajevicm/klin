@@ -1514,9 +1514,11 @@ ceiling it is over blocks, and is report-only otherwise.
 3. At `klin check`, a new or worsened finding of the row is a note of kind
    `report-only`, with its `file`, `line` and `values`. It is no finding and
    no review item, so the gate judgement and the exit code do not change. The
-   text prints it under one `INFO:` line that says no change is needed and
-   that pinning the ceiling enforces it. Pinned by
-   `at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note`.
+   text prints the new and worsened notes of a gate under one `INFO:` line
+   that says no change is needed and that pinning the ceiling enforces it.
+   Pinned by
+   `at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note`
+   and `a_new_and_a_worsened_report_only_finding_print_under_one_info_line`.
 4. A pinned ceiling blocks the Stop and fails `klin check`. Pinned by
    `a_function_over_a_pinned_lines_ceiling_blocks_the_stop`,
    `a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop`,

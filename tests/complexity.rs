@@ -2220,6 +2220,20 @@ fn a_function_over_the_cc_ceiling_whose_length_grew_under_a_derived_lines_blocks
 }
 
 #[test]
+fn a_new_and_a_worsened_report_only_finding_print_under_one_info_line() {
+    let tree = derived_lines();
+    tree.write("src/old.rs", &exported("held", 30));
+    tree.base();
+    tree.write("src/old.rs", &exported("held", 35));
+    tree.write("src/long.rs", &exported("stretched", 30));
+
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.out.matches("INFO:").count(), 1, "{}", run.out);
+    assert!(run.says("INFO: 2 function(s)"), "{}", run.out);
+}
+
+#[test]
 fn a_function_held_over_the_cc_ceiling_that_falls_under_it_and_grows_is_report_only() {
     let tree = derived_lines();
     let knot = stretched(TANGLED, 20);
