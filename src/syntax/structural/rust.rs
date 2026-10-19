@@ -89,7 +89,7 @@ const SERDE_CALLABLES: &[&str] = &[
 
 /// Whether this declaration is reachable past the file that holds it: it says so itself, a
 /// trait states it, or a trait implementation carries it and the trait exposes it.
-fn visible(node: Node, _: &mut Scope) -> bool {
+fn visible(node: Node, _: &[u8], _: &mut Scope) -> bool {
     marked(node) || above(node, &["trait_item"]).is_some() || implements_a_trait(node)
 }
 
