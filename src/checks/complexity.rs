@@ -10,7 +10,7 @@ use crate::config::ceiling::{self, Ceiling};
 use crate::config::key::Key;
 use crate::config::scope::{self, Scope};
 use crate::contract;
-use crate::contract::check::{ContentCost, Context, Line, Sink};
+use crate::contract::check::{Caller, ContentCost, Context, Line, Sink, Tier};
 use crate::contract::coverage::Files;
 use crate::contract::holes;
 use crate::contract::project::Project;
@@ -33,6 +33,8 @@ pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
 const CC_FLOOR: u64 = 10;
 const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
+const BLOCKS: &str = "; blocks";
+const REPORTS: &str = "; report only: pin it to block";
 const PERCENTILE: usize = 95;
 
 /// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
@@ -62,6 +64,61 @@ pub const LINES: Key = Key {
     default: "",
     shape: crate::config::key::Shape::Ceiling,
 };
+
+/// One ceiling the section reads: its key, its words in the gate text, the floor and measure klin
+/// derives it from when the section leaves it out, and whether a derived one only reports. A
+/// report-only ceiling is a note at `klin check`, and the Stop never resolves it. ADR 0063,
+/// ADR 0073, spec 9.7.
+struct Rule {
+    measure: Measure,
+    key: Key,
+    words: (&'static str, &'static str),
+    derived: Option<Derivation>,
+    reports_when_derived: bool,
+}
+
+/// The floor a derived ceiling never goes below, and the measure of the sample it takes.
+type Derivation = (u64, fn(&Sample) -> u64);
+
+/// What a ceiling judges, which names its rule apart from the key a person writes.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Measure {
+    Cc,
+    Lines,
+    TestLines,
+}
+
+const RULES: [Rule; 3] = [
+    Rule {
+        measure: Measure::Cc,
+        key: CC,
+        words: ("cyclomatic > ", ""),
+        derived: Some((CC_FLOOR, sampled_cc)),
+        reports_when_derived: false,
+    },
+    Rule {
+        measure: Measure::Lines,
+        key: LINES,
+        words: ("body > ", " lines"),
+        derived: Some((LINES_FLOOR, sampled_lines)),
+        reports_when_derived: true,
+    },
+    Rule {
+        measure: Measure::TestLines,
+        key: TEST_LINES,
+        words: ("test body > ", " lines"),
+        derived: None,
+        reports_when_derived: false,
+    },
+];
+
+fn sampled_cc(found: &Sample) -> u64 {
+    found.cc
+}
+
+fn sampled_lines(found: &Sample) -> u64 {
+    found.lines
+}
 
 pub const TEST_LINES: Key = Key {
     name: "test_lines",
@@ -285,29 +342,34 @@ impl Function {
         self.end - self.line + 1
     }
 
-    fn length_ceiling<'a>(&self, ceilings: &'a Ceilings) -> Option<&'a Ceiling> {
+    fn length_measure(&self) -> Measure {
         match self.test {
-            true => ceilings.test_lines.as_ref(),
-            false => Some(&ceilings.lines),
+            true => Measure::TestLines,
+            false => Measure::Lines,
         }
     }
 
     fn over(&self, ceilings: &Ceilings) -> bool {
-        self.cc > ceilings.cc.value
-            || self
-                .length_ceiling(ceilings)
-                .is_some_and(|ceiling| self.length() > ceiling.value)
+        ceilings.exceeds(Measure::Cc, self.cc)
+            || ceilings.exceeds(self.length_measure(), self.length())
+    }
+
+    /// Whether the function's length is one of its values. A production function always carries
+    /// it, so a rise of it is worse even where its length ceiling is not measured, and a test
+    /// function carries it only under a pinned `test_lines`. ADR 0062 Q2, spec 8.2.1.
+    fn carries_length(&self, ceilings: &Ceilings) -> bool {
+        !self.test || ceilings.holds(Measure::TestLines)
     }
 
     fn finding(&self, ceilings: &Ceilings) -> Finding {
         let mut values = Values::new();
         values.insert(CC.name.into(), self.cc.into());
-        if self.length_ceiling(ceilings).is_some() {
+        if self.carries_length(ceilings) {
             let key = match self.test {
-                true => TEST_LINES,
-                false => LINES,
+                true => TEST_LINES.name,
+                false => LINES.name,
             };
-            values.insert(key.name.into(), self.length().into());
+            values.insert(key.into(), self.length().into());
         }
         Finding {
             file: self.file.clone(),
@@ -319,21 +381,56 @@ impl Function {
     }
 }
 
+/// The ceilings in force, in the order of `RULES`. One the Stop does not measure is absent
+/// there. Spec 6.2.
+#[derive(Default)]
 struct Ceilings {
-    cc: Ceiling,
-    lines: Ceiling,
-    test_lines: Option<Ceiling>,
+    held: Vec<Held>,
+}
+
+/// One ceiling in force, and whether it only reports. ADR 0073.
+struct Held {
+    rule: &'static Rule,
+    ceiling: Ceiling,
+    reports: bool,
+}
+
+impl Held {
+    fn exceeded_by(&self, value: u64) -> bool {
+        value > self.ceiling.value
+    }
 }
 
 impl Ceilings {
     fn named(&self) -> Vec<(&'static str, &Ceiling)> {
-        let mut named = vec![(CC.name, &self.cc), (LINES.name, &self.lines)];
-        named.extend(
-            self.test_lines
-                .iter()
-                .map(|ceiling| (TEST_LINES.name, ceiling)),
-        );
-        named
+        self.held
+            .iter()
+            .map(|held| (held.rule.key.name, &held.ceiling))
+            .collect()
+    }
+
+    fn holds(&self, measure: Measure) -> bool {
+        self.held.iter().any(|held| held.rule.measure == measure)
+    }
+
+    fn exceeds(&self, measure: Measure, value: u64) -> bool {
+        self.held
+            .iter()
+            .any(|held| held.rule.measure == measure && held.exceeded_by(value))
+    }
+
+    /// A finding blocks when a ceiling it is over blocks, and only reports otherwise. ADR 0073.
+    fn tier(&self, values: &Values) -> Tier {
+        let blocks = self.held.iter().filter(|held| !held.reports).any(|held| {
+            values
+                .get(held.rule.key.name)
+                .and_then(Value::as_u64)
+                .is_some_and(|value| held.exceeded_by(value))
+        });
+        match blocks {
+            true => Tier::Blocks,
+            false => Tier::Reports,
+        }
     }
 
     /// Every ceiling in force under its key, for the `OK:` line that names the dated steps.
@@ -374,12 +471,12 @@ type Provenance = Vec<contract::check::Provenance>;
 type Notes = Vec<(String, String)>;
 
 pub fn derive(project: &Project) -> Result<Provenance, Error> {
-    spec(project).map(|spec| spec.provenance)
+    spec(project, Caller::Gate).map(|spec| spec.provenance)
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
-    let mut spec = spec(project)?;
+    let mut spec = spec(project, at.caller)?;
     out.tell_each(std::mem::take(&mut spec.provenance));
     ratchet::noted_as(contract::check::DERIVATION, &spec.notes, out);
     let sweep = measure(
@@ -397,7 +494,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let before = at_the_base(&spec, &tests, at)?;
     out.record(|records| records.work = Some(sweep.work + before.work));
     let unjudged = before.unjudged;
-    let code = evaluator(&spec).evaluate(
+    let tier = |values: &Values| spec.ceilings.tier(values);
+    let code = evaluator(&spec, &tier).evaluate(
         now,
         before.found,
         ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
@@ -482,7 +580,7 @@ fn unjudged_tests<'a>(
 ) -> Unjudged<'a> {
     let tests: Vec<&Function> = functions
         .iter()
-        .filter(|function| function.test && function.length_ceiling(ceilings).is_none())
+        .filter(|function| !function.carries_length(ceilings))
         .filter(|function| at.only.is_none_or(|only| only.contains(&function.file)))
         .collect();
     Unjudged {
@@ -515,7 +613,7 @@ fn scoped<'a>(files: impl Iterator<Item = &'a String>, at: &Context) -> usize {
     }
 }
 
-fn evaluator(spec: &Spec) -> Evaluator<'_> {
+fn evaluator<'a>(spec: &'a Spec, tier: &'a dyn Fn(&Values) -> Tier) -> Evaluator<'a> {
     Evaluator {
         metrics: ACCEPTS.ratchets,
         unit: "function(s)",
@@ -529,13 +627,14 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
         ),
         format_metrics: show,
         nested: None,
-        rides_along: ratchet::every_row_blocks,
+        tier,
         worsened: ratchet::Worsened::Fails,
         fails: None,
     }
 }
 
-fn spec(project: &Project) -> Result<Spec, Error> {
+/// The policy of one run. The Stop resolves only the ceilings that block. Spec 6.2.
+fn spec(project: &Project, caller: Caller) -> Result<Spec, Error> {
     let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
     let selection = Selection {
@@ -548,26 +647,10 @@ fn spec(project: &Project) -> Result<Spec, Error> {
             config.file.display()
         )));
     }
-    let resolved = ceilings(project, &values, &selection.scope)?;
+    let resolved = ceilings(project, &values, &selection.scope, caller)?;
     Ok(Spec {
         selection,
-        gate_text: format!(
-            "over the complexity gate (cyclomatic > {}{} or body > {} lines{}{})",
-            resolved.ceilings.cc.value,
-            resolved.ceilings.cc.note(),
-            resolved.ceilings.lines.value,
-            resolved.ceilings.lines.note(),
-            resolved
-                .ceilings
-                .test_lines
-                .as_ref()
-                .map(|ceiling| format!(
-                    ", or test body > {} lines{}",
-                    ceiling.value,
-                    ceiling.note()
-                ))
-                .unwrap_or_default()
-        ),
+        gate_text: gate_text(&resolved.ceilings),
         ceiling_text: resolved
             .ceilings
             .named()
@@ -579,6 +662,24 @@ fn spec(project: &Project) -> Result<Spec, Error> {
         provenance: resolved.provenance,
         notes: resolved.notes,
     })
+}
+
+fn gate_text(ceilings: &Ceilings) -> String {
+    let parts: Vec<String> = ceilings
+        .held
+        .iter()
+        .map(|held| {
+            let (before, after) = held.rule.words;
+            let (value, note) = (held.ceiling.value, held.ceiling.note());
+            format!("{before}{value}{after}{note}")
+        })
+        .collect();
+    let joined = match parts.as_slice() {
+        [cc, lines, test] => format!("{cc} or {lines}, or {test}"),
+        [first, second] => format!("{first} or {second}"),
+        _ => parts.join(""),
+    };
+    format!("over the complexity gate ({joined})")
 }
 
 struct Resolved {
@@ -602,57 +703,77 @@ fn pinned(
     let said = contract::check::Provenance::Pinned {
         section: SECTION,
         key: key.name.to_string(),
-        shown: ceiling.to_string(),
+        shown: format!("{ceiling}{BLOCKS}"),
     };
     Ok((ceiling, said))
 }
 
-fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolved, Error> {
+fn ceilings(
+    project: &Project,
+    section: &Values,
+    scope: &Scope,
+    caller: Caller,
+) -> Result<Resolved, Error> {
     let sample = OnceCell::new();
-    let resolve = |key: Key, floor: u64, measure: fn(&Sample) -> u64| -> Result<_, Error> {
-        if let Some(value) = section.get(key.name) {
-            return pinned(project, key, value);
-        }
-        let (found, commit) = sample.get_or_init(|| derived_sample(project));
-        let value = measure(found).max(floor);
-        let rule = number_rule(value, floor, found.functions, commit.as_deref());
-        let recorded = commit
-            .as_ref()
-            .map(|_| format!("; recorded scope: {}", found.scope.description()))
-            .unwrap_or_default();
-        let said = contract::check::Derived::sampled(
-            (SECTION, key.name),
-            value.into(),
-            value.to_string(),
-            (&rule, recorded),
-        );
-        Ok((Ceiling { value, step: None }, said.into()))
-    };
-    let (cc, cc_said) = resolve(CC, CC_FLOOR, |found| found.cc)?;
-    let (lines, lines_said) = resolve(LINES, LINES_FLOOR, |found| found.lines)?;
-    let mut provenance = vec![cc_said, lines_said];
-    let test_lines = match section.get(TEST_LINES.name) {
-        Some(value) => {
-            let (ceiling, said) = pinned(project, TEST_LINES, value)?;
+    let mut ceilings = Ceilings::default();
+    let mut provenance = Vec::new();
+    for rule in &RULES {
+        let pin = section.get(rule.key.name);
+        let resolved = match pin {
+            Some(value) => Some(pinned(project, rule.key, value)?),
+            None => derived(project, &sample, rule, caller),
+        };
+        if let Some((ceiling, said)) = resolved {
             provenance.push(said);
-            Some(ceiling)
+            ceilings.held.push(Held {
+                rule,
+                ceiling,
+                reports: pin.is_none() && rule.reports_when_derived,
+            });
         }
-        None => None,
-    };
+    }
     let file = config_name(&project.config.file);
     let notes = sample
         .get()
         .map(|(found, commit)| sample_notes(found, commit.as_deref(), scope, file))
         .unwrap_or_default();
     Ok(Resolved {
-        ceilings: Ceilings {
-            cc,
-            lines,
-            test_lines,
-        },
+        ceilings,
         provenance,
         notes,
     })
+}
+
+/// The ceiling the derivation commit gives a key the section leaves out. `test_lines` is never
+/// derived, and the Stop resolves no ceiling that only reports. ADR 0063, spec 9.7.
+fn derived(
+    project: &Project,
+    sample: &OnceCell<(Sample, Option<String>)>,
+    rule: &Rule,
+    caller: Caller,
+) -> Option<(Ceiling, contract::check::Provenance)> {
+    let (floor, measure) = rule.derived?;
+    if rule.reports_when_derived && caller == Caller::Hook {
+        return None;
+    }
+    let (found, commit) = sample.get_or_init(|| derived_sample(project));
+    let value = measure(found).max(floor);
+    let number = number_rule(value, floor, found.functions, commit.as_deref());
+    let mut recorded = commit
+        .as_ref()
+        .map(|_| format!("; recorded scope: {}", found.scope.description()))
+        .unwrap_or_default();
+    recorded.push_str(match rule.reports_when_derived {
+        true => REPORTS,
+        false => BLOCKS,
+    });
+    let said = contract::check::Derived::sampled(
+        (SECTION, rule.key.name),
+        value.into(),
+        value.to_string(),
+        (&number, recorded),
+    );
+    Some((Ceiling { value, step: None }, said.into()))
 }
 
 #[derive(Clone, Default)]
@@ -671,16 +792,24 @@ pub fn suggested(project: &Project) -> Vec<(&'static str, u64, String)> {
     let (found, Some(commit)) = derived_sample(project) else {
         return Vec::new();
     };
-    [(CC, CC_FLOOR, found.cc), (LINES, LINES_FLOOR, found.lines)]
-        .into_iter()
-        .map(|(key, floor, measured)| {
-            let value = measured.max(floor);
-            let rule = number_rule(value, floor, found.functions, Some(&commit));
-            (
-                key.name,
+    RULES
+        .iter()
+        .filter_map(|rule| {
+            let (floor, measure) = rule.derived?;
+            let value = measure(&found).max(floor);
+            let number = number_rule(value, floor, found.functions, Some(&commit));
+            let tier = match rule.reports_when_derived {
+                true => ". Derived, it only reports. Pinned, it blocks.",
+                false => ". Pinned, it blocks.",
+            };
+            Some((
+                rule.key.name,
                 value,
-                format!("derived: {SECTION} {} {value} ({rule})", key.name),
-            )
+                format!(
+                    "derived: {SECTION} {} {value} ({number}){tier}",
+                    rule.key.name
+                ),
+            ))
         })
         .collect()
 }
@@ -891,9 +1020,11 @@ fn selected(tree: &Tree, selection: &Selection) -> Result<files::Found, Error> {
 
 /// How many files this gate judges in the working tree, which `klin policy` prints. Spec 11.6.
 pub fn judges(project: &Project) -> Result<usize, Error> {
-    Ok(selected(project.tree(), &spec(project)?.selection)?
-        .kept
-        .len())
+    Ok(
+        selected(project.tree(), &spec(project, Caller::Gate)?.selection)?
+            .kept
+            .len(),
+    )
 }
 
 fn measure(

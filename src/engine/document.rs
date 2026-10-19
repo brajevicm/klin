@@ -382,21 +382,22 @@ fn joined(found: &mut [Failed], kept: &[(&str, &str)]) {
     }
 }
 
-/// At `klin check`, a finding of a ride-along row is a review item, and a remedy told only for
-/// such findings goes with them. ADR 0073, spec 9.6.
+/// At `klin check`, a finding of a ride-along row is a review item and one of a report-only row
+/// is a note, and a remedy told only for such findings goes with them. The report-only findings
+/// of new and worsened results print under one heading. ADR 0073, spec 9.6, 9.7.
 fn reviewed(told: Vec<Told>) -> Vec<Told> {
     let split: Vec<Told> = told
         .into_iter()
         .flat_map(|mut item| {
-            let riders = match &mut item {
-                Told::Ratchet(said) => said.ride_along(),
-                _ => None,
+            let split = match &mut item {
+                Told::Ratchet(said) => said.split_tiers(),
+                _ => Vec::new(),
             };
             let emptied = matches!(&item, Told::Ratchet(said) if said.emptied());
             (!emptied)
                 .then_some(item)
                 .into_iter()
-                .chain(riders.map(Told::from))
+                .chain(split.into_iter().map(Told::from))
         })
         .collect();
     let blocks = split.iter().any(|item| {
@@ -405,10 +406,25 @@ fn reviewed(told: Vec<Told>) -> Vec<Told> {
             Told::Ratchet(Ratchet::New { .. } | Ratchet::Worse { .. } | Ratchet::Asked { .. })
         )
     });
-    split
-        .into_iter()
-        .filter(|item| blocks || !matches!(item, Told::Plain(Plain::Remedy(_))))
-        .collect()
+    let mut kept: Vec<Told> = Vec::new();
+    let mut reported = None;
+    for item in split {
+        match (item, reported) {
+            (Told::Ratchet(Ratchet::Reported { failed, .. }), Some(at)) => {
+                if let Told::Ratchet(Ratchet::Reported { failed: first, .. }) = &mut kept[at] {
+                    first.extend(failed);
+                }
+            }
+            (Told::Plain(Plain::Remedy(_)), _) if !blocks => {}
+            (item, _) => {
+                if matches!(item, Told::Ratchet(Ratchet::Reported { .. })) {
+                    reported = Some(kept.len());
+                }
+                kept.push(item);
+            }
+        }
+    }
+    kept
 }
 
 /// A Stop's result of a gate whose only failures are of ride-along rows, split into what it
@@ -1924,7 +1940,7 @@ fn erred(gate: &str, item: &Told) -> Vec<Problem> {
 mod tests {
     use super::*;
     use crate::config::file::Config;
-    use crate::contract::check::{Counted, Line};
+    use crate::contract::check::{Counted, Line, Tier};
     use crate::contract::ratchet::{self, Evaluator, Remedy};
     use crate::sys::record::Values;
 
@@ -1938,7 +1954,10 @@ mod tests {
         ceiling: None,
         format_metrics: |_| "count 1".to_string(),
         nested: None,
-        rides_along: |values| values.get("kind").and_then(Value::as_str) == Some(RIDER),
+        tier: &|values| match values.get("kind").and_then(Value::as_str) == Some(RIDER) {
+            true => Tier::RidesAlong,
+            false => Tier::Blocks,
+        },
         worsened: ratchet::Worsened::Fails,
         fails: None,
     };

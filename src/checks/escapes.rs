@@ -3,7 +3,7 @@ use serde_json::Value;
 use crate::checks::markers::{self, Kind, Language, TestCode, TestIdioms};
 use crate::config::key::Key;
 use crate::config::scope;
-use crate::contract::check::{Context, Sink};
+use crate::contract::check::{Context, Sink, Tier};
 use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Remedy};
 use crate::syntax::LanguageId;
@@ -205,7 +205,7 @@ pub const KIND: Kind = Kind {
         ceiling: None,
         format_metrics: show,
         nested: None,
-        rides_along,
+        tier: &tier,
         worsened: ratchet::Worsened::Fails,
         fails: None,
     },
@@ -222,11 +222,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     markers::gate(&KIND, at, out)
 }
 
-fn rides_along(values: &Values) -> bool {
-    values
+fn tier(values: &Values) -> Tier {
+    let rides = values
         .get(LABEL)
         .and_then(Value::as_str)
-        .is_some_and(|name| RIDE_ALONG.contains(&name))
+        .is_some_and(|name| RIDE_ALONG.contains(&name));
+    match rides {
+        true => Tier::RidesAlong,
+        false => Tier::Blocks,
+    }
 }
 
 fn show(values: &Values) -> String {

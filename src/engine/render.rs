@@ -13,8 +13,9 @@ use crate::contract;
 use crate::contract::check::{
     AMBIGUOUS, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, DERIVATION,
     Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed,
-    Located, Matched, Measured, Plain, Provenance, PublicApi, RIDE_ALONG, Ratchet, Standing, Told,
-    UNBUILT, UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
+    Located, Matched, Measured, Plain, Provenance, PublicApi, REPORT_ONLY, RIDE_ALONG, Ratchet,
+    Standing, Tier, Told, UNBUILT, UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched,
+    Unresolvable, Wording,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Unmeasured};
@@ -218,6 +219,7 @@ fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
             condition,
             failed,
         } => riders((unit, condition), failed, out),
+        Ratchet::Reported { unit, failed } => reported(unit, failed, out),
         Ratchet::AcceptedUnmatched {
             entries: unmatched,
             caller,
@@ -293,6 +295,11 @@ fn riders((unit, condition): (&str, &str), failed: &[Failed], out: &mut String) 
         "REVIEW: {} {unit} {condition}, of rows that fail no run:",
         failed.len()
     );
+    site_lines(failed, out);
+}
+
+/// Each finding on its own line, as `file:line  values  text`.
+fn site_lines(failed: &[Failed], out: &mut String) {
     for finding in failed {
         let _ = writeln!(
             out,
@@ -303,6 +310,17 @@ fn riders((unit, condition): (&str, &str), failed: &[Failed], out: &mut String) 
             clip(&finding.text)
         );
     }
+}
+
+/// The findings of report-only rows at `klin check`, which ask for nothing. ADR 0073, spec 9.7.
+fn reported(unit: &str, failed: &[Failed], out: &mut String) {
+    let _ = writeln!(
+        out,
+        "INFO: {} {unit} over a derived ceiling only. Information only: no change is needed. \
+         Pin the ceiling in klin.json to enforce it:",
+        failed.len()
+    );
+    site_lines(failed, out);
 }
 
 fn worse(unit: &str, failed: &[Failed], out: &mut String) {
@@ -1180,6 +1198,15 @@ fn ratchet_records(said: &Ratchet, out: &mut GateRecords) {
             reason: Slot::Is(condition.clone()),
             values: Some(finding.values.clone()),
         })),
+        Ratchet::Reported { failed, .. } => out.notes.extend(failed.iter().map(|finding| Note {
+            check: Some(out.gate.clone()),
+            kind: REPORT_ONLY,
+            message: format!("{}  {}", finding.shown, clip(&finding.text)),
+            coverage: Some(false),
+            file: Slot::Is(finding.file.clone()),
+            line: Some(finding.line),
+            values: Some(finding.values.clone()),
+        })),
         Ratchet::AcceptedUnmatched { entries, caller } => {
             for unmatched in entries {
                 unmatched_record(&unmatched.entry, *caller, out);
@@ -1231,7 +1258,7 @@ fn failed_findings(outcome: Outcome, condition: &str, failed: &[Failed], out: &m
             matched,
             condition: condition.to_string(),
             remedy: finding.fix_advice.clone(),
-            rides_along: finding.rides_along,
+            rides_along: finding.tier == Tier::RidesAlong,
         });
     }
 }

@@ -53,6 +53,8 @@ pub const DELETED_TEST: &str = "deleted-test";
 
 /// The review item kind of a finding of a ride-along row at `klin check`. ADR 0073, spec 9.6.
 pub const RIDE_ALONG: &str = "ride-along";
+/// The note kind of a finding of a report-only row at `klin check`. ADR 0073, spec 9.7.
+pub const REPORT_ONLY: &str = "report-only";
 
 /// The review item kind of an accepted entry that matched nothing, which only a person acts on.
 /// Spec 7.6.
@@ -480,9 +482,18 @@ pub struct Failed {
     /// The new finding whose group this one prints inside, for a gate whose text report groups
     /// what one change took away. Presentation only.
     pub lead: Option<usize>,
-    /// Whether the finding's row is in the ride-along tier, so it blocks no Stop on its own and
-    /// is a review item at `klin check`. ADR 0073, spec 9.6.
-    pub rides_along: bool,
+    /// The tier of the finding's row. A ride-along finding blocks no Stop on its own and is a
+    /// review item at `klin check`, and a report-only one is a note there. ADR 0073, spec 9.6.
+    pub tier: Tier,
+}
+
+/// The tier of ADR 0073 a row is in: it blocks, it rides a spent block, or it only reports at
+/// `klin check`. Spec 9.6, 9.7.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Tier {
+    Blocks,
+    RidesAlong,
+    Reports,
 }
 
 /// An accepted entry that matched nothing this run: the entry, the check's words for its values,
@@ -719,6 +730,8 @@ pub enum Ratchet {
         condition: String,
         failed: Vec<Failed>,
     },
+    /// The findings of report-only rows at `klin check`: notes. ADR 0073, spec 9.7.
+    Reported { unit: String, failed: Vec<Failed> },
     /// The accepted entries that matched nothing: a review item at `klin check`, and a note at
     /// the Stop. Never a failure. Spec 7.6.
     AcceptedUnmatched {
@@ -728,10 +741,10 @@ pub enum Ratchet {
 }
 
 impl Ratchet {
-    /// Takes the findings of ride-along rows out of a new or worsened result, as a result of
-    /// their own. What stays loses its text groups, whose leads index the unsplit list.
-    /// Spec 9.6.
-    pub fn ride_along(&mut self) -> Option<Ratchet> {
+    /// Takes the findings of ride-along rows and of report-only rows out of a new or worsened
+    /// result, each as a result of its own. What stays loses its text groups, whose leads index
+    /// the unsplit list. Spec 9.6, 9.7.
+    pub fn split_tiers(&mut self) -> Vec<Ratchet> {
         let (Ratchet::New {
             unit,
             condition,
@@ -749,18 +762,26 @@ impl Ratchet {
             failed,
         }) = self
         else {
-            return None;
+            return Vec::new();
         };
-        let riders: Vec<Failed> = failed.extract_if(.., |found| found.rides_along).collect();
-        if riders.is_empty() {
-            return None;
+        let mut taken = |tier: Tier| -> Vec<Failed> {
+            failed.extract_if(.., |found| found.tier == tier).collect()
+        };
+        let (riders, reported) = (taken(Tier::RidesAlong), taken(Tier::Reports));
+        if riders.is_empty() && reported.is_empty() {
+            return Vec::new();
         }
         failed.iter_mut().for_each(|found| found.lead = None);
-        Some(Ratchet::RidesAlong {
+        let riders = (!riders.is_empty()).then(|| Ratchet::RidesAlong {
             unit: unit.clone(),
             condition: condition.clone(),
             failed: riders,
-        })
+        });
+        let reported = (!reported.is_empty()).then(|| Ratchet::Reported {
+            unit: unit.clone(),
+            failed: reported,
+        });
+        riders.into_iter().chain(reported).collect()
     }
 
     /// Whether this is a new or worsened result with no finding left in it.

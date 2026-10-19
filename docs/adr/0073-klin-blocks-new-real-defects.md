@@ -48,7 +48,8 @@ N is the count of not-appropriate findings per 100 changes on the replay of
 | Blocks, with a safe remedy (a type, a comment, a marker) | N of 3 or less | Blocks the Stop |
 | Blocks, with a remedy that deletes code or changes behavior (orphan files, error handlers) | N of 1 or less | Blocks the Stop |
 | Rides a spent block, with a safe remedy | N above 3 and at most 10 | Appears only in a Stop that already blocks for another finding, through the mechanism of #584 |
-| Rejected | N above 10, or above 1 for a remedy that deletes code or changes behavior | No row |
+| Reports only | N above 10, and a person still wants the data | A note at `klin check`. The Stop never measures it |
+| Rejected | N above 10 and no person wants the data, or above 1 for a remedy that deletes code or changes behavior | No row |
 
 A row whose remedy deletes code or changes behavior never rides a spent
 block. The stricter bar exists because a wrong deletion can remove work the
@@ -63,6 +64,25 @@ Two more conditions hold for every row:
   drafted the earlier labels.
 
 #591 builds the ride-along tier and states what it means at `klin check`.
+
+## The report-only tier
+
+Decided for #696, 2026-10-19. #585 measured the lines-only findings of
+`complexity` at N 99 per 100 changes
+(`docs/complexity-calibration-2026-10-16.md`). That is far into the rejected
+band, but the owner still wants the data, so a fourth tier keeps it.
+
+- A report-only row runs at `klin check` only (SPEC 6.2, 9.7). The Stop never
+  measures it, so it costs the Stop nothing and never reaches the agent, the
+  journal, `klin report` or `klin status`.
+- At `klin check`, each of its findings is a note. It changes no judgement and
+  no exit code, and CI annotates none of them.
+- The tier holds a ceiling klin derives. A ceiling in `klin.json` is policy and
+  blocks, whoever wrote it: a person, `klin setup --pin` or a suggestion of
+  `klin policy --suggest` the person picked. The bar judges klin's defaults,
+  and a pin is a person's choice to enforce one.
+- The derived `lines` ceiling of `complexity` is the first row in this tier.
+  `test_lines` is never derived, so it always blocks.
 
 ## What stays with each check
 
