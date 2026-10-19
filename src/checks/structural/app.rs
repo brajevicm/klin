@@ -413,21 +413,28 @@ pub(super) struct Judged {
     pub owned: HashSet<String>,
     pub judged: HashSet<String>,
     pub excluded: HashSet<String>,
-    pub holes: Vec<Unresolved>,
+    holes: Vec<Unresolved>,
     /// The manifest of the package each file of a hole lies in.
-    pub owners: HashMap<String, String>,
+    owners: HashMap<String, String>,
     /// What reading the tree's module graph cost, and none where no app package asked for it.
     pub graph: Option<GraphCost>,
 }
 
 impl Judged {
-    /// The package a file of a hole lies in, or the file itself where no package holds it.
+    /// The holes that kept a package from being judged.
+    pub fn holes(&self) -> &[Unresolved] {
+        &self.holes
+    }
+
+    /// The package a file of a hole lies in. Every hole is recorded with its package.
     pub fn owner<'a>(&'a self, file: &'a str) -> &'a str {
-        self.owners.get(file).map_or(file, String::as_str)
+        let owner = self.owners.get(file);
+        debug_assert!(owner.is_some(), "a hole with no package: {file}");
+        owner.map_or(file, String::as_str)
     }
 
     /// The holes that keep the package at `manifest` from being judged.
-    fn unjudged(&mut self, manifest: &str, holes: Vec<Unresolved>) {
+    fn unjudged(&mut self, manifest: &str, holes: impl IntoIterator<Item = Unresolved>) {
         for hole in holes {
             self.owners.insert(hole.file.clone(), manifest.to_string());
             self.holes.push(hole);
@@ -459,7 +466,7 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
                 text: format!("{} TypeScript file(s)", files.len()),
                 why: why.to_string(),
             };
-            out.unjudged(&manifest, vec![hole]);
+            out.unjudged(&manifest, [hole]);
         }
     }
     if !packages.iter().any(Package::judged) {

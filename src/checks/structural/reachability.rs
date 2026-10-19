@@ -261,12 +261,17 @@ fn app_findings(judged: &app::Judged, at_base: bool) -> impl Iterator<Item = Fin
 
 /// The app packages klin could not judge in the working tree, beside the ones the base held.
 fn app_holes(at: &Context, (was, now): (&app::Judged, &app::Judged), out: &mut Sink) {
-    let base = || was.holes.clone();
-    let packages = |forms: &[&coverage::Unresolved]| {
+    let base = || was.holes().to_vec();
+    let packages_held = |forms: &[&coverage::Unresolved]| {
         let owners: HashSet<&str> = forms.iter().map(|form| now.owner(&form.file)).collect();
         owners.len()
     };
-    holes::unresolved_counted((&now.holes, base), (Unresolvable::App, packages), at, out);
+    holes::unresolved_counted(
+        (now.holes(), base),
+        (Unresolvable::App, packages_held),
+        at,
+        out,
+    );
 }
 
 /// One tree as the gate judges it: its measurement, the families under its scope, and app
