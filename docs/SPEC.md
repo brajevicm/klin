@@ -1522,13 +1522,17 @@ ceiling it is over blocks, and is report-only otherwise.
    `a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop`,
    `a_function_over_the_length_ceiling_alone_fails` and
    `with_test_lines_pinned_a_test_function_past_it_fails`.
-5. `klin policy` adds `report only: pin it to block` to the `derived:` line of
-   the ceiling. The `derived:` line that `--pin` and `--suggest` print for it
-   ends with `Derived, it only reports. Pinned, it blocks.` The line of a
-   ceiling that blocks when derived says nothing more. Pinned by
+5. The `derived:` and `pinned:` lines name the tier of each complexity
+   ceiling in force, so `klin policy` prints them as a run does (11.6). The
+   line of the report-only ceiling ends with `report only: pin it to block`,
+   and the line of every other ceiling ends with `; blocks`. The `derived:`
+   line that `--pin` and `--suggest` print for the report-only ceiling ends
+   with `Derived, it only reports. Pinned, it blocks.` The line of a ceiling
+   that blocks when derived ends with `Pinned, it blocks.` Pinned by
    `policy_names_the_derived_lines_ceiling_as_report_only`,
+   `policy_names_a_derived_cc_ceiling_and_pinned_length_ceilings_as_blocking`,
    `suggest_says_a_complexity_value_it_suggests_blocks_once_pinned` and
-   `pin_says_the_derived_lines_ceiling_it_writes_blocks_once_pinned`.
+   `pin_says_the_complexity_ceilings_it_writes_block`.
 6. CI makes no annotation for the note. The job summary counts the notes on
    one line. Pinned by
    `a_report_only_finding_is_no_annotation_and_one_line_of_the_summary` in

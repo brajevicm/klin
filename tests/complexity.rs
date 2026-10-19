@@ -2245,6 +2245,37 @@ fn policy_names_the_derived_lines_ceiling_as_report_only() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("derived: complexity lines 25"), "{}", run.out);
     assert!(run.says("report only: pin it to block"), "{}", run.out);
+    assert!(run.says("pinned: complexity cc 8; blocks"), "{}", run.out);
+}
+
+#[test]
+fn policy_names_a_derived_cc_ceiling_and_pinned_length_ceilings_as_blocking() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": "src", "lines": 60, "test_lines": 30 } }"#,
+    );
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+
+    let run = tree.run(&["policy", "complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let cc = run
+        .out
+        .lines()
+        .find(|line| line.contains("derived: complexity cc"))
+        .expect("a derived cc line");
+    assert!(cc.ends_with("; blocks"), "{}", run.out);
+    assert!(
+        run.says("pinned: complexity lines 60; blocks"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("pinned: complexity test_lines 30; blocks"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -2270,11 +2301,12 @@ fn suggest_says_a_complexity_value_it_suggests_blocks_once_pinned() {
         .lines()
         .find(|line| line.contains("derived: complexity cc"))
         .expect("a derived cc line");
-    assert!(!cc.contains("Pinned"), "{}", run.out);
+    assert!(cc.ends_with("). Pinned, it blocks."), "{}", run.out);
+    assert!(!cc.contains("only reports"), "{}", run.out);
 }
 
 #[test]
-fn pin_says_the_derived_lines_ceiling_it_writes_blocks_once_pinned() {
+fn pin_says_the_complexity_ceilings_it_writes_block() {
     let tree = derived_lines();
     tree.write("klin.json", "{}");
     tree.base();
@@ -2286,6 +2318,12 @@ fn pin_says_the_derived_lines_ceiling_it_writes_blocks_once_pinned() {
         "{}",
         run.out
     );
+    let cc = run
+        .out
+        .lines()
+        .find(|line| line.contains("derived: complexity cc"))
+        .expect("a derived cc line");
+    assert!(cc.ends_with("). Pinned, it blocks."), "{}", run.out);
 }
 
 #[test]

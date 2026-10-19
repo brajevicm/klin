@@ -701,7 +701,7 @@ fn pinned(
     let said = contract::check::Provenance::Pinned {
         section: SECTION,
         key: key.name.to_string(),
-        shown: ceiling.to_string(),
+        shown: format!("{ceiling}; blocks"),
     };
     Ok((ceiling, said))
 }
@@ -761,9 +761,10 @@ fn derived(
         .as_ref()
         .map(|_| format!("; recorded scope: {}", found.scope.description()))
         .unwrap_or_default();
-    if rule.reports_when_derived {
-        recorded.push_str("; report only: pin it to block");
-    }
+    recorded.push_str(match rule.reports_when_derived {
+        true => "; report only: pin it to block",
+        false => "; blocks",
+    });
     let said = contract::check::Derived::sampled(
         (SECTION, rule.key.name),
         value.into(),
@@ -797,7 +798,7 @@ pub fn suggested(project: &Project) -> Vec<(&'static str, u64, String)> {
             let number = number_rule(value, floor, found.functions, Some(&commit));
             let tier = match rule.reports_when_derived {
                 true => ". Derived, it only reports. Pinned, it blocks.",
-                false => "",
+                false => ". Pinned, it blocks.",
             };
             Some((
                 rule.key.name,
