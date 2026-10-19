@@ -56,10 +56,26 @@ pub(crate) struct Adapter {
 
 /// What a file says about every declaration in it: whether it is a script, and what each
 /// ambient module in it was found to export, by the module's start byte, so each is read once.
-#[derive(Default)]
 pub(crate) struct Scope {
     pub script: bool,
-    pub implicit: HashMap<usize, bool>,
+    implicit: HashMap<usize, bool>,
+}
+
+impl Scope {
+    pub fn new(script: bool) -> Scope {
+        Scope {
+            script,
+            implicit: HashMap::new(),
+        }
+    }
+
+    /// What the ambient module at `module` exports implicitly, read once for each module.
+    pub fn exports_implicitly(&mut self, module: Node, read: impl FnOnce() -> bool) -> bool {
+        *self
+            .implicit
+            .entry(module.start_byte())
+            .or_insert_with(read)
+    }
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept

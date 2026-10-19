@@ -494,10 +494,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             path: file.path,
             source: file.source.as_bytes(),
             lines: file.source.lines().collect(),
-            scope: Scope {
-                script: (adapter.script)(file.root(), file.path),
-                ..Scope::default()
-            },
+            scope: Scope::new((adapter.script)(file.root(), file.path)),
             declarations: Vec::new(),
             imports: Vec::new(),
             modules: Vec::new(),

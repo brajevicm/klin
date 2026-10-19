@@ -126,8 +126,7 @@ const EVERY: &str = "*";
 /// exported class leaves with the class. Otherwise the nearest ambient context decides, and a
 /// declaration outside every one leaves a script as a global.
 fn visible(node: Node, scope: &mut Scope) -> bool {
-    above(node, &["export_statement"]).is_some()
-        || ambient(node, &mut scope.implicit).unwrap_or(scope.script)
+    above(node, &["export_statement"]).is_some() || ambient(node, scope).unwrap_or(scope.script)
 }
 
 /// Whether a method is called without a reference that names it: whoever receives an object
@@ -168,7 +167,7 @@ fn script(root: Node, path: &str) -> bool {
 /// What the nearest ambient context around this node says: `declare global { ... }` and a
 /// `global { ... }` block make it global, and a `declare module "x" { ... }` exports it where
 /// the module exports implicitly. `None` outside every ambient context.
-fn ambient(node: Node, implicit: &mut HashMap<usize, bool>) -> Option<bool> {
+fn ambient(node: Node, scope: &mut Scope) -> Option<bool> {
     std::iter::successors(node.parent(), Node::parent).find_map(|found| match found.kind() {
         "global_namespace" => Some(true),
         "ambient_declaration" if has_token(found, "global") => Some(true),
@@ -177,7 +176,7 @@ fn ambient(node: Node, implicit: &mut HashMap<usize, bool>) -> Option<bool> {
                 .child_by_field_name("name")
                 .is_some_and(|name| name.kind() == "string") =>
         {
-            Some(*implicit.entry(found.start_byte()).or_insert_with(|| {
+            Some(scope.exports_implicitly(found, || {
                 found
                     .child_by_field_name("body")
                     .is_some_and(exports_implicitly)
