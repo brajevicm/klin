@@ -166,13 +166,13 @@ fn owner_named(node: Node, source: &[u8], scope: &mut Scope) -> bool {
 }
 
 /// The local names the statements of one body export by name: each name an export clause
-/// without a source lists, and the identifier `export =` assigns.
+/// without a source lists, and the identifier `export =` or `export default` gives.
 fn exported_by_name(body: Node, source: &[u8]) -> HashSet<String> {
     let mut cursor = body.walk();
     let (assigned, clauses): (Vec<Node>, Vec<Node>) = body
         .named_children(&mut cursor)
         .filter(|held| declares_nothing(*held) && held.child_by_field_name("source").is_none())
-        .partition(|statement| has_token(*statement, "="));
+        .partition(|statement| has_token(*statement, "=") || has_token(*statement, "default"));
     assigned
         .iter()
         .filter_map(|statement| statement.named_child(0))

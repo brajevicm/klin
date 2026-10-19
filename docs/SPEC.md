@@ -5028,13 +5028,12 @@ alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. A member of a TypeScript
 class or interface leaves the file with it, whether `export class Box` writes
 the export on it or a statement beside it, `export { Box }`, `export { Box as
-Crate }` or `export = Box`, names it. An export clause with a source, such as
-`export { Box } from "./other"`, names no local class, so the members of such
-a class are still judged. Only an export clause and `export =` name the class
-this way, so the members of a class that only `export default Box` exposes are
-still judged, a known limit. These rules are pinned by
+Crate }`, `export = Box` or `export default Box`, names it. An export clause
+with a source, such as `export { Box } from "./other"`, names no local class,
+so the members of such a class are still judged. These rules are pinned by
 `a_member_of_a_class_an_export_clause_exposes_is_not_judged`,
-`a_member_of_a_class_an_export_assignment_exposes_is_not_judged` and
+`a_member_of_a_class_an_export_assignment_exposes_is_not_judged`,
+`a_member_of_a_class_a_default_export_exposes_is_not_judged` and
 `an_unused_member_of_a_class_no_export_exposes_is_dead` in
 `tests/dead_symbols.rs`. A TypeScript declaration
 inside a global augmentation, `declare global { ... }` or a `global { ... }`
