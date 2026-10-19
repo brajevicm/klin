@@ -425,6 +425,14 @@ impl Judged {
     pub fn owner<'a>(&'a self, file: &'a str) -> &'a str {
         self.owners.get(file).map_or(file, String::as_str)
     }
+
+    /// The holes that keep the package at `manifest` from being judged.
+    fn unjudged(&mut self, manifest: &str, holes: Vec<Unresolved>) {
+        for hole in holes {
+            self.owners.insert(hole.file.clone(), manifest.to_string());
+            self.holes.push(hole);
+        }
+    }
 }
 
 pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
@@ -445,13 +453,13 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
             && selected
         {
             let manifest = current(&package.manifest);
-            out.owners.insert(manifest.clone(), manifest.clone());
-            out.holes.push(Unresolved {
-                file: manifest,
+            let hole = Unresolved {
+                file: manifest.clone(),
                 line: 0,
                 text: format!("{} TypeScript file(s)", files.len()),
                 why: why.to_string(),
-            });
+            };
+            out.unjudged(&manifest, vec![hole]);
         }
     }
     if !packages.iter().any(Package::judged) {
@@ -660,11 +668,7 @@ impl App<'_, '_> {
     fn judge(&self, out: &mut Judged) {
         let unproved = self.unproved();
         if !unproved.is_empty() {
-            let manifest = (self.current)(&self.package.manifest);
-            for hole in &unproved {
-                out.owners.insert(hole.file.clone(), manifest.clone());
-            }
-            out.holes.extend(unproved);
+            out.unjudged(&(self.current)(&self.package.manifest), unproved);
             return;
         }
         let kinds = self.kinds();
