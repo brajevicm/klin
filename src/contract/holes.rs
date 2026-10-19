@@ -125,8 +125,19 @@ fn based(at: &Context, file: &str) -> Option<String> {
 /// Stop every form is a note. `kind` names what the forms are, which the renderer words. ADR
 /// 0021, spec 7.2.
 pub fn unresolved_said(
-    (now, base): (&[Unresolved], impl FnOnce() -> Vec<Unresolved>),
+    sides: (&[Unresolved], impl FnOnce() -> Vec<Unresolved>),
     kind: Unresolvable,
+    at: &Context,
+    out: &mut Sink,
+) {
+    unresolved_counted(sides, (kind, |forms| forms.len()), at, out);
+}
+
+/// The same, where `units` counts what a block of forms is in `kind`'s terms, such as the
+/// packages they keep from being judged.
+pub fn unresolved_counted(
+    (now, base): (&[Unresolved], impl FnOnce() -> Vec<Unresolved>),
+    (kind, units): (Unresolvable, impl Fn(&[&Unresolved]) -> usize),
     at: &Context,
     out: &mut Sink,
 ) {
@@ -139,18 +150,25 @@ pub fn unresolved_said(
     };
     let (noted, opened): (Vec<_>, Vec<_>) = now.iter().zip(held).partition(|(_, held)| *held);
     for (opened, named) in [(false, &noted), (true, &opened)] {
-        listed(opened, named, kind, out);
+        let forms: Vec<&Unresolved> = named.iter().map(|(hole, _)| *hole).collect();
+        listed(opened, named, (kind, units(&forms)), out);
     }
 }
 
 /// One block of forms under one word, as the report prints it, and nothing for no form.
-fn listed(opened: bool, named: &[(&Unresolved, bool)], kind: Unresolvable, out: &mut Sink) {
+fn listed(
+    opened: bool,
+    named: &[(&Unresolved, bool)],
+    (kind, units): (Unresolvable, usize),
+    out: &mut Sink,
+) {
     if named.is_empty() {
         return;
     }
     out.tell(Hole::Unresolved {
         opened,
         kind,
+        units,
         forms: named
             .iter()
             .map(|(hole, _)| {

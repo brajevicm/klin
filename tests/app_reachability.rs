@@ -1243,3 +1243,31 @@ fn an_import_of_a_workspace_package_that_writes_exports_is_external_and_the_app_
     );
     assert!(!run.says("ui/header"), "{}", run.out);
 }
+
+#[test]
+fn the_app_hole_note_counts_packages_not_the_aliases_inside_them() {
+    let tree = app();
+    tree.write(
+        "tsconfig.json",
+        r#"{"extends":"package/config","compilerOptions":{"paths":{"@/*":["./*"]}}}"#,
+    );
+    tree.write(
+        "app/page.tsx",
+        "import { a } from \"@/a\";\nimport { b } from \"@/b\";\nimport { c } from \"@/c\";\n\nexport default function Page() {\n  return [a, b, c];\n}\n",
+    );
+    for name in ["a", "b", "c"] {
+        tree.write(
+            &format!("{name}.ts"),
+            &format!("export const {name} = 1;\n"),
+        );
+    }
+
+    let run = reachability(&tree);
+
+    assert!(
+        run.says("1 app package(s) klin could not prove"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("app/page.tsx:3"), "{}", run.out);
+}

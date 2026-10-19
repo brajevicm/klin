@@ -414,8 +414,17 @@ pub(super) struct Judged {
     pub judged: HashSet<String>,
     pub excluded: HashSet<String>,
     pub holes: Vec<Unresolved>,
+    /// The manifest of the package each file of a hole lies in.
+    pub owners: HashMap<String, String>,
     /// What reading the tree's module graph cost, and none where no app package asked for it.
     pub graph: Option<GraphCost>,
+}
+
+impl Judged {
+    /// The package a file of a hole lies in, or the file itself where no package holds it.
+    pub fn owner<'a>(&'a self, file: &'a str) -> &'a str {
+        self.owners.get(file).map_or(file, String::as_str)
+    }
 }
 
 pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
@@ -435,8 +444,10 @@ pub(super) fn judged(side: Side, scope: &Scope) -> Judged {
         if let Role::Unjudged(why) = package.role
             && selected
         {
+            let manifest = current(&package.manifest);
+            out.owners.insert(manifest.clone(), manifest.clone());
             out.holes.push(Unresolved {
-                file: current(&package.manifest),
+                file: manifest,
                 line: 0,
                 text: format!("{} TypeScript file(s)", files.len()),
                 why: why.to_string(),
@@ -649,6 +660,10 @@ impl App<'_, '_> {
     fn judge(&self, out: &mut Judged) {
         let unproved = self.unproved();
         if !unproved.is_empty() {
+            let manifest = (self.current)(&self.package.manifest);
+            for hole in &unproved {
+                out.owners.insert(hole.file.clone(), manifest.clone());
+            }
             out.holes.extend(unproved);
             return;
         }
