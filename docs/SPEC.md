@@ -5019,7 +5019,10 @@ binds `first` as a `let` statement does. A name a parameter, a `for…in` or
 `for…of` head, a `catch` clause or a Rust `let` binds, or an assignment such
 as `[first] = load()` writes, still reads as a reference, unless a pattern
 writes it as a shorthand such as `{ name }`, which never reads as one. A
-field name reads as a reference too (ADR 0035). A name
+field name reads as a reference too (ADR 0035), and so does a TypeScript
+`#private` name, so `this.#step()` keeps `#step` alive, pinned by
+`a_private_method_this_calls_is_alive_and_an_unused_one_is_dead` in
+`tests/dead_symbols.rs`. A name
 resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. A TypeScript declaration

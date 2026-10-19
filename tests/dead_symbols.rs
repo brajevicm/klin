@@ -627,6 +627,22 @@ fn a_global_block_in_an_ambient_module_with_an_export_assignment_stays_global() 
 }
 
 #[test]
+fn a_private_method_this_calls_is_alive_and_an_unused_one_is_dead() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/counter.ts",
+        "class Counter {\n  #step(): number {\n    return 1;\n  }\n\n  #unused(): void {}\n\n  next(): number {\n    return this.#step();\n  }\n}\n\nexport const counter = new Counter();\ncounter.next();\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/counter.ts:6"), "{}", run.out);
+}
+
+#[test]
 fn a_method_of_an_object_literal_is_not_judged_and_its_unused_object_is() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);
