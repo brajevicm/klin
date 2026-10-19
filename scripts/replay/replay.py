@@ -9,7 +9,11 @@ Local only: it clones apps and runs klin once per change, so CI never runs it.
   replay.py run SET ROW [--klin PATH]
       Run klin over every change of SET, keep the findings of ROW, append each
       finding the labels file lacks as "?" for an agent to draft, and print
-      N, the not-appropriate findings per 100 changes.
+      N, the not-appropriate findings per 100 changes measured in full.
+
+A change is a commit and its parent, or, when it names them, the commit from
+its "base" and the head of its "pull" request. Clones are partial, and a
+repository's clone and tree go once its last change is cached.
 
 ROW is CHECK, CHECK:KEY or CHECK:KEY=VALUE, the catch rule of tests/recall.rs:
 a finding of CHECK whose values[KEY] exists or equals VALUE. A ride-along
@@ -51,16 +55,37 @@ def slug(text):
 def clone(url):
     into = WORK / "clones" / slug(url)
     if not into.exists():
-        subprocess.run(["git", "clone", "--quiet", "--no-tags", url, str(into)], check=True)
+        subprocess.run(["git", "clone", "--quiet", "--no-tags", "--no-checkout", "--filter=blob:none", url, str(into)], check=True)
     return into
 
 
-def checkout(url):
-    into = WORK / "trees" / slug(url)
+def checkout(change):
+    source = clone(change["repo"])
+    if "pull" in change:
+        try:
+            git(source, "fetch", "--quiet", "origin", change["commit"])
+        except subprocess.CalledProcessError:
+            git(source, "fetch", "--quiet", "origin", f"+pull/{change['pull']}/head:refs/pull/{change['pull']}")
+    for commit in (base_of(change), change["commit"]):
+        git(source, "checkout", "--quiet", "--force", "--detach", commit)
+    into = WORK / "trees" / slug(change["repo"])
     if not into.exists():
-        subprocess.run(["git", "clone", "--quiet", str(clone(url)), str(into)], check=True)
+        subprocess.run(["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--shared", str(source), str(into)], check=True)
         git(into, "remote", "remove", "origin")
     return into
+
+
+def base_of(change):
+    return change.get("base", f"{change['commit']}^")
+
+
+def cached_at(runs, change):
+    return runs / (f"{change['commit']}-{change['base']}.json" if "base" in change else f"{change['commit']}.json")
+
+
+def remove(url):
+    for kind in ("trees", "clones"):
+        shutil.rmtree(WORK / kind / slug(url), ignore_errors=True)
 
 
 def sample(args):
@@ -77,11 +102,11 @@ def sample(args):
     print(f"froze {len(changes)} changes of {len(args.repos)} repositories in {path}")
 
 
-def prepare(cwd, commit):
-    git(cwd, "checkout", "--quiet", "--force", "--detach", commit)
+def prepare(cwd, change):
+    git(cwd, "checkout", "--quiet", "--force", "--detach", change["commit"])
     for branch in git(cwd, "for-each-ref", "--format=%(refname:short)", "refs/heads").split():
         git(cwd, "branch", "--quiet", "-D", branch)
-    git(cwd, "branch", "--quiet", "main", f"{commit}^")
+    git(cwd, "branch", "--quiet", "main", base_of(change))
     git(cwd, "checkout", "--quiet", "-b", "change")
     git(cwd, "clean", "--quiet", "-ffdx")
     shutil.rmtree(cwd / ".git" / "klin", ignore_errors=True)
@@ -89,12 +114,14 @@ def prepare(cwd, commit):
 
 
 def report(klin, version, change, check):
-    cached = WORK / "runs" / version / check / f"{change['commit']}.json"
+    cached = cached_at(WORK / "runs" / version / check, change)
     if cached.exists():
-        return json.loads(cached.read_text())
-    cwd = checkout(change["repo"])
+        result = json.loads(cached.read_text())
+        if result.get("measurement") == "complete":
+            return result
     try:
-        prepare(cwd, change["commit"])
+        cwd = checkout(change)
+        prepare(cwd, change)
     except subprocess.CalledProcessError as why:
         return {"failed": str(why)}
     env = {name: value for name, value in os.environ.items() if not name.startswith(("KLIN_", "GITHUB_"))}
@@ -103,8 +130,9 @@ def report(klin, version, change, check):
         result = json.loads(done.stdout)
     except json.JSONDecodeError:
         result = {"failed": done.stdout + done.stderr}
-    cached.parent.mkdir(parents=True, exist_ok=True)
-    cached.write_text(json.dumps(result))
+    if result.get("measurement") == "complete":
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_text(json.dumps(result))
     return result
 
 
@@ -136,12 +164,16 @@ def run(args):
     check = args.row.partition(":")[0]
     path = HERE / "labels" / f"{slug(args.row)}--{args.set}.tsv"
     labels = read_labels(path)
+    last = {change["repo"]: index for index, change in enumerate(changes)}
     failed = []
     found = []
-    for change in changes:
+    for index, change in enumerate(changes):
         result = report(klin, version, change, check)
+        if last[change["repo"]] == index:
+            remove(change["repo"])
         if result.get("measurement") != "complete":
-            failed.append(change["commit"])
+            failed.append(f"{change['commit']} ({result.get('measurement') or result.get('failed', '').strip()[:120]})")
+            continue
         riders = [item for item in result.get("reviews", []) if item.get("kind") == "ride-along"]
         for finding in result.get("findings", []) + riders:
             if matches(args.row, finding):
@@ -159,6 +191,8 @@ def summarize(name, changes, failed, findings):
     spot = findings if len(findings) <= SPOT else random.Random(name).sample(findings, SPOT)
     unreviewed = [label for label in spot if not label["reviewed"]]
     print(f"{name}: {measured} changes measured, {len(failed)} not measured in full, {len(findings)} findings")
+    for commit in failed:
+        print(f"  not measured in full: {commit}")
     print(f"N = {100 * wrong / max(measured, 1):.1f} not-appropriate findings per 100 changes")
     if unlabeled:
         print(f"not final: {unlabeled} finding(s) carry no label")

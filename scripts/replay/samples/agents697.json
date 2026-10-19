@@ -1,0 +1,2664 @@
+{
+  "changes": [
+    {
+      "repo": "https://github.com/jdx/hk",
+      "commit": "81347f5b57b3d7ed0d9b7fa404c88043c3d31b70",
+      "base": "9a0466f182a1304d3cdd5238dbdd2007b4274538",
+      "pull": 318,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/rustfs/rustfs",
+      "commit": "3b24e4fffb49373dd02c9cf5fb3e14bb4be88dd0",
+      "base": "e00f5be746bb3ffd9fd31d8744cca13c754c2272",
+      "pull": 461,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/skyf0l/RsaCracker",
+      "commit": "8b6fed1948b159cfba60c12b8d5de5a5d0215611",
+      "base": "e12c11e64a1d50f0f145e4ecf7319df81edf4b32",
+      "pull": 216,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/oxidezap/whatsapp-rust",
+      "commit": "135cb54466bca494eacda7f1dc70dbcfa252ca34",
+      "base": "360578bdefcfc6b008b2ac8787c203e5936bc3f0",
+      "pull": 36,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/seatedro/glimpse",
+      "commit": "f2175fc7724b69924a63bc68ef6dbded615ca856",
+      "base": "ae396d7593ecff16c4e14d5ac12cdd4ccc1c3d04",
+      "pull": 21,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/lance-format/lance",
+      "commit": "0850b6bb6e00a83422567669197b30eac777698a",
+      "base": "da9922802a33e9c8144dc6b1da6c9b13c95c6ee7",
+      "pull": 4716,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/software-mansion/scarb",
+      "commit": "39b80536db414ffe6b213bcd3bf735a89622fa71",
+      "base": "33d3b79f413d8be491f3f34b7fa34d408c4b61f0",
+      "pull": 2712,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/gluesql/gluesql",
+      "commit": "8ac8a1a9ae0915301b8999f77ffca5f34381174e",
+      "base": "64feb5974bcb0cf10faf7bdf5f03a4415b7c6c93",
+      "pull": 1713,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/quarylabs/sqruff",
+      "commit": "78733d6e5f72e800991f2c4ccd8ec245bf5a15cc",
+      "base": "8a1cf0d869423a98bcd7188b2986df4e25416354",
+      "pull": 1905,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/nyx-space/hifitime",
+      "commit": "2ae21bdd5e2ef68289a7fefb3c331b25a2f96691",
+      "base": "d10a66ed7893bd85654e88eaea2dc6233af0b09f",
+      "pull": 433,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/imhuso/cunzhi",
+      "commit": "014051a0f250168d2d4b37800b3ab5732eb14abb",
+      "base": "4a5ba9613007ad6f12fd38b03f7a93065548d23b",
+      "pull": 42,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/joamag/boytacean",
+      "commit": "efecb57dfbd0e7ff892e351732fafc4f02301191",
+      "base": "4d62a69106e949ac936896a8158184d0272e2493",
+      "pull": 15,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/omerbenamram/evtx",
+      "commit": "3a0ab93740da8ae9b4c797e9419be29bbc1ced6d",
+      "base": "4f1cb6b1ad299b6e7a2b1eff50470951ed5010b4",
+      "pull": 261,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/vigna/epserde-rs",
+      "commit": "dfcc073e0863686974ee1459d75efc492278afaa",
+      "base": "50ddd519f0120d4c5a0a5bc96cbe9729ce596a93",
+      "pull": 66,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/PRQL/prql",
+      "commit": "1399609c64ac76a0b5d1d6461b35646cb98611d5",
+      "base": "9e952731bc2e8e4e4de1b25d555be8ebe5a11024",
+      "pull": 5235,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/jstime/jstime",
+      "commit": "46d74eaba95a7cc78f4ba60b1b5be3a19c58ad9f",
+      "base": "4f1ce862b3f8cb69945ddb805ee1d958ed17ab88",
+      "pull": 325,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/sqlpage/SQLPage",
+      "commit": "2c7cb9072935d143cc4a24b41f4a9eda50a0db4f",
+      "base": "d8c7ec5c4703b32be5596cdb9d34a2e113e52d85",
+      "pull": 1029,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/hahwul/urx",
+      "commit": "c60e02043210d160562a428b7ee306c49e01e488",
+      "base": "b3fb7faf59fa0e3fbbb1f48cf1be5c55c74ccef7",
+      "pull": 86,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Jij-Inc/pyo3-stub-gen",
+      "commit": "f901228a836170d631d0bc1cfb179b91235c5038",
+      "base": "7542e15b215e35faef269bd6586d5a21c4e036a3",
+      "pull": 336,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/moly-ai/moly-ai",
+      "commit": "242a126c772ccf98cf795b5f490c1e847b414284",
+      "base": "c80a3bfdda274896855d0eefb19bc9c8dd4afe41",
+      "pull": 522,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/mikaelmello/inquire",
+      "commit": "7e8a47c6a06aa3d438c960b3b07fa64cc6e5a84f",
+      "base": "9793e4ed2499be597f388a007752a2fc1f720efc",
+      "pull": 307,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Mooncake-Labs/pg_mooncake",
+      "commit": "7f7129a67c63b1305b477ddd14116839aba5e7b1",
+      "base": "2c2e09530d60c5ef9dac24294d804a93048ff5ea",
+      "pull": 152,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/luminal-ai/luminal",
+      "commit": "34ae5c92bfbf4a2f2b2f4942109b662abda0faf3",
+      "base": "c07b3a0f6915ffefba34bb8b6779b015299da2e3",
+      "pull": 105,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/harrisonwang/wharf",
+      "commit": "d1d9071c2c1b25fb82373ae1afca78d25fb76cac",
+      "base": "21bd384ea93c997a869ac3c98f1051afba4ac420",
+      "pull": 4,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/getsentry/sentry-cli",
+      "commit": "a12fa53c57586ae39c82338c7ae7cdfbba897d3e",
+      "base": "bab1afdcf670e3c260e69afb1964ad079c461f10",
+      "pull": 2554,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/moonbitlang/moon",
+      "commit": "60a60fe045ff6f363a1257e9110925da8ad7582f",
+      "base": "7158691816c8fbdd75633be373f0055ecc657a18",
+      "pull": 1053,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/fujiapple852/trippy",
+      "commit": "d7dd9f8aeb125e1bf9dce622197d9c57b53f4737",
+      "base": "63854152810b5c4e6e4eee714a9ba71b7f5060c6",
+      "pull": 1608,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/sourcefrog/cargo-mutants",
+      "commit": "d5e27428af6b833927c35e1d2f38bacfe1427eb6",
+      "base": "e871e0d23f8d98a03da25e31fce8941e4cf530ef",
+      "pull": 560,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/buffdb/buffdb",
+      "commit": "491d7cb487e2ecf87f2d558b8f22b05f2b254d8b",
+      "base": "9edcaacdd19daa6f7956633d38c0dcc1ac52889e",
+      "pull": 26,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/grafbase/grafbase",
+      "commit": "a8e285657127b7a79e014bd228b1b187b9ff4f3d",
+      "base": "6833c9d9c0934dae4f18dfebbff5e05df241be55",
+      "pull": 3244,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/tlepoint/fhe.rs",
+      "commit": "463818b071ad63dee3c72782d2330cbd37d2d2b9",
+      "base": "c02cde75a52437bc23f49ebfda084ec152b61248",
+      "pull": 281,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/wassette",
+      "commit": "1900edce18b56fa1614a762dd363d345d4c6bcc9",
+      "base": "8cdb07ed324202fe470d8a46df52259f00508bc0",
+      "pull": 390,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/neondatabase/neon",
+      "commit": "71da06d8954620c3d850444df4fc0d19129a536c",
+      "base": "60b9fb1baf4cba732cff4792b9a97d755794b7e2",
+      "pull": 11698,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/arxanas/git-branchless",
+      "commit": "d28f4c6ceaf1e1db80acf70045790c8fe8753a97",
+      "base": "8a6f6b15e2973547ce0efbd4ba9bab3f5c08e38f",
+      "pull": 1592,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/cberner/raptorq",
+      "commit": "52ca9787602394d351d509fdc0d315d45b633d5e",
+      "base": "db062e7425c1a40f98cbf4317acf50b86ae4e23d",
+      "pull": 191,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/anush008/fastembed-rs",
+      "commit": "f520dccf6da6ef58d6298c0048a049e4379da037",
+      "base": "8241183d7ad310ac76dfe1a865be6f667872c850",
+      "pull": 174,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/gopher64/gopher64",
+      "commit": "119ca8be399e5990cde0a0f55b52c6613c4814bb",
+      "base": "8acf3b9de88251ce57f16116517a06d853493041",
+      "pull": 561,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/liuchengxu/vim-clap",
+      "commit": "62f0050331f8244a292b4235f57fe60f7893dee8",
+      "base": "ee82d3d0e7766e4392e712ab4f0d449d1fc82dac",
+      "pull": 1125,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/wwood/CoverM",
+      "commit": "06d35a3ab21276047eba4b486336b2b65c3ce862",
+      "base": "426a917845cce11cdd0b2f7418b245013fe254e1",
+      "pull": 266,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/CognitionAI/blockdiff",
+      "commit": "965708afad2423b2773e194496807028ac9dee92",
+      "base": "8d10a60bfb31a9dd773843395e9ab3d7bb6dff9c",
+      "pull": 1,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/python-environment-tools",
+      "commit": "a72405c480b6859add62f6a1d52ec181b310d779",
+      "base": "363e6a58c4d8fa97636f948b4e63a6c14bf9c549",
+      "pull": 247,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/water-rs/waterui",
+      "commit": "450bb108e5993e92f40b0f5525423a0bcfa0a229",
+      "base": "72dcad04a6dc14e871417934e1ac011777ea66a3",
+      "pull": 10,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/datafusion-contrib/liquid-cache",
+      "commit": "943bf23c4156aed0f4e258052413a278f91b72d0",
+      "base": "e40641bec2983afbb4323aa076b1627d43b92956",
+      "pull": 315,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/0dotxyz/marginfi-v2",
+      "commit": "75fdd0a14dcbbd8d8dff020b949b44a48b648afe",
+      "base": "5e7840b5ce8edbc201ba95d44bdbeb279d30b4e3",
+      "pull": 354,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/mizchi/similarity",
+      "commit": "35c1bbcbb436dd9f60fcc084126c6950a0c10de0",
+      "base": "1d1165267c6652a43ad9520289da6156a9d8ba5a",
+      "pull": 13,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/JonasKruckenberg/k23",
+      "commit": "9ce4eba19aad374210a005251e66a0cc559ec4e7",
+      "base": "2d4211c046019ee6182e4e8120928c69a166b91c",
+      "pull": 480,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/shuttle-hq/shuttle",
+      "commit": "de919ed87cfc863a4ba96f6aa440fa938279bdd6",
+      "base": "c8bb693155790b38b77d09816f696c0185dc1f51",
+      "pull": 2102,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/GitoxideLabs/gitoxide",
+      "commit": "d4c2542c2a042372b809564d5a62a2f38050fe50",
+      "base": "1a4c84dd96718526e78e4ba11ead785e724462ed",
+      "pull": 2168,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/probelabs/probe",
+      "commit": "82d8adbd0c83b586ad1e447b453e3a1c05d705bf",
+      "base": "9516896d1bd17143ac743706dee0a50ee62fce7e",
+      "pull": 57,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/BeaconBay/ck",
+      "commit": "155e9a8e8139197d540c83da040d71e3babd00ed",
+      "base": "d2e1587bf852c42af8fd59a2c3a1a48187d4eabb",
+      "pull": 48,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/web-infra-dev/rspack",
+      "commit": "5a3b6416393bd4c6313d24a57960399ce5c300ee",
+      "base": "b819076380e439c31144b414f146096e97e9237e",
+      "pull": 11453,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/TheWaWaR/simple-http-server",
+      "commit": "3b42c826101994db527e0ab3a3aa3989fe7b0794",
+      "base": "46a4f58875ca4f7d17e89c21da69fdbcae45632c",
+      "pull": 138,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/feichai0017/orbitkv",
+      "commit": "08390697497400ceee30fadabf8716f3cea8e645",
+      "base": "3b851dcb193619a4b6881ae7f920e78e067c1ba8",
+      "pull": 27,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/openvmm",
+      "commit": "f5a8cd970c68499f4e4e058655816a45cc8cc3dd",
+      "base": "20df503c0e37a3d6a3f2d9f87ccb8a531f450aea",
+      "pull": 1571,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/surrealdb/surrealdb",
+      "commit": "7076a308e8146d6257f8e4f0942b74ccf3105319",
+      "base": "3bcaaeda676fa6f9b52bd323219eb76b72e632fa",
+      "pull": 6146,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/keylime/rust-keylime",
+      "commit": "89b55994721b1263481b4953029cf737739d947b",
+      "base": "cbce0e810f53296558ea1908692aaa0583efaab1",
+      "pull": 1123,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/geoarrow/geoarrow-rs",
+      "commit": "d684af47fe0b5534e8a39bdd1dd757e60c911038",
+      "base": "0bf50c0771f0bcd97f8a6d54e92d9d8ed549302a",
+      "pull": 1295,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/alloy-rs/alloy",
+      "commit": "f03e76485e0341cea4963762bb14c52b37f84c0a",
+      "base": "aab02d3243d983498c77fee6013c32a0cdaf6d6a",
+      "pull": 3043,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/oxc-project/oxc-resolver",
+      "commit": "0e1674a295229575f63eff32cec26a09d880112c",
+      "base": "6b9a7cf998b9943a5b34b005b0b377ff77606580",
+      "pull": 758,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/iopsystems/rezolus",
+      "commit": "2db9ee459de92a5b5afa6e333a3adbda9f580148",
+      "base": "f4c776271e6229cfaf4bf04ba26de6482a610baa",
+      "pull": 573,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/monosans/proxy-scraper-checker",
+      "commit": "59bdaf1b2a1375eb975493d6ecc2c5cd29b714ed",
+      "base": "58e5c1cf343330a7e61455260cedb8dfff097127",
+      "pull": 696,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/c3rb3ru5d3d53c/binlex",
+      "commit": "3e6b4f6619d2e6b1d5873052720de6e4a4a4a669",
+      "base": "4231f92c02792a70791b4b3c556693c36efcf13d",
+      "pull": 162,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/rolldown/rolldown",
+      "commit": "206acb99c489e5481ad86cf5def13a005bfadd24",
+      "base": "5a118a20db53f4be2f1b9565e9c9ee00b01864b4",
+      "pull": 6588,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Brooooooklyn/Image",
+      "commit": "49f4bcf29d7b51deb79cf484ccab4648570a4443",
+      "base": "ab7bff6929ffc98ee44f4a23ff251093c5b1f2b9",
+      "pull": 152,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/geph-official/geph5",
+      "commit": "76531cb12ac3da4ad74a023d55941de655bca4a8",
+      "base": "52fc0ec12d118cd2885df7aeaed3458a36d9ccb9",
+      "pull": 77,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/txpipe/pallas",
+      "commit": "27e3950397d6288d31d91a9bca608d1a03dfa978",
+      "base": "cefc5abee1736258b16899e6809b8fddfe946f86",
+      "pull": 678,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/encounter/decomp-toolkit",
+      "commit": "160f4814b585729b3ca9c631056e8041fe57f5d7",
+      "base": "31c42d58dbd0a30f6f912c50bab1e55762cb9206",
+      "pull": 115,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Brooooooklyn/canvas",
+      "commit": "373519132280f3d326bbd8aa8b933ef7efb9387c",
+      "base": "4289864688b653d6f770ebdf895f3b51192b045b",
+      "pull": 1067,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/coconut-svsm/svsm",
+      "commit": "d64f59113f340fef7ca58d24d9a3487acbb60f4a",
+      "base": "fd16e6bb428e68e751aefb23afc1b739c9773f98",
+      "pull": 805,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/napi-rs/napi-rs",
+      "commit": "c2d68c4d9e037c1513e40068566c26a0788c9f78",
+      "base": "88fca29e3b8822de097358625c652e52d1a9e48c",
+      "pull": 2841,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/foundry-rs/foundry",
+      "commit": "74ca7e52c5359b81546c65c1556fd43bfd14ba85",
+      "base": "7887d46d3735f3ec0434bd32dc6c2055a4873eb3",
+      "pull": 11218,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/hyperlight-dev/hyperlight",
+      "commit": "2608ba1c60ca14f8a6487f36db0336703e5dc51d",
+      "base": "97ee46e8251472687bce30cad639689c4e652402",
+      "pull": 724,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/slatedb/slatedb",
+      "commit": "a1424b2bf0fefc282a8904ca23cb9b8ecd349d66",
+      "base": "363bc43280241eddacad9d4267fae126c4c591dd",
+      "pull": 949,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/bootc-dev/bootc",
+      "commit": "26a51a6ce26bd3e7fadbb0333cb3e9c9d2aa2a2b",
+      "base": "1dd55c2ea488cc318364fe0ef2fbb9a0a693df71",
+      "pull": 1554,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/LLFourn/secp256kfun",
+      "commit": "44a7290ddf1e3e332186b4b0ce3db5207590b683",
+      "base": "d143b42bf95ef04594306c9da4ebd36b016f1709",
+      "pull": 217,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/apollographql/router",
+      "commit": "6a6a4ec753500b4091c3f24ad465643fa9d4a579",
+      "base": "2576bce0d55961e3d19d4dac695b59eeea0a75e9",
+      "pull": 8285,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/XiangpengHao/parquet-viewer",
+      "commit": "083bc886856fbd4479ded4f841adb34aab5af4fc",
+      "base": "0da3d5cdf4f1525a40c7b669ed95652874f05399",
+      "pull": 64,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Myriad-Dreamin/tinymist",
+      "commit": "5611e8cebe927182250edac5518630ba83f65f17",
+      "base": "6876a38c990d2ca6bb2bcca3e8f6f50426d347b9",
+      "pull": 2169,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/perstarkse/minne",
+      "commit": "4d55e054d5854eae83756d9bcd57e01f1880b31a",
+      "base": "33300d31932e5f2ebc01aa55a7bdc0c8455ca9ac",
+      "pull": 2,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/hahwul/jwt-hack",
+      "commit": "cfeb755b03522129ea5c5cb187ff35f7e91aa45a",
+      "base": "e9ccdff07d8fdb33a01f97d8c59f82414b98e7c1",
+      "pull": 51,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/lasa01/Plumber",
+      "commit": "4ac9c608c011e64620a79dd8130f3c9efda113b3",
+      "base": "2607e051bdf9522d2ce2a1b617fe0d4b36cd9f2e",
+      "pull": 199,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/luizfonseca/proksi",
+      "commit": "99b3c29f1e3ac9b2a21a86debbbba1625745bb33",
+      "base": "4ca89e0bd11ac0f925d0d9e4b99b06a8e6ee81a3",
+      "pull": 305,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/graniet/operative-framework",
+      "commit": "80ff08fa3384ed6a753bc0ee7dbff99d8e13ac9d",
+      "base": "5bc5a40bd5c1b6fbb45314d75cda8638c92df169",
+      "pull": 54,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/zurawiki/tiktoken-rs",
+      "commit": "9eea7a98560a7104de19c56755fdf2e106139c89",
+      "base": "7c20dc69d6d71efceecd20daa7067fa92edea3ba",
+      "pull": 109,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/vega-prover",
+      "commit": "2d95ce6395df68ee363b14722c2b128dee5be93d",
+      "base": "d74febd9bbc2726eaa85ce4ab61aefe38c9fdcbe",
+      "pull": 77,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/EasyTier/EasyTier",
+      "commit": "2b616d4689cf61dee79cd795d10b7b75bb2be4a6",
+      "base": "92fab5aafa70ec68b6c6d9592d4a8af0def44fc4",
+      "pull": 1439,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/PyO3/maturin",
+      "commit": "1c0749ec455947aaca3e786905c0657a16394720",
+      "base": "64dfe13ae95888b6b6d4cb54541c813ea7c41064",
+      "pull": 2672,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/cloudwalk/stratus",
+      "commit": "317d3993461e12a29e6bed523e806b5181c0b6bc",
+      "base": "61148c81e8e7fe27b6ba4c98e22a609b7e0102b1",
+      "pull": 1961,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/supabase/etl",
+      "commit": "f1b421e83b48133ca53ec4a84e97f210528ae93e",
+      "base": "0f6616b369c453cda0f9da3410f902dfc1556b1d",
+      "pull": 146,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/amber-lang/amber",
+      "commit": "b4f1140e660dc9f43e9a556b829ad3ff3ac9e2f1",
+      "base": "57abf1eb0e0c8187140ba2bdc6a5a16fe445f84e",
+      "pull": 771,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/wezm/git-grab",
+      "commit": "b1eb1e547b5a336b6c109398708ca9499b661d01",
+      "base": "2958089ac6ec42d1fb5b5bc716e0832594301172",
+      "pull": 29,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/KentBeck/BPlusTree3",
+      "commit": "f39622e7192585d53730c074c504e1b26c82a91f",
+      "base": "3335b0be566272864065ed37e9f74b0232b082ba",
+      "pull": 1,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/alexhallam/tv",
+      "commit": "b241a9ef7b6f0e1336d8eae5b16f15901464684d",
+      "base": "a1b8a7f0ca3ba816c819976e68868ec6526c08be",
+      "pull": 178,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/sxhxliang/mcp-access-point",
+      "commit": "5b0f56f58b09025694265a2af80f433e0eada9ef",
+      "base": "f2349a7e203062c4342e58fb621096e2f1f88c0b",
+      "pull": 13,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/next-hat/nanocl",
+      "commit": "93b8a9b143bef96db8c678c6f1e83dfbbc74f68a",
+      "base": "d2d5ebcc1f10219a8ee9dbd3b881e5169c1fb9f9",
+      "pull": 1268,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/xnorpx/blue-onyx",
+      "commit": "854a12664e801670e48ae8a9f81ece9ae2233833",
+      "base": "9ca1aef11309d06967fe71df3fe56987e594cc25",
+      "pull": 227,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/TC999/AppDataCleaner",
+      "commit": "299b50a5bbb888c8b49f268941c5bd9403ffc342",
+      "base": "b75560c75c1380f01aa9dbbf9386d5443b3a6f09",
+      "pull": 61,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/s3s-project/s3s",
+      "commit": "6a546d5eba77eedbf0761ad3ca0f5a6889836ad7",
+      "base": "0d0ba3e2650ef1a6c89a4aa1e04c12fe3c08ed7d",
+      "pull": 305,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/orbitinghail/graft",
+      "commit": "8f3ff3ef517823c7bcc92267a989cb7742cb2f10",
+      "base": "24a7258d60533092f1f13dc6bac8c342391bbf2c",
+      "pull": 155,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Nugine/const-str",
+      "commit": "fef5a27875feff5248e3043b623f00654e40bf28",
+      "base": "b486792d237936e7d64f4d4090c82c971a44fbf6",
+      "pull": 37,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/shuttle-hq/shuttle-examples",
+      "commit": "53631b2a963c455e4750daafc009777614c5ce8c",
+      "base": "7207def86e250b24145b95df44779a6a77ed3eb7",
+      "pull": 225,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/bionic-gpt/daisy-rsx",
+      "commit": "dc7cdc0822cd0b4dcef243a8b1ab99cdf733aba3",
+      "base": "c98944a3df2f6119a1d569d4530f7469b535eb32",
+      "pull": 6,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/sgb-io/fta",
+      "commit": "e592bc41173b68ab79cbdbf4ebc0915824a69d74",
+      "base": "715a1470d3d2d1020d15e73c2f998a9738f89e5c",
+      "pull": 239,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/mohsen1/yek",
+      "commit": "2cacec65781371d385e9b95e2331cd12156279ca",
+      "base": "26376764ce8c2ea50a40c0a157ab05b5247eb0f8",
+      "pull": 211,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/coder/httpjail",
+      "commit": "8438c1b237f77da9d0ec0d2f42f99395fd0644ca",
+      "base": "2159963a7b4e7ba214d0a3caee58adc7f2e85d59",
+      "pull": 28,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/qdk",
+      "commit": "e00c183be67665bcb0544257020021d5be2d87ef",
+      "base": "d5fc73f53dd94f8505ef81355b73e12c1568a1ee",
+      "pull": 2628,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/MASQ-Project/Node",
+      "commit": "470bfdb44089e488ae19d2b9127ffa8d32add0a8",
+      "base": "b4d3a3651ac7ef4bc743b6d3c6ae5df3a2095ae5",
+      "pull": 692,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/racemap/elevation-service",
+      "commit": "ee80e9415055e5849ba47c02ae933337c5a1ea47",
+      "base": "453629e8a2baea7df29ae04ac8462de4540b9c65",
+      "pull": 36,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/tomhrr/cosh",
+      "commit": "c46055e967f11abc37247d16510982137a2f5ee7",
+      "base": "1a2a95f2620f91b3c88d12970c1673f43477dd41",
+      "pull": 175,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/apache/arrow-rs-object-store",
+      "commit": "ec5a6d0c4524ac255bc2f7416d0534436507795c",
+      "base": "a673ed623a1b7ffe6c8acd962e5e0d0150d5d6c5",
+      "pull": 426,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/twitchax/kord",
+      "commit": "8efd576c78d0acd5db7b6eb6a4621f60bf75ff7f",
+      "base": "5f7ac935918eba4eb6077538abce7f48251f5a12",
+      "pull": 23,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/cordx56/rustowl",
+      "commit": "8ab147bd2e10fa359f7b96f80efcb0097da4c685",
+      "base": "39b55d619ba6167edc13dcd2f7ef7de1e348dc50",
+      "pull": 279,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Boshen/cargo-shear",
+      "commit": "b302da30b707c3ff62bd49ef38f3769a85cb0d63",
+      "base": "c06671c2b35c52ddc17c04650d42c432f5996ce5",
+      "pull": 227,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/prefix-dev/rattler-build",
+      "commit": "dba38d99bc01b1f3b09f2508aa872e756587c8dc",
+      "base": "6c3234456e800ed09c64441382a7722904702793",
+      "pull": 1799,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Mooncake-Labs/moonlink",
+      "commit": "ef26bb7552bd122d14ef66861c4486f31cb8df54",
+      "base": "c3fd59237d8d021f176a4ae92aecbf5ae2ca64c5",
+      "pull": 501,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/rust-cross/cargo-xwin",
+      "commit": "7a7ab8b96dd198360fbfe69c329256e4b3308069",
+      "base": "5f3a1940122884c1223325a217cccd842d0bacc2",
+      "pull": 166,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/lldap/lldap",
+      "commit": "e2d9d4762364845c070d667fab83e390e3f10f29",
+      "base": "267f08f4795ba0c8339e84f9e681c98695a865ec",
+      "pull": 1264,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/kornia/kornia-rs",
+      "commit": "9c1b2c173c61499e59429655b905dfa3aaf5de63",
+      "base": "88c66131905d71a9a2f13ea366cf3ff09de46217",
+      "pull": 386,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/anweiss/cddl",
+      "commit": "db2fb08cda033f7032c9680210b3ecd32482332c",
+      "base": "58559274939699ef95f4d7b6445c29138bf296ff",
+      "pull": 333,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/cfal/shoes",
+      "commit": "b3233771afeaa3ee6dbf3908fa4cb74510d94441",
+      "base": "0bc1b48fd279bc1017e56392c9d9b85527e31e94",
+      "pull": 73,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Brooooooklyn/simple-git",
+      "commit": "da1062b47b7c64ff362c6a609a1c810e3712b05d",
+      "base": "7d01607ef4975c2890b067229fc1fd99766b6f62",
+      "pull": 100,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/vadimcn/codelldb",
+      "commit": "73f298a262b3c5a1d66d3bda9f00e043c15ec0b8",
+      "base": "3a70135abd750947e0036dd9ded8ca5b2b5980ca",
+      "pull": 1326,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Byron/dua-cli",
+      "commit": "bbe368f3c33cf58625e0f2a24f198ee8a6f836a6",
+      "base": "7abf86a7c214452425bacb8290b0436119f795da",
+      "pull": 293,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/PierreBeucher/novops",
+      "commit": "d82522b45924d7b6c939f9c3af19737c1b954fb6",
+      "base": "ed024eb8f0eb2109861c8384e671736ac53aa2e5",
+      "pull": 148,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/sxyazi/yazi",
+      "commit": "6eac0a95ec07ee675e539a159964b22a08daf670",
+      "base": "cfc723863869ad526c2be10816195024e469365f",
+      "pull": 3136,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/ast-grep/ast-grep",
+      "commit": "a38bfcc8f05f795d180411309007ae1ca01dcd5e",
+      "base": "4bde82c5d83e89e66ae835daa73687df859718d4",
+      "pull": 2190,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/georust/geo-index",
+      "commit": "43273404765601320be7dcf369400ddb79ff2de4",
+      "base": "f9a96e55d54a5e4f7479824498cf50d3f3e55f75",
+      "pull": 131,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/metalbear-co/mirrord",
+      "commit": "ce536ebb7bf150ea9b596f40feb1879e54355688",
+      "base": "84e343695f3c3d9b5eecd0d210fbf13547b44bba",
+      "pull": 3378,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/BloopAI/vibe-kanban",
+      "commit": "f4bf2f33bcfa82ab0e25fd7eabec51a4487d580b",
+      "base": "74db7161b6953ab81656ce138f6ca4fde729dc7a",
+      "pull": 470,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/facet-rs/facet",
+      "commit": "45fc6e027989a9dbb461fb18e970a93f2b8a4fe9",
+      "base": "4dd9fdebf13fa6ed0848fedff2e4c5c87f9e42ca",
+      "pull": 741,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/ironcalc/IronCalc",
+      "commit": "e14a3414178f6a778d949c63a8ff9ea2cda18559",
+      "base": "2b3ae8e20fcca66c59a07253aeb92c26b523765d",
+      "pull": 378,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/huggingface/tokenizers",
+      "commit": "a9f16306093849e3c974a9d900ac980f3efa2050",
+      "base": "e5d781d5b9cbfe149d732bd471ff8b294fe0ce50",
+      "pull": 1780,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/zurawiki/gptcommit",
+      "commit": "12d240c713a13c982a278f78342ceeaacf166799",
+      "base": "6fb7355e5199b16819420e661444041524c7d134",
+      "pull": 326,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/open-telemetry/opentelemetry-rust",
+      "commit": "80057bfe60be4d0f552b61282380a63006788b88",
+      "base": "063107068cb8b0d90544e46d2811ce8074a82ab8",
+      "pull": 3059,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/coder3101/protols",
+      "commit": "167319e13d0480ccb6b0f463a6d7d71e8d9788bc",
+      "base": "9c473598a7bed8ada92176cca80adb5238935f02",
+      "pull": 91,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/stellar/rs-soroban-sdk",
+      "commit": "53e002ca2e360f5ac46e9c3fd96ff10bac8a878b",
+      "base": "573114a4a99d1c8ed663f8f1df16a6bf7224647d",
+      "pull": 1541,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/tekaratzas/RustGPT",
+      "commit": "1e5e10b97fb86770fdf10a86b5862297bea000dd",
+      "base": "c6c00412feb282d8fc47f161ba053b27681b70dd",
+      "pull": 12,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/tsukinaha/tsukimi",
+      "commit": "60b9c15c0f6b91e1772d59901903e277b42b39af",
+      "base": "b6f1ee627cc7a04dacac0f017a87115a6403f2c0",
+      "pull": 445,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/psastras/sarif-rs",
+      "commit": "ff570a707db960a251bb6bffdd0748b171fe11c5",
+      "base": "d7933bc6122cc6e986f06ce3ff2f364f2c9ebc46",
+      "pull": 861,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/typstyle-rs/typstyle",
+      "commit": "787c1eb329119c223e5c286ab6188fc0f9d11140",
+      "base": "339b4c71dfc49efe3f15eb631642055871c62b10",
+      "pull": 365,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/fathyb/carbonyl",
+      "commit": "05324fc90cebdd5db0313afd5997187ce20425c8",
+      "base": "ab80a276b1bd1c2c8dcefc8f248415dfc61dc2bf",
+      "pull": 205,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/hyperion-mc/hyperion",
+      "commit": "e9830eedcc1df7def19db57736d44a92abbc8f81",
+      "base": "347728c0b55866d18d0afd607c81eead0ce44a31",
+      "pull": 901,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/reacherhq/check-if-email-exists",
+      "commit": "97a25d280bf97911384c1c54862aca21eac9879b",
+      "base": "df50e683574c09aaa589c61671ec1c40df271532",
+      "pull": 1602,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/doukutsu-rs/doukutsu-rs",
+      "commit": "d5573da8aee3fb42d96d9481d8dce3ae5ed0220d",
+      "base": "f4602687ebba65c7fdb906451a61155b39a00048",
+      "pull": 331,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/foyer-rs/foyer",
+      "commit": "a1773e4f3681f430ed4215b33656c6109f7ab5bf",
+      "base": "1b8727e6f94318461b501eed9b59dae5b1d0bf74",
+      "pull": 1141,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/longbridge/gpui-kit",
+      "commit": "73bdf9858b392ceba7d9353fbff5cff55c1c016b",
+      "base": "ab104b6ba9b03a9263cf164e9abf96cedaa47975",
+      "pull": 1415,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/rrrodzilla/rusty_paseto",
+      "commit": "3ba0b7be295496670f12fb9e23587e8ecd57b5da",
+      "base": "687e9b2b01d9a80777f8fd259ff1b8926bf6da0c",
+      "pull": 50,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/linkerd/linkerd2-proxy",
+      "commit": "10080acc618d4267cf24b2d987a4a11b0e014401",
+      "base": "67dc85a367f7840b72e4008af5aaad62b337ed37",
+      "pull": 3949,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/messense/jieba-rs",
+      "commit": "737a0889cd41de1f42c32c92c3eadbcdd522c85b",
+      "base": "2c1670f6cf9cdee8f4164390b44b8d76f4bea762",
+      "pull": 126,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/messense/typst-py",
+      "commit": "d66115ca0dc8a6dcb9531aabaeb8e45dc8c60fcd",
+      "base": "ab0fc08b160788410af269d0d9adc77a430015ca",
+      "pull": 108,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/OpenZeppelin/openzeppelin-relayer",
+      "commit": "6ffa5192e171dc9424200659c68cbcdd6db047d9",
+      "base": "2a8cddec0625556fe46c4b6fa0194906ef4eea57",
+      "pull": 520,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/qitechgmbh/control",
+      "commit": "83688daaf4cd959c19de1c49440e8853c0be1b31",
+      "base": "5b4d81fec23b150ed78505757b8ecba177620698",
+      "pull": 607,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/lancedb/lancedb",
+      "commit": "cbf72b26ac041b81df2ab6eab1915602c50d0697",
+      "base": "d43880a5857e750785ab33830e468a32848ab6ff",
+      "pull": 2740,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/frostsnap/frostsnap",
+      "commit": "7215aec9643cef42afe215bb1f8a85b02aa0249b",
+      "base": "75048128b17e01aa0ced0deb33786c2bd1ab5440",
+      "pull": 258,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/josh-project/josh",
+      "commit": "b44846702638b119fffaa33335f9c509f9b4defb",
+      "base": "e1d3f0e748ca755cf1942a9a8c6513ad7dedfcef",
+      "pull": 1460,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/maekawatoshiki/rapidus",
+      "commit": "c7eabb2200cd3080a318d66ed48659f8bae454a8",
+      "base": "e2cbce0e2ee7bb640df056d790e7d5e61fde94e0",
+      "pull": 73,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/KenanHanke/rbloom",
+      "commit": "9f3e7317d97d9f377a8bfb38ca52faa147559aa4",
+      "base": "93ac9c57d539be7ebd8447536ef2ef63d916755d",
+      "pull": 20,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/Nova",
+      "commit": "66137ec90c23c7e05385e860419c871c437bd379",
+      "base": "91e6a8cb53f0c0d7a3097b0fd617cc6e8452f5bc",
+      "pull": 398,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/H3rmt/hyprshell",
+      "commit": "7e40bed833e21be747e30e7acd9c9da45a632996",
+      "base": "a9fc51e6e8d1e23302e17cc905f2f8285744c9fc",
+      "pull": 283,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/meilisearch/meilisearch",
+      "commit": "a2f90f2a532c73ffe072bc086cff4c82e9a15ac3",
+      "base": "421a23ee3d0952a9d719f3d7434f6e418e36f4f0",
+      "pull": 5777,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/arialang/aria",
+      "commit": "d1f7624bb8fc31eebc46929608a7ddf8830df225",
+      "base": "f6a398b43f91b222aaf330f171ea20a242c9218a",
+      "pull": 92,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/rochacbruno/marmite",
+      "commit": "817c411f2bda190c1546aa0a5eeb1c3a45542888",
+      "base": "665c3c107d99f51cf21301e3635d7fb6664647e0",
+      "pull": 285,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/joshuadavidthomas/django-language-server",
+      "commit": "25dc20f332514a44c858b2228f670b004d2ba4e5",
+      "base": "b9510583a4d4be61c5413da993d0acab0a5cd023",
+      "pull": 334,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/clearlysid/tauri-plugin-decorum",
+      "commit": "4ad3e40f0b898ae122b5a2e79e81efc208dc2e1e",
+      "base": "e517ae732e9bd425b6571289d21221e533ac9143",
+      "pull": 47,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/chainwayxyz/citrea",
+      "commit": "eefeb75fed6f18de23610a28eaec3d8d726d1169",
+      "base": "0681b01f52241b6135c9291893a6a3ea08293aa6",
+      "pull": 2539,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/harfbuzz/harfrust",
+      "commit": "20ea31c41e5acf8f4efc9b0c6d19b3f086a044d3",
+      "base": "621ea814ead01b64a152a77a5d7e6bc44addef46",
+      "pull": 116,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/microsoft/windows-drivers-rs",
+      "commit": "f20a104ed2c6ca3c9dd324c7b3d7868493d38e4a",
+      "base": "4937bf9d0c0f66d833b3738f10fc808bb57e0679",
+      "pull": 394,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/fancy-regex/fancy-regex",
+      "commit": "3f8fb7155fc80a97ae6adf1cecf836abb677d462",
+      "base": "46f97caed3f734e36690f8ac23907b39ea4e9721",
+      "pull": 181,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/PowerShell/DSC",
+      "commit": "7a065563d56e956b14f2abcefb0943a18cc09107",
+      "base": "92d3ac6bad007b6581dc0536dd398e5c8858256c",
+      "pull": 1141,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/vleue/polyanya",
+      "commit": "fad851b0a9d919bffb844c431e9c638ea9749d90",
+      "base": "9596d8b526070169dc0e5363ad710fd0ffb32f37",
+      "pull": 115,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/foundry-rs/starknet-foundry",
+      "commit": "2925e88d82b76b8dafce91f5fb8a22dc1614a4d9",
+      "base": "74a885606f9cb48e21436d6034a0482e667d585b",
+      "pull": 3775,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/maplibre/martin",
+      "commit": "1998fa281cd283525eb3a4b9d83e350bd07e4590",
+      "base": "00c629608f337fe0076d868ca7966e4b24a1c855",
+      "pull": 1918,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/tailcallhq/forgecode",
+      "commit": "be06a6d6b42fd9268ada35e976215163f33a528e",
+      "base": "1b2cb8ad36db5e79683833a4369ba7cdd9106638",
+      "pull": 1420,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/shekohex/allo-isolate",
+      "commit": "826bd3e1d83f0b6b19ec04e995eca47ddf477e5b",
+      "base": "3c0ce45ddfa00224ea0b8fea9c0239b8e3f33cf8",
+      "pull": 70,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/GreptimeTeam/greptimedb",
+      "commit": "0836201e579376dcc06b4d658d37e0703c448ad8",
+      "base": "b70d998596c16027af3114382c417882500345ed",
+      "pull": 6496,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/matrix-org/matrix-rust-sdk",
+      "commit": "2e3f8227ca278823220fdd91b2af1051162c7e29",
+      "base": "6c944a9b39250dce7a01090ab8761ce136d1a378",
+      "pull": 5515,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/ad-si/cai",
+      "commit": "2295d2f386e7564709a30411ae3fbfc33ad47ad2",
+      "base": "27bd1fc8be8f0e2543c467dab366ac0715937ea5",
+      "pull": 18,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/Nugine/simd",
+      "commit": "ec4e343d1af6fdca7395c6200dd04e0eb5fe1039",
+      "base": "1b8f79307b43f54314ba5430fa9f532c080e8a9c",
+      "pull": 56,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/juspay/omnix",
+      "commit": "72260efee25efef6bbc59a792a74654eb3f5848f",
+      "base": "d692e7450881cf1f9248307532e021a0345d85d5",
+      "pull": 480,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/apache/casbin-rs",
+      "commit": "9fd24d303e3e4e66b1faf34d1a09b40cfbc7f840",
+      "base": "53ddd1da1bf0eb81960e317c98c494179b482035",
+      "pull": 395,
+      "language": "Rust"
+    },
+    {
+      "repo": "https://github.com/estruyf/vscode-front-matter",
+      "commit": "bb9ea9f1b961e7f350a2f59e9e900de8f878cf92",
+      "base": "9ce7754b1ac78807f157a6719a3f19942decf1e7",
+      "pull": 955,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/dyoshikawa/rulesync",
+      "commit": "b372a06995bf56b339f10cbf8536e31dbeea609b",
+      "base": "aff1b10a4ca4f5a6049ca7f63cb70727136752a1",
+      "pull": 199,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/vfarcic/dot-ai",
+      "commit": "9f5427884f6ad0fec20776f1e4ddedafbb755754",
+      "base": "7b141bdb3fa093e87e6963ad23e443e25e29dbb1",
+      "pull": 138,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/jcputney/scorm-again",
+      "commit": "09023f6692a18059a854b54d654add248be92889",
+      "base": "37bb83db37e3e4ab3cc307ecd3e2cd15f441a6f9",
+      "pull": 978,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/trykimu/videoeditor",
+      "commit": "b86720483b5ca5fd6a98eb96119de23cfe97bf71",
+      "base": "97a0c83575a379e629bb27e8ae465099647f180e",
+      "pull": 130,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/intellectronica/ruler",
+      "commit": "cfaf8a6af91b88037c14629984c133e2fd8d85fe",
+      "base": "a1a7249b6d4a4b9130d2264526cae5210d70b7bc",
+      "pull": 38,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/seasonedcc/remix-forms",
+      "commit": "1bbdb0f5ddb585a9d976da7cff6f339eb4b53527",
+      "base": "6c8033c860cb27b78d247c8ed30f04e240de10fe",
+      "pull": 359,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/mehdibha/dotUI",
+      "commit": "ed08fa4c8052258286fc58aa22f12d4ddcfe6f3e",
+      "base": "32b5f08c2512e15fc82ac7229f645de6257b3f18",
+      "pull": 122,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/sugyan/claude-code-webui",
+      "commit": "0ae743333419e49c3de1f4bad0fcda84bc9a28c1",
+      "base": "1786a47a583d5e1142353d8c5c4efc614ff42921",
+      "pull": 31,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Mr-Quin/danmaku-anywhere",
+      "commit": "9a1b71cfa08d7a40f5bea26bc610eb7a48a58ea1",
+      "base": "f1c2ffb5c2f8e50248a688d0f6fac190378d9cf2",
+      "pull": 110,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/firebase/firebase-tools",
+      "commit": "c2971330c5b6340f1c4d7168742ffdf9b4454ae0",
+      "base": "103c6f7c72b53ccee48ca609739629bd5f48f473",
+      "pull": 9164,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/kazupon/gunshi",
+      "commit": "3e8562742ef530f46fdfe2cf80a48ee4180e697a",
+      "base": "ae034c826c1f6c1a650b16c8049998bec829c98f",
+      "pull": 291,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/web-infra-dev/rsbuild",
+      "commit": "db127e363d5c0fe19074f632c5fbbc94482f3954",
+      "base": "eafadd0677821914dc69425d373cc210d755cbdb",
+      "pull": 6021,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/plhery/node-twitter-api-v2",
+      "commit": "810a8f21d14f4e21e5c5602fb032c371a760b161",
+      "base": "26757297b3e7483a67cf0b4b608c3dfaa7c81b5c",
+      "pull": 602,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/microsoft/vscode-pull-request-github",
+      "commit": "47bcfc37a139c47a6be4183037286840ce926639",
+      "base": "330fc124313d9260216812bca8573b778cc569ac",
+      "pull": 7111,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/amplitude/Amplitude-TypeScript",
+      "commit": "e3f755f483751ffc58789955d1e06a2b0118ccd8",
+      "base": "b61b46271a65202413a764299ad69f2189ccbaf0",
+      "pull": 1155,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/vltpkg/vltpkg",
+      "commit": "2007d4e2ea42ac783a64251fcefcbdd2bf83ad84",
+      "base": "c91be2674a6fc729b41696325c1e0ba220670905",
+      "pull": 1131,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Azure/autorest.typescript",
+      "commit": "196ca6adf9852383aa31ee5a1c30bc78fd205194",
+      "base": "86ed81ec55fc35adfdd71cc7c55186d6a1df715e",
+      "pull": 3276,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/analogdotnow/Analog",
+      "commit": "1398d1b3d6ba3d83da7f060ca3918aac9661b753",
+      "base": "b905ee0a81ba7e42a2c1ccb452d8112ed7ce0c2f",
+      "pull": 129,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/trylinky/linky",
+      "commit": "dadbb093b11590a787c4977a73c305e16b343489",
+      "base": "b8e3b875911d6fbca64e299fad8de61ba5167305",
+      "pull": 19,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/onlook-dev/onlook",
+      "commit": "c1047bb32741487da134214b447c9e42f691fee5",
+      "base": "a3cbe33f389e4dd0ee734679c574b271d444ce43",
+      "pull": 1367,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/glidea/one-balance",
+      "commit": "96efc6d48029033ca6b708320d5d49d91b48f7b5",
+      "base": "ff7e154a4eb2b7a4728a34c4a0ceb74f740ec3b7",
+      "pull": 18,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/prismicio/prismic-client",
+      "commit": "a1b6ca36e6879cc702b15bf2bd251d742b2c501d",
+      "base": "9a48121d3593fd05e591c66be43c53ce63e720d0",
+      "pull": 402,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/pc035860/YCS-cont",
+      "commit": "49955b91a2f1a1afc92a09a41ad86af3a283a0bc",
+      "base": "af8c61d318f5a06daeb375a628613f6325863684",
+      "pull": 59,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/gensx-inc/gensx",
+      "commit": "a83e2ca7e04c863f075b2804425888be240446c9",
+      "base": "8198e4a20908ba5f0b0ea0aa58775524c5d2595d",
+      "pull": 766,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/bscan/PerlNavigator",
+      "commit": "934aeced80babbb42ed2e0564d4bb7e70fbdb632",
+      "base": "917b7435dedaf501400682d8d373e355144ccb71",
+      "pull": 169,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/inboundemail/inbound",
+      "commit": "7a62cfa32250790b516b95560be62c921d8174c8",
+      "base": "0bdfb3d4f57094471d14d81f4d0cd9260c8cc05f",
+      "pull": 105,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/reactivando/validations-br",
+      "commit": "b64264acb2430f47284819734acad2ed595dbb9a",
+      "base": "fada381313687010afdf9e905949f6f2e66e6473",
+      "pull": 48,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/arikchakma/maily.to",
+      "commit": "40790c140c94b80788a0067afbe5fe96c685751a",
+      "base": "e7bf41aa4567ee903d5afc027abe4fe6c4d9450f",
+      "pull": 199,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/getsentry/toolkit",
+      "commit": "4643847369148662959c5ac0fc8ffa3d46546794",
+      "base": "fdf72a45984c31f29c884c22d2d50bd7b657504c",
+      "pull": 344,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/antvis/G",
+      "commit": "7266a53032174db4ac585f721a87096ce995bd06",
+      "base": "6369e6e6b5e74ea62f382643aba99dd030484116",
+      "pull": 1986,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/yoshiko-pg/difit",
+      "commit": "94f25cd485fd5edba826b59a1012101314c1b9ca",
+      "base": "01d02c342a466add9baec9e355349369c777c276",
+      "pull": 58,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/jina-ai/reader",
+      "commit": "2e2262c58a9cadd42d8636a76f0e2c6be2ac0525",
+      "base": "2606c445d9768560e609f7cbe377e714c499338a",
+      "pull": 1120,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/numman-ali/opencode-openai-codex-auth",
+      "commit": "9f0121bc3b10f9decb2e92d40953a54c5b34d247",
+      "base": "1b570229c7b64d0adb171024eac094d77aebd603",
+      "pull": 9,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/elie222/inbox-zero",
+      "commit": "47f7649c6cebe59866df04177a198c9b83e84b04",
+      "base": "e087e197fe9b720fe915c313c6cb87260c5ad5d2",
+      "pull": 494,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/team-mirai/mirai-gikai",
+      "commit": "72b8f98fa2720af30628634b2cc5a2dbdbafcfda",
+      "base": "310f0eff419b438ffdb229828e162f36b4930ccb",
+      "pull": 102,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/hotovo/aider-desk",
+      "commit": "ce98ba631ebd2f78c6dd9c178f6752c5e5d8dabf",
+      "base": "3fcb58334835fbf956c1eeb84ba4a8a1b4bbb5f9",
+      "pull": 314,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/agent-era/devteam",
+      "commit": "9962f7d907320a0bf63758c9253785522f141ad4",
+      "base": "b02f69b45f293baf452b4c69860e6bc87d87ca42",
+      "pull": 47,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ishaan1013/shadow",
+      "commit": "1a53f67de7c49e0c5ef8a1ca3fcb904ed2d18d75",
+      "base": "41b1377c511a03c6e543e21cfb301906f73444ea",
+      "pull": 42,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/epicweb-dev/epicshop",
+      "commit": "60a5b3a7e486a9fc13a24e4cd4546031748b69dd",
+      "base": "2e7a954e6f7e869cea0f36801a1172fea9e2a3a2",
+      "pull": 291,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Shelf-nu/shelf.nu",
+      "commit": "913d27f8ade1797a3c895344e0a9249c4a56137b",
+      "base": "bc13fde47f3d9a8ee73dd7e5e966e064d8b0aec8",
+      "pull": 2004,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/lingodotdev/lingo.dev",
+      "commit": "4fcc3e70b4df8b0c70779e57d0456ae567234f6f",
+      "base": "90a745f9bcf710b732ddf0bca26f1e24ed4eee73",
+      "pull": 937,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ThinkInAIXYZ/deepchat",
+      "commit": "9f6822b617f9a951b2515d5dec9bda1f5633abda",
+      "base": "84d1a35959ee77584657387de0b25c6d35444672",
+      "pull": 1000,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/humanlayer/humanlayer",
+      "commit": "787757744835bd3deb151944b8d903343a331f87",
+      "base": "871accc1d92333f7e6768a4d435e72783027d17d",
+      "pull": 573,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ar-io/ar-io-node",
+      "commit": "24770daff8353d08fabd1b03fd5a52390c3b13db",
+      "base": "99c2d0dddf97fd920c1c711464c0d19eb02a1a87",
+      "pull": 462,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/a-bonus/google-docs-mcp",
+      "commit": "c29415338d15318ef080f97fa7ac7c4d9a8748e9",
+      "base": "7212a15d967e6e53121d7512b5138ca87dc51f0d",
+      "pull": 19,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Polymarket/clob-client",
+      "commit": "0f8c9a5c89abf748d6fa32ed2dc0959774994b7d",
+      "base": "9bc9df3a90af66bd456794ae1493570e2718ee60",
+      "pull": 177,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Shopify/hydrogen",
+      "commit": "9bf3789a569766f598b59a9b41585faf92200527",
+      "base": "0511444a026f5b80c3927fbc2e31b1ab827cfeae",
+      "pull": 3240,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/usesend/useSend",
+      "commit": "d211585791c7f0cc42550643dc10976137e3c3f0",
+      "base": "4144c7595974831ab8d79f8b569d0207beb368c4",
+      "pull": 235,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/hexclave/hexclave",
+      "commit": "0bf6070830b58631902d788cf8ba774970540986",
+      "base": "15e32e9e3f6ebfd3b85cb19f9e084034bc6a70d7",
+      "pull": 593,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ioBroker/ioBroker.admin",
+      "commit": "fae758fcadbd26ca0506b0352c837e6a65865502",
+      "base": "3f4748e83279b901d9ef885582f926aab8def37d",
+      "pull": 3181,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/yamadashy/repomix",
+      "commit": "16396cc3140ff6df9f47a563c41b9facdcba800d",
+      "base": "93dd40cc032dfac6a9ffee790942b2041134908e",
+      "pull": 602,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/cyrusagents/cyrus",
+      "commit": "27cb411a6899d76d2d2285497810d71de87b03a1",
+      "base": "1e8d090def2c17d61ce6c77a9af79b5f6286646c",
+      "pull": 133,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/mattpocock/evalite",
+      "commit": "d66c8c62a6556d107c1b50b88564fe7edc5983e9",
+      "base": "672ab199bf0784fc20bbdf7e5d619fcb00a4bf38",
+      "pull": 165,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/r-huijts/xcode-mcp-server",
+      "commit": "a3374d97c2027e3ae3f979f9e6d3e5159cb41b7e",
+      "base": "3051001b90599e7210ca865dcb8995fce85b4217",
+      "pull": 7,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/run-llama/llama_cloud_services",
+      "commit": "0059900267bf554f89af818c8ea5d4e783679611",
+      "base": "bc2f04379b583122961cda4ad529af35b7cb8bec",
+      "pull": 921,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/gofiber/docs",
+      "commit": "6ed187e86f3fda340df58a4065531f0d9676bc38",
+      "base": "1c9c15589ed78990f5485c46d150b9b8a0475f6f",
+      "pull": 460,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/antiwork/shortest",
+      "commit": "ab6617921ae0a9514a4026936dfda0950c949723",
+      "base": "28e1220d6d429db4f2f5d95e302a2927637c5584",
+      "pull": 441,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/trycompai/comp",
+      "commit": "ccc1e7fccd0a342b733ca6c0e9b6b4d1fb845d63",
+      "base": "9f81e89e0c80983d5cf69a7c7e6820d3f6497317",
+      "pull": 659,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Kanaries/graphic-walker",
+      "commit": "048bf65178ed9496bf8aba03a1d1ee41b124f370",
+      "base": "b1e9de5a38d92fecad6b24cd1066f686a176c24a",
+      "pull": 447,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/tu2-atmanand/Task-Board",
+      "commit": "2128e1c138966cfd2490784c6400ae7dcdebae6e",
+      "base": "16eb8ece503b9a7c54f4b45c959a54215f49786d",
+      "pull": 399,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ekalinin/sitemap.js",
+      "commit": "27fb35dcc2725360d83974cb838a7e78e86cb94a",
+      "base": "123720a46b34a18e8367ba2c7875c113f0671acc",
+      "pull": 456,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/supermemoryai/apple-mcp",
+      "commit": "5340bf0483c596f2eb2ef99e074ad62f98ac85f4",
+      "base": "08e2c5315683c00fc9567dfefd70a477caccc60d",
+      "pull": 68,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/souporserious/renoun",
+      "commit": "6dc051cbd4df83ffe1fa1b46e083c8cbe851a981",
+      "base": "1a9f914519e3bb4a7139c3c13c316b04642a0ff1",
+      "pull": 285,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/colinhacks/zod",
+      "commit": "9ff163d2dfddf69982bd08558575e2ea2ecff96c",
+      "base": "7c4c83c5f421e3d4d65fed79491628723821eee4",
+      "pull": 4865,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/papermark/papermark",
+      "commit": "51c9cbc1bf0c86467c031d86faf5b8d95bf0a76b",
+      "base": "407929988d0404fb54b22b14c6a715343e6c7574",
+      "pull": 1795,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/G4brym/workers-qb",
+      "commit": "61e7638e6e4bc400bcb9681d651a08b3802cc3d0",
+      "base": "bbd2510e06d67592fe857f441a1fa2ccc12f42ce",
+      "pull": 122,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/TechStark/opencv-js",
+      "commit": "a2b653e23ca6fc918e52f45e9c06a6bc6268b5b3",
+      "base": "ee8f9a9965a8b942cecbfc1925bb1a16e479960a",
+      "pull": 83,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/gkamradt/MultiTerminalCodeViz",
+      "commit": "10fafe82485890f3bf774cdaec881adedad8e283",
+      "base": "09708925fa87e3be8b1ee0c225437323221081f7",
+      "pull": 2,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/goat-sdk/goat",
+      "commit": "36fd7a10ca6b78bbc82e7f6d781b16bbe973b281",
+      "base": "bb176369eff5b1fa17d1aefb3bfdfdb9b5e99410",
+      "pull": 173,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ajnart/dcm",
+      "commit": "6d8c83f28010681020dbf7010ea9e27053be2b5c",
+      "base": "85ecf1c8cbfe0100272613f3b60aa29be45422a8",
+      "pull": 43,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Effect-TS/effect-smol",
+      "commit": "08810b8832de0b572388a70e1a40daa948863b06",
+      "base": "f01c92a36019ce3c6507b48dbf6b1939cd922f43",
+      "pull": 230,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ccusage/ccusage",
+      "commit": "b08f1cebd13f415821b42b76203c791d4bc9d035",
+      "base": "0a09818d36c80f3a93dca324b617ee0f16a50519",
+      "pull": 128,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/acoyfellow/UserDO",
+      "commit": "25127e3c61f9447cfc20bd5a2b5b03ebc0e2fcad",
+      "base": "169db2191534df1adc0480ecbf6bf1de429f3f09",
+      "pull": 17,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/digitaldemocracy2030/kouchou-ai",
+      "commit": "647e3c15032143dd30e37194fa7257f5e7efa0da",
+      "base": "def1f8466b25e398c76a021c860f55128a085b79",
+      "pull": 719,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/dahlia/optique",
+      "commit": "fe6490cf65bf2d649b4f6f8540c2dc05b15312e8",
+      "base": "367d1b323d2f0a1dc769cd69ddf37410b98566f7",
+      "pull": 32,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/codexu/note-gen",
+      "commit": "abfd474664812ce1933f5ad67147ca736f318b74",
+      "base": "2bbac787d36d1bc26473ef589764b6f0228389b8",
+      "pull": 481,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/rrd108/vue-mess-detector",
+      "commit": "194c528334a9489fb3a832b7d0277e28d30db210",
+      "base": "04e276a8145ced297db11359ef27351ec29019dc",
+      "pull": 572,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/toolprint/hypertool-mcp",
+      "commit": "8c36eb67958b0a3af6789257b9afc0bdb2f8cf52",
+      "base": "d6210dcc8c35a48a0014ee26adbe3f4e61495142",
+      "pull": 15,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/web-infra-dev/rspress",
+      "commit": "642dc00ec2483c3a74c1307dfde8cf9ae1597b6f",
+      "base": "c50ee76802cf8878eb7e0a1f41168aed1985c4e4",
+      "pull": 2647,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/sqlrooms/sqlrooms",
+      "commit": "4c3ad4887eba428090601ba2c1cd526d539808b1",
+      "base": "29f6043ff05d608d91043db46e8f4a2b2a2606e7",
+      "pull": 85,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/wKovacs64/hibp",
+      "commit": "fb4857eefdd98aa9398383e94d266489de291a36",
+      "base": "f08af2795aac451d2d4abd9bca144214554b2575",
+      "pull": 539,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/lostintangent/gistpad",
+      "commit": "bbf50c612a1ce0acfcac639c852ed03b7e662d21",
+      "base": "eec80bb3be4ff7ca58fdd50ca6c3216c27a37862",
+      "pull": 401,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/UNIkeEN/SJMCL",
+      "commit": "c7fd11e786b22ddd928c7acb54c413bfe0dc763d",
+      "base": "a13d89076f46aa11fb7867e7cf560fb41b1af451",
+      "pull": 872,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/wataru-maeda/react-native-boilerplate",
+      "commit": "b6356024b07f30b488efa5147e3c581ee5ec1e09",
+      "base": "bad81194ac8d9b033662cf11567e9cff0db65e3b",
+      "pull": 81,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/PaloAltoNetworks/docusaurus-openapi-docs",
+      "commit": "7d8fa742cbf55d5e346747625cf3ca0d976e417a",
+      "base": "afa156ad1fee35e32d231fdccf550cb28ab7e49f",
+      "pull": 1220,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/microsoft/vscode-copilot-chat",
+      "commit": "90e740ca78e6f80f3f9d810956b007f96668bd49",
+      "base": "f8c4ae3c2177e997f3fd33723f85a78f59f8311a",
+      "pull": 1026,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/streamich/memfs",
+      "commit": "1e27b52b74e02553f1f44c38616e1d0b750e2d65",
+      "base": "3dbb46ef9153f69a7bb9dd9d2034c531f68b108b",
+      "pull": 1148,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/shinnku-nikaidou/shinnku-com",
+      "commit": "97ac66a11f82168d9784277ad6c453ebc136fd1e",
+      "base": "eaa76b84125c5598b674aaf2b3a1884feca8acd5",
+      "pull": 204,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/benbalter/word-to-markdown-js",
+      "commit": "d78e838e09ad1f5d9916bcd58085d637a0808e10",
+      "base": "7b55a87c68f5a1daed11b3e3cb3cace1ca70103d",
+      "pull": 76,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/rictic/jsonriver",
+      "commit": "cc3dec59ffc0edd11588c4d63fc3edc2f35d2b05",
+      "base": "ec5df6fbeb27d2807b4663be532e47dc312b398c",
+      "pull": 3,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Duell10111/ReactTube",
+      "commit": "f82dd95f2ade683456668c10baadd19d37b5583c",
+      "base": "d7528464a7744107a02bb75b98e6f95862dd0126",
+      "pull": 63,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/mattsays/romm-mobile",
+      "commit": "26d579d33f31b1ac8f43da063da9a1e217299f67",
+      "base": "0c8950df22a9b4e1f98d3a3ed5450d422787eceb",
+      "pull": 14,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/przeprogramowani/ai-rules-builder",
+      "commit": "d8773e22878a3c660413ffcf39e3b0e52a118b28",
+      "base": "f5b472cf01d5e2731e7749b905c2ac1d05366acf",
+      "pull": 69,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/samanhappy/mcphub",
+      "commit": "f310b49784c31f7cf54f29a74200fc37f82bfab3",
+      "base": "6020611f57017b74883e351a835b0f8f77472084",
+      "pull": 283,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/estruyf/vscode-demo-time",
+      "commit": "07d7cc3f74b5559468b154e9e8ee128f43aa49b3",
+      "base": "b2751fcd1ef9ec3d9da8bf267ed54aae54c8986a",
+      "pull": 147,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/vitejs/vite-plugin-react",
+      "commit": "c29e899dd09460f2329fc95ce296b3130897da41",
+      "base": "f4e0d2aa7658927684652eaf2a4d599c3aa86fbd",
+      "pull": 668,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/elixir-lsp/vscode-elixir-ls",
+      "commit": "bf0139582a573656fdbf93fa51bd383bfe6f38a1",
+      "base": "60ea33489397c020793f7883091bc264b4d7cb7e",
+      "pull": 467,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Dart-Code/Dart-Code",
+      "commit": "e71b3108130b6f828440648b03b17328b83f92d1",
+      "base": "e3a06f706c0f1f2fc2fbd4aaf46b0960c7daef9a",
+      "pull": 5640,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ax-llm/ax",
+      "commit": "fdba54252688234052233058f179c739bc5130fc",
+      "base": "002737706f6c4b20873be4afac6c69eab10c1de3",
+      "pull": 289,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ohcnetwork/care_fe",
+      "commit": "e800ce582295e27c6072a18b9c28542ace5578ac",
+      "base": "a75ed507c0c8daae26b50be046d32d8b93b621d4",
+      "pull": 13737,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/TanStack/db",
+      "commit": "f509b2b1e8bdcaa9a55184bac017d7f1dbdc8411",
+      "base": "74c140d8744f1f7bd3f9cb940c75719574afc78f",
+      "pull": 203,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/usemarble/marble",
+      "commit": "cde6e2e3d3d7426901a162a6352a2bc3e3d53ccf",
+      "base": "71ad669787a1ef6273d7a80e516952a1bcb38565",
+      "pull": 114,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/neondatabase/mcp-server-neon",
+      "commit": "ebf7bd2373a44c4518a1182915ec1d10c1bb0e46",
+      "base": "dc709c64e825e61fd536021968faad08ffc790da",
+      "pull": 85,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/openai/openai-agents-js",
+      "commit": "45c1eb362790e0ed052097b538fd3ddbfc37d4c7",
+      "base": "f61fd18099a54fb1b325e17910c6593b8cea6c8a",
+      "pull": 135,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/katspaugh/wavesurfer.js",
+      "commit": "d8addbe7829605442cd1a370d5b27ed9aafbd59a",
+      "base": "0fba2ada4a9ad28592ee431d4c20f7be5c1e78a9",
+      "pull": 4210,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/2mawi2/schaltwerk",
+      "commit": "49076dd0df86c52df5bdcdce28c8d0fdc73f8085",
+      "base": "b70e5734a4ec13d55d95208f1cdccb6040a32f5e",
+      "pull": 57,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/jamesporter/solandra",
+      "commit": "5cfad7bbe1642fb572c75b66ac2fa0f6b4bf20e8",
+      "base": "8024e31776900d694eeea886524112f46207faad",
+      "pull": 56,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Scale3-Labs/langtrace",
+      "commit": "bea48c3842d6b2bb4d2c1b7c38d6fe7d9e06434f",
+      "base": "3ca7a8bebc51d5dca34f460b1a3762b84ecfb449",
+      "pull": 408,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/UfoMiao/zcf",
+      "commit": "45ac183008e18e82a019ca6e6c4dc2eff8cfe692",
+      "base": "51b48d9c0e58e72d698625c3d4370d273751ed2b",
+      "pull": 61,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/phellipeandrade/rbac",
+      "commit": "03e9a04d34844a7e37f4ae595169e23436429a75",
+      "base": "3acccaca1fb69144e13b2ef2b186006c950e7813",
+      "pull": 21,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/getsentry/spotlight",
+      "commit": "9d2d36fdb378fac7bfce4e23be38eba70179b3f3",
+      "base": "c091e5c53ed4aa2c6e670edabf9b13f6b68198f6",
+      "pull": 844,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ruvnet/agentic-flow",
+      "commit": "69b6314448557815e8e493e4d143a549c2d0088f",
+      "base": "0a058c8971ce3d936e6fbcedd8e8be65f4ed1d43",
+      "pull": 35,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Producdevity/EmuReady",
+      "commit": "7527d4ff295e0490171a1261c38fcc01f54d8524",
+      "base": "fc7aee103dd4e0d8018923002e55e774cf5348dd",
+      "pull": 55,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/reown-com/web-examples",
+      "commit": "a5d52e6357eceafc48750fb733e1379f455f3a98",
+      "base": "91c476783e7a85db90db2706094fb53fe78c0922",
+      "pull": 932,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/wei/socialify",
+      "commit": "ce57d648826596968d1ccb3bffcb794352fb8810",
+      "base": "2bda72834f58e8cc9d9312e447188cbe01d1987b",
+      "pull": 556,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/streamyfin/streamyfin",
+      "commit": "e0defe3a0c4dd1d6d50d7762cf7331eff7a4ab97",
+      "base": "e8c9bb1730ce41512d6b8527243532297dc86572",
+      "pull": 1026,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/gkamradt/agenttrafficcontrol",
+      "commit": "4631ce6007427c8cf7fd8b04ea6cf22d0b3b35ab",
+      "base": "868a51949a0d75d21d0785dcef8c1ffa89992c3d",
+      "pull": 2,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/chakra-ui/zag",
+      "commit": "154e637ca99f7abcf0270b3ad37b353d64dafb43",
+      "base": "ad5f8f5b72206527ca9919ab0e2d76534c771398",
+      "pull": 2627,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/microsoft/poml",
+      "commit": "23374d9a5a2a67214a91cd0153804121fe5c6833",
+      "base": "b5945605c71d5e5e90bd792fa9118f05fb34ee75",
+      "pull": 22,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/microsoft/vscode-notebook-renderers",
+      "commit": "3801865a14f82ed8759d1f72ea43501ce1d75485",
+      "base": "e4242bc2a139052608e41e37b42af25ce5e08a32",
+      "pull": 242,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/fireship-io/flamethrower",
+      "commit": "7f9f9949d2f9a6e1f287c70ff44d47c438e04cb6",
+      "base": "79883a4fb64cc2f2b29f465c7c9556111c58e7ae",
+      "pull": 95,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/vitejs/vite",
+      "commit": "e6021072e246162e380e2b05d6e1c7c8ff886e76",
+      "base": "946831f986cb797009b8178659d2b31f570c44ff",
+      "pull": 20515,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/yamlresume/yamlresume",
+      "commit": "b74b7de43e0c04d4019915d0db5c29dd3d49be3d",
+      "base": "fa5f859e5860639c310a289e4a0f8e2bf6241fa6",
+      "pull": 52,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/rokucommunity/brighterscript",
+      "commit": "e37966a59d6e16ab37e8f1cd5133d2c19b5ae01a",
+      "base": "4ce9501ae1cdaaa73a7f523562f0bd2fc36ffb14",
+      "pull": 1536,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/callstack/react-native-testing-library",
+      "commit": "cee2a89773796e9e2b25ce72bf43f8549ea93858",
+      "base": "203bac93b1a7d039f52086a36ddb70b848638d13",
+      "pull": 1792,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/KeepSoftwareSimple/compass-calendar",
+      "commit": "08c285e7198810dd44da1c26a1d0058bca2caadb",
+      "base": "e5d8b275510cc02e9feac4b54d55e5bd01a29d0b",
+      "pull": 803,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/flaviuse/mern-authentication",
+      "commit": "df9463c97e3a7707caa3ebb949eb51a8c88d24eb",
+      "base": "7dc3190d3f08393edb4e450562ed2751f46e7650",
+      "pull": 219,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/duneanalytics/evm.codes",
+      "commit": "837e4008dc14d7cd1fa0cf139dd53e18ab86ed55",
+      "base": "908854417095838c78083738a286312dd7fa842d",
+      "pull": 394,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/crawlab-team/artipub",
+      "commit": "10e6e9a05d1a705fa3548f93f664c1386755a53c",
+      "base": "e99e8d2cf8512d92734fbf4b22a99a1a14dd12f6",
+      "pull": 194,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/sebastianwessel/quickjs",
+      "commit": "7ba1aa873a414c6ee576d93011dd070eac25e045",
+      "base": "c2a6ab434ed27e7fc8fbf37ff26537ec7198984a",
+      "pull": 77,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/microsoft/vscode-azureappservice",
+      "commit": "6570b8e7d4b40dd21ff4581f2b0ba98fefb9303e",
+      "base": "bfb057e71f7bd2daed058bf62a4a542dfdc60adb",
+      "pull": 2781,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/laiso/askrepo",
+      "commit": "86f2eeae1b4e766fba14661d9f4c1ccdea88b49d",
+      "base": "9a9225d68bd4f802eee18a21b47b896e7305c75b",
+      "pull": 9,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/zzlb0224/zotero-annotation-manage",
+      "commit": "dac5f1e6b5938fd29b93b41ed625b7cc018243fb",
+      "base": "aadb2f8fb34f7d6e90b535f29f9f92f52d9ffa0a",
+      "pull": 173,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/jonbeckman/solstatus",
+      "commit": "a64f7b7a36cf7dd4dc1933dd8e54a1b9fd9e6cef",
+      "base": "f9501312dfd26c7f513c052d8ec68d4c080bf3d3",
+      "pull": 81,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/receptron/graphai",
+      "commit": "0503e64b4ccf24c7f0cfcbb26491bd319c1e58fa",
+      "base": "daad0cce8537e2bd68198619c90b332b3c532a7e",
+      "pull": 1160,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/softmaple/softmaple",
+      "commit": "badd8ef6c4de0ff544804e5f5423cb5ab8ac2b54",
+      "base": "60fc57a9c73ac4391d0baa8bd275e9f3509a1ebc",
+      "pull": 148,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Codehagen/Badget",
+      "commit": "aa5e397076543f64e74b0e71e6d5b394f6421899",
+      "base": "d2abc37e638c70596605888808013243c044c418",
+      "pull": 288,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/keinsaasforever/better-chatbot",
+      "commit": "0258956f1d7d752f3cfb64b9d5ae4fe9e19c9c7c",
+      "base": "22d7f37e5de31d2c4c8488291079327408d8a1d8",
+      "pull": 274,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/BlueWallet/GroundControl",
+      "commit": "7d4be60707312213e8bd78d6a7066b6ba42218c5",
+      "base": "1a8049ab0bdc13978beaeef7d495733d598f8132",
+      "pull": 294,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/samchon/typia",
+      "commit": "92298dc18a50418935843f208a76b8e72ce2c94c",
+      "base": "c5bf7ca503f3863766929e5dfb893d913add36c6",
+      "pull": 1644,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Afilmory/afilmory",
+      "commit": "dce6b35dc33ec8d7d0844a985da4e39528c6cdd5",
+      "base": "256becf604ac2c50e8b35dd11e99c13c364cb204",
+      "pull": 50,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ismail9k/vue3-carousel",
+      "commit": "b79e73f2420c035f38c64bafa07044b76e1f707d",
+      "base": "d6ac37cbcb74c1b4f48065d6ee3bfcee511ee7bc",
+      "pull": 527,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/nicolaslopezj/simple-react-form",
+      "commit": "d494306957e2ab36d82ab3d46547d116f9ba0902",
+      "base": "43374dabe19437fed76fe8c6531e0ab4ec182af5",
+      "pull": 110,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/milisp/codexia",
+      "commit": "49f44f9272d7c79ac8f5fed8af4224210df26195",
+      "base": "d91cc62789e28a5e3032e09e51abc5804b06b11e",
+      "pull": 23,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/svelteplot/svelteplot",
+      "commit": "3c5ef562613234c8dd102e743fc334c2446b39c2",
+      "base": "c17c27fa9e450c4904243f4ca5e68a2d34358c1d",
+      "pull": 182,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/JustinBeckwith/linkinator",
+      "commit": "804b4b132627bfda3d62a6b6c4dc05e2be22afc2",
+      "base": "811a833ac87f26b7cdf2cb80d89d9ccd840f4aa9",
+      "pull": 722,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/cloudflare/next-on-pages",
+      "commit": "652258d45ec250bd131b833bae3feaeecbd15b31",
+      "base": "3d84ab0096258febb88193c4b9d269ecbaf1b19b",
+      "pull": 975,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/bampakoa/ngx-wig",
+      "commit": "ee9a79d6b6c7b27d26ab71eede74ec3a0537f722",
+      "base": "e8fa987b33a55fcdc96833174a22c43c0c6dd839",
+      "pull": 244,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Pimzino/claude-code-spec-workflow",
+      "commit": "c39d849aaf98cdb06c77dd2296c2753b5630321d",
+      "base": "691d1b0fe00bcbccdece67427015472a1e4a6f12",
+      "pull": 36,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/rwilson504/PCFControls",
+      "commit": "acd81352a4367d8809ceb1abbc5929ccfeacecde",
+      "base": "6d14ef8c89e0a957f46ac129a5cab71b4ff2d733",
+      "pull": 350,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/getsentry/sentry-wizard",
+      "commit": "3fe25957bebc7880c50e24d7d65a5c162adc5ea0",
+      "base": "0b97fe27538773ef891c5402926c9fa58ce905ca",
+      "pull": 1095,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/wonderwhy-er/DesktopCommanderMCP",
+      "commit": "2a57bc07b9a3b5835be86f667a45e9f756b31815",
+      "base": "b8d83310f95b5826744069db77e26e9ef1bb4227",
+      "pull": 128,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Owloops/claude-powerline",
+      "commit": "ac69a5b18cfeb6b975dc534c44dcda88795ec66a",
+      "base": "54b79aadb6292e9cb68538c84e19b59dbbaf94e7",
+      "pull": 10,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/miurla/morphic",
+      "commit": "8ce7b92da18dbeb86240f68e6112d7c2b18a4138",
+      "base": "1650ed22bbaabe24249cc632727aa5c3b5a1e08b",
+      "pull": 722,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Qovery/console",
+      "commit": "509a42646d01e1d9b57bf2b219a4f2cd0fb9293d",
+      "base": "9bf2120313f9e02b6bdc82efdb6691581dad7632",
+      "pull": 2059,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/OpenRouterTeam/ai-sdk-provider",
+      "commit": "a8457a92ee1ce213c824778d82552a2e6c59a2d8",
+      "base": "b6ce7d2dd35f871d7e296aacd2aaf4b8044fec95",
+      "pull": 13,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/homebridge/homebridge-config-ui-x",
+      "commit": "fc4a0a8ed0cbb48d6df0875c02a83fab5cd97931",
+      "base": "d1261515e43c8e5bd2e51abdbd9f62feecfe4bb1",
+      "pull": 2554,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/AngusKit/OpenAPIDesigner",
+      "commit": "ddb16d60741a6d5d4f1bd8b09d9ae9601fe4ddbf",
+      "base": "e960cc99862ec3f7f3b8bccbc9a4ffdc78c16c28",
+      "pull": 1,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/microsoft/griffel",
+      "commit": "15a4111e0138454c1ee8ec3a4d3194b676c4986a",
+      "base": "44173e06a9fddd1583b6a4c2714f03c623ebcaf9",
+      "pull": 707,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/badlogic/lemmy",
+      "commit": "d22183889ba1a550b5353d043bec8f4086c61fa9",
+      "base": "244821d157759617955a9bda160f04dead9b082e",
+      "pull": 23,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/clduab11/gemini-flow",
+      "commit": "2a54dfc7fece8edb67378c1d9fad15a564f5f692",
+      "base": "b8f53887c9294b3348b3315fcfafaa6b65a3b616",
+      "pull": 21,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/nativeui-org/ui",
+      "commit": "96410ad7c8ae998e668c98f3e3fecb83592ef601",
+      "base": "e0468d15aef9aa30050265225d402db3d130c9e3",
+      "pull": 112,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/vitest-dev/vscode",
+      "commit": "ce6da257c7bf045641f798f8217412e5506a73cc",
+      "base": "00ae9ddc9c162b65f0641e410bdc7fe2c19a84a5",
+      "pull": 668,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/TanStack/router",
+      "commit": "ad01d42080d14262058b54fd68cad14c908e9e56",
+      "base": "91d994046a2add5bdc25cea91092634b615fdeb8",
+      "pull": 5594,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/deeptrust-ai/terifai-open",
+      "commit": "faf25b6a3c73a8d8b6fc81ab9f594d7d56db75ab",
+      "base": "c6ac93396e9a4da9c9e2ef73da6655e39916c625",
+      "pull": 4,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/openai/openai-assistants-quickstart",
+      "commit": "2ca29c453227ff7527d397a988ae5d7bd0c6c8cc",
+      "base": "06fc2d444a5d41b574082080f4c7b2e48156b84f",
+      "pull": 54,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/eggjs/egg",
+      "commit": "00039282ce2dee10b1252c5767d4d62a846d89bd",
+      "base": "f5f5b20bd85a9b47d0ca78177e23755a14133703",
+      "pull": 5472,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/team-mirai/marumie",
+      "commit": "46b1a8cca332f746b1dfe940eb4a16e4a584da87",
+      "base": "0066810a8382ed50548f0fb42b88f8bc82d24567",
+      "pull": 277,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/cokice/japanese-analyzer",
+      "commit": "fcd778c9ef2806394e1edb8be2fb7d385688b2f3",
+      "base": "c9ac64cd13e0639a73a2fed0cea92c53f267da79",
+      "pull": 6,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/open-horizon-labs/obsidian-ics",
+      "commit": "243881e3f79e90c177fcc98a60b3d4de9dd77af8",
+      "base": "4952f4034050e80fbaeb61111b186ccf5a576e29",
+      "pull": 196,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/jefago/tiny-markdown-editor",
+      "commit": "8fc4804e6134626856c00c257793c752d37c0dfc",
+      "base": "a70a70bd7d05ab12efc36e60d51b2d21b1e3c241",
+      "pull": 100,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ltwlf/json-diff-ts",
+      "commit": "74035a6677bc941d31caeaa164bdbea0db6a9c7a",
+      "base": "98d3c5b48c0ec045b8992a4da769ade883ba2a24",
+      "pull": 264,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/FranciscoMoretti/chat-js",
+      "commit": "b42b12d2c7b767792b85db726c7862f2f6c335c0",
+      "base": "218df2d983633a166deeb532462707578803eb4a",
+      "pull": 2,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/stx-labs/explorer",
+      "commit": "e5bcf7c4fc9e53faead33c50f534fae3a494ecb8",
+      "base": "edec2668a5abe9d4f0439db49d88040c27d37b49",
+      "pull": 2249,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/acacode/swagger-typescript-api",
+      "commit": "19324b2d9b8d3a009662cc3ab8b680478da2366f",
+      "base": "157368a5fedb505b0ebdd0ce6fcb414f8445e1d6",
+      "pull": 1376,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/1mcp-app/agent",
+      "commit": "67f1ef7adfda173bda7330721a4a82db927fabca",
+      "base": "f9b7abc3bd81a22c29303f2a70a60b55382920cf",
+      "pull": 97,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/CKGrafico/papanasi",
+      "commit": "16a9d813f880f83d88b3ac43eaf12637e200dce8",
+      "base": "238ba256073a71dccc02f2b12a661a2581f78ba5",
+      "pull": 88,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ktnyt/cclsp",
+      "commit": "9a1e2dac7d25b0be25a1b7c564da7a9595272aa7",
+      "base": "f9494d8f4df9c453941118cf8ef16583cb34b745",
+      "pull": 13,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/jsmastery-pro/e-commerce",
+      "commit": "832813b585824bad5171ff3ff6a15d1ed31d533f",
+      "base": "3dd2ea24142b23702fa026760d49fb43bb5ac0be",
+      "pull": 8,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/versyxdigital/mkeditor",
+      "commit": "24af920e99d3dd6967e745148ee90283d9935b16",
+      "base": "214ff82f16b73ea4147a81e753abfa350da600e8",
+      "pull": 409,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/softprops/action-gh-release",
+      "commit": "9963753aeb936c3a36f64fb86ee98e551c1298aa",
+      "base": "aec2ec56f94eb8180ceec724245f64ef008b89f5",
+      "pull": 672,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/browserless/browserless",
+      "commit": "1e9aaba9ce147b897b8baf74ad3cf4cd73a1e717",
+      "base": "76f79a6a3e4562d908d06c22b0f718c73bce51c1",
+      "pull": 4670,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ncdai/chanhdai.com",
+      "commit": "e29af488731a0617e04174187e2c9bf357046a64",
+      "base": "0536f99a63f25aa746129ad5e8588f02e7fde2e0",
+      "pull": 370,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/ng-select/ng-select",
+      "commit": "bb4418aaa4ecf810d72e185a29dd18ae2da9df5d",
+      "base": "0f270a26c279341481eb6150804c5455877a46a1",
+      "pull": 2608,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/elixr-games/elics",
+      "commit": "f74ae3f6c8877a0cac5b6f5f6860284cbc1f2682",
+      "base": "3e262617a723c103cceef759f3f24f22dd0f65b3",
+      "pull": 32,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/anthropics/claude-code-action",
+      "commit": "bba15e0d56409b11f49647fe69fe11219faba31c",
+      "base": "4cdae8adfcaecf6027345ab9eee6dd1f4fd232b4",
+      "pull": 449,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/prosekit/prosekit",
+      "commit": "69e5c3c3917965dce20edc32257c8f74e5561d66",
+      "base": "cecdc9d3a7df3c7b60e7ddb076c4f8c0c348d993",
+      "pull": 1052,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Decohererk/DecoTV",
+      "commit": "6a689b844078c01182bf0db28b614efa63fdac39",
+      "base": "97a43aeb318301d7b7269bca4a85333aac242c54",
+      "pull": 5,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/gtg922r/obsidian-numerals",
+      "commit": "1107e065abaac103ba73a4550c5ea99cdcf6001a",
+      "base": "d1fa3182eaa6e15458da748485d32614da3ef07c",
+      "pull": 113,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/colorstackorg/oyster",
+      "commit": "f70f544af3250137e6ccfd4d30dd3a647182b740",
+      "base": "c86d46d5c8e47a27ec1c30f13b6e9a99ad768313",
+      "pull": 845,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/CNSeniorious000/free-chat",
+      "commit": "dc28d1af924e0ed0870694c95296ab0a016963cc",
+      "base": "7ad8640fcc8167609385ad79375d10244f58c9bf",
+      "pull": 664,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/adaline/gateway",
+      "commit": "c02e3f37ef18c1dc98401f3a950c9cf8c12abdbe",
+      "base": "a7ece8293b020efe4c85df744aca78751c83cec2",
+      "pull": 108,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/clusterio/clusterio",
+      "commit": "174c798d4b9decd58f3dcefd26e2fc00a8102bfe",
+      "base": "e1d9c1e414c207d8dd3e1b76f153775ef61341fb",
+      "pull": 783,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/Emurgo/yoroi",
+      "commit": "88dddfd5ccccd55e47f8568466f13f8cadba6abd",
+      "base": "63255a12e2ce6222eaf841eae68940ba99b1ffb7",
+      "pull": 3991,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/kravetsone/create-elysiajs",
+      "commit": "a19e8fd4a9c865379f0004dc68fc58b5df8e4419",
+      "base": "f6adf78de758e741c23fe664837004440cb2cde4",
+      "pull": 227,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/RaunoT/plex-rewind",
+      "commit": "30f884d5cf47466c1eb6a642887186fd3e798d93",
+      "base": "87e7d5a23424b0311f461043fa5a64a8f083949d",
+      "pull": 320,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/kyantech/Palmr",
+      "commit": "af6d633559df8e001d1927a07376c0f9a2cbe304",
+      "base": "fcc877738f61da9735c4448cd8567118e455c5a6",
+      "pull": 287,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/anyproto/anytype-mcp",
+      "commit": "5d753f0af4e06b104f25519204e7c42b9c14ac2a",
+      "base": "021546574bbcffd1ca82ec5a3b9ec702a2d7bf17",
+      "pull": 2,
+      "language": "TypeScript"
+    },
+    {
+      "repo": "https://github.com/polkadot-cloud/polkadot-cloud-apps",
+      "commit": "38dd4447907347f476b76b195cd976ddbbdb765f",
+      "base": "7cfb62cec69f904a33d7f54da09569fed42071fe",
+      "pull": 2828,
+      "language": "TypeScript"
+    }
+  ]
+}
