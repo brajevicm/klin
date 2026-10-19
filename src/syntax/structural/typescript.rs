@@ -21,6 +21,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
         "identifier",
         "type_identifier",
         "property_identifier",
+        "private_property_identifier",
         "shorthand_property_identifier",
     ],
     methods_in: &[],
