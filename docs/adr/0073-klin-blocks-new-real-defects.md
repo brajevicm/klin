@@ -84,6 +84,20 @@ band, but the owner still wants the data, so a fourth tier keeps it.
 - The derived `lines` ceiling of `complexity` is the first row in this tier.
   `test_lines` is never derived, so it always blocks.
 
+## `complexity` has no blocking row
+
+Decided for #707, 2026-10-20, from #697. #697 measured the derived `cc` row
+at N 44.5 per 100 agent pull requests, and the best ride-along rule at N
+18.2 (`docs/complexity-ride-along-2026-10-17.md`). No candidate reached the
+ride-along bar of 10.
+
+- `complexity` has no blocking row and no ride-along row. The derived `cc`
+  ceiling joins the derived `lines` ceiling in the report-only tier.
+- The interim exception that let the derived `cc` block at N 19.6
+  (`docs/complexity-calibration-2026-10-16.md`) ended.
+- A pinned `cc` still blocks, as every pinned ceiling does. Under `{}` no
+  complexity ceiling blocks, so the Stop does no complexity work.
+
 ## What stays with each check
 
 A reversal that belongs to one check lives in that check's ticket:

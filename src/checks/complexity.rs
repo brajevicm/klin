@@ -65,16 +65,14 @@ pub const LINES: Key = Key {
     shape: crate::config::key::Shape::Ceiling,
 };
 
-/// One ceiling the section reads: its key, its words in the gate text, the floor and measure klin
-/// derives it from when the section leaves it out, and whether a derived one only reports. A
-/// report-only ceiling is a note at `klin check`, and the Stop never resolves it. ADR 0063,
-/// ADR 0073, spec 9.7.
+/// One ceiling the section reads: its key, its words in the gate text, and the floor and measure
+/// klin derives it from when the section leaves it out. A derived ceiling only reports: it is a
+/// note at `klin check`, and the Stop never resolves it. ADR 0063, ADR 0073, spec 9.7.
 struct Rule {
     measure: Measure,
     key: Key,
     words: (&'static str, &'static str),
     derived: Option<Derivation>,
-    reports_when_derived: bool,
 }
 
 /// The floor a derived ceiling never goes below, and the measure of the sample it takes.
@@ -94,21 +92,18 @@ const RULES: [Rule; 3] = [
         key: CC,
         words: ("cyclomatic > ", ""),
         derived: Some((CC_FLOOR, sampled_cc)),
-        reports_when_derived: false,
     },
     Rule {
         measure: Measure::Lines,
         key: LINES,
         words: ("body > ", " lines"),
         derived: Some((LINES_FLOOR, sampled_lines)),
-        reports_when_derived: true,
     },
     Rule {
         measure: Measure::TestLines,
         key: TEST_LINES,
         words: ("test body > ", " lines"),
         derived: None,
-        reports_when_derived: false,
     },
 ];
 
@@ -477,6 +472,9 @@ pub fn derive(project: &Project) -> Result<Provenance, Error> {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let mut spec = spec(project, at.caller)?;
+    if spec.ceilings.held.is_empty() {
+        return Ok(nothing_blocks(out));
+    }
     out.tell_each(std::mem::take(&mut spec.provenance));
     ratchet::noted_as(contract::check::DERIVATION, &spec.notes, out);
     let sweep = measure(
@@ -515,6 +513,23 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let files = (&sweep.files, &before.files);
     holes::closed(files, &sweep.unparsed, at.only, at, out);
     Ok(code)
+}
+
+/// A Stop under which no ceiling blocks reads no file: every derived ceiling only reports, and
+/// the Stop resolves none of them. Spec 9.7.
+fn nothing_blocks(out: &mut Sink) -> u8 {
+    out.record(|records| records.work = Some(ContentCost::default()));
+    out.tell(contract::check::Told::judged(Line::new(
+        contract::check::Measured::Complexity(contract::check::Complexity {
+            judged: 0,
+            over: 0,
+            steps: Vec::new(),
+            unjudged: 0,
+            arrived: Vec::new(),
+        }),
+        None,
+    )));
+    0
 }
 
 /// What the base holds over the ceilings, what it measured and what reading it cost, and the
@@ -728,7 +743,7 @@ fn ceilings(
             ceilings.held.push(Held {
                 rule,
                 ceiling,
-                reports: pin.is_none() && rule.reports_when_derived,
+                reports: pin.is_none(),
             });
         }
     }
@@ -745,7 +760,8 @@ fn ceilings(
 }
 
 /// The ceiling the derivation commit gives a key the section leaves out. `test_lines` is never
-/// derived, and the Stop resolves no ceiling that only reports. ADR 0063, spec 9.7.
+/// derived, and the Stop resolves no derived ceiling, because each one only reports. ADR 0063,
+/// spec 9.7.
 fn derived(
     project: &Project,
     sample: &OnceCell<(Sample, Option<String>)>,
@@ -753,7 +769,7 @@ fn derived(
     caller: Caller,
 ) -> Option<(Ceiling, contract::check::Provenance)> {
     let (floor, measure) = rule.derived?;
-    if rule.reports_when_derived && caller == Caller::Hook {
+    if caller == Caller::Hook {
         return None;
     }
     let (found, commit) = sample.get_or_init(|| derived_sample(project));
@@ -763,10 +779,7 @@ fn derived(
         .as_ref()
         .map(|_| format!("; recorded scope: {}", found.scope.description()))
         .unwrap_or_default();
-    recorded.push_str(match rule.reports_when_derived {
-        true => REPORTS,
-        false => BLOCKS,
-    });
+    recorded.push_str(REPORTS);
     let said = contract::check::Derived::sampled(
         (SECTION, rule.key.name),
         value.into(),
@@ -798,15 +811,12 @@ pub fn suggested(project: &Project) -> Vec<(&'static str, u64, String)> {
             let (floor, measure) = rule.derived?;
             let value = measure(&found).max(floor);
             let number = number_rule(value, floor, found.functions, Some(&commit));
-            let tier = match rule.reports_when_derived {
-                true => ". Derived, it only reports. Pinned, it blocks.",
-                false => ". Pinned, it blocks.",
-            };
             Some((
                 rule.key.name,
                 value,
                 format!(
-                    "derived: {SECTION} {} {value} ({number}){tier}",
+                    "derived: {SECTION} {} {value} ({number}). Derived, it only reports. \
+                     Pinned, it blocks.",
                     rule.key.name
                 ),
             ))

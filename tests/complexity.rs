@@ -1735,7 +1735,7 @@ fn with_no_test_lines_a_test_function_past_the_lines_ceiling_does_not_fail() {
 #[test]
 fn with_no_test_lines_a_test_function_past_the_cc_ceiling_still_fails() {
     let tree = Tree::new();
-    tree.write("klin.json", "{}");
+    tree.write("klin.json", r#"{ "complexity": { "cc": 10 } }"#);
     tree.write("tests/knot.rs", &knotted("knot_test"));
     tree.write("src/lib.rs", &inline_tests(&knotted("inline_knot")));
 
@@ -2263,7 +2263,7 @@ fn policy_names_the_derived_lines_ceiling_as_report_only() {
 }
 
 #[test]
-fn policy_names_a_derived_cc_ceiling_and_pinned_length_ceilings_as_blocking() {
+fn policy_names_a_derived_cc_ceiling_as_report_only_and_pinned_length_ceilings_as_blocking() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
@@ -2279,7 +2279,11 @@ fn policy_names_a_derived_cc_ceiling_and_pinned_length_ceilings_as_blocking() {
         .lines()
         .find(|line| line.contains("derived: complexity cc"))
         .expect("a derived cc line");
-    assert!(cc.ends_with("; blocks"), "{}", run.out);
+    assert!(
+        cc.ends_with("; report only: pin it to block"),
+        "{}",
+        run.out
+    );
     assert!(
         run.says("pinned: complexity lines 60; blocks"),
         "{}",
@@ -2315,8 +2319,11 @@ fn suggest_says_a_complexity_value_it_suggests_blocks_once_pinned() {
         .lines()
         .find(|line| line.contains("derived: complexity cc"))
         .expect("a derived cc line");
-    assert!(cc.ends_with("). Pinned, it blocks."), "{}", run.out);
-    assert!(!cc.contains("only reports"), "{}", run.out);
+    assert!(
+        cc.ends_with("). Derived, it only reports. Pinned, it blocks."),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -2337,7 +2344,11 @@ fn pin_says_the_complexity_ceilings_it_writes_block() {
         .lines()
         .find(|line| line.contains("derived: complexity cc"))
         .expect("a derived cc line");
-    assert!(cc.ends_with("). Pinned, it blocks."), "{}", run.out);
+    assert!(
+        cc.ends_with("). Derived, it only reports. Pinned, it blocks."),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -2353,4 +2364,85 @@ fn a_report_only_finding_reaches_neither_the_report_nor_the_status() {
     let status = tree.run(&["status"]);
     assert!(!status.says("src/long.rs"), "{}", status.out);
     assert!(!tree.run(&["report"]).says("src/long.rs"), "{report}");
+}
+
+/// A tree that leaves every complexity ceiling to klin, with a base that holds one short
+/// function, so the derived `cc` is the floor of 10.
+fn derived_cc() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree
+}
+
+/// A short public function whose cyclomatic complexity is 11, over the floor of 10.
+fn exported_knot() -> String {
+    format!("pub {}", knotted("knot"))
+}
+
+#[test]
+fn a_function_over_the_derived_cc_ceiling_does_not_block_the_stop() {
+    let tree = derived_cc();
+    tree.write("src/knot.rs", &exported_knot());
+
+    let run = tree.stop();
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/knot.rs"), "{}", run.out);
+}
+
+#[test]
+fn at_klin_check_a_function_over_the_derived_cc_ceiling_is_a_report_only_note() {
+    let tree = derived_cc();
+    tree.write("src/knot.rs", &exported_knot());
+
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("INFO: 1 function(s)"), "{}", run.out);
+    assert!(run.says("src/knot.rs:1  cc 11"), "{}", run.out);
+    let json = tree.run(&["check", "complexity", "--json"]).json();
+    assert_eq!(json["judgement"], "pass", "{json}");
+    let notes = json["notes"].as_array().expect("notes");
+    assert!(
+        notes
+            .iter()
+            .any(|note| note["kind"] == "report-only" && note["file"] == "src/knot.rs"),
+        "{json}"
+    );
+}
+
+#[test]
+fn a_function_over_a_pinned_cc_ceiling_blocks_the_stop_and_fails_check() {
+    let tree = derived_cc();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": "src", "cc": 10 } }"#,
+    );
+    tree.base();
+    tree.write("src/knot.rs", &exported_knot());
+
+    let stop = tree.stop();
+    assert_eq!(stop.code, 2, "{}", stop.out);
+    assert!(stop.says("src/knot.rs:1  cc 11"), "{}", stop.out);
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+}
+
+#[test]
+fn under_an_empty_config_the_stop_reads_no_file_for_complexity() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/knot.rs", &exported_knot());
+
+    let (run, report) = tree.stop_report();
+    assert_eq!(run.code, 0, "{}", run.out);
+    let rows = harness::gate_rows(&report).as_array().expect("gate rows");
+    let row = rows
+        .iter()
+        .find(|row| row["name"] == "complexity")
+        .unwrap_or_else(|| panic!("no complexity row in {report}"));
+    assert_eq!(row["work"]["reads"], 0, "{report}");
+    assert_eq!(row["work"]["parses"], 0, "{report}");
 }

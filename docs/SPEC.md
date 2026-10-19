@@ -1323,7 +1323,7 @@ measurement rules are section B.8, amended below and by section 7.
 | `stubs` | check | Automatic | `{stop, check}` | None. File-and-kind marker identity (ADR 0064). |
 | `secrets` | check | Automatic | `{stop, check}` | New (#582). A live-shaped vendor token, keyed by a redacted fingerprint (B.8.2.1). |
 | `inventory` | check | Automatic | `{stop, check}` | A deleted test is a review item (section 9.2). |
-| `complexity` | check | Automatic | `{stop, check}` | Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). A derived `lines` is a report-only row placed `{check}` (9.7). |
+| `complexity` | check | Automatic | `{stop, check}` | Derived `cc` floor 10, explicit `test_lines` (ADR 0059, ADR 0063). A derived `cc` or `lines` is a report-only row placed `{check}` (9.7). |
 | `dead-symbols` | check | Automatic | `{stop, check}` | None. |
 | `reachability` | check | Automatic | `{stop, check}` | None. Named re-export is a reference (ADR 0061). App mode over the module graph (#580). |
 | `layering` | check | Automatic | `{stop, check}` | None. |
@@ -1485,8 +1485,8 @@ summary and as an annotation (section 16.2).
 ### 9.7 A report-only row
 
 A row in the report-only tier of ADR 0073 has an N above 10 per 100 changes,
-and a person still wants its data. The `lines` ceiling of `complexity` is
-this tier when klin derives it. A ceiling a person pinned is policy and
+and a person still wants its data. The `cc` and `lines` ceilings of
+`complexity` are this tier when klin derives them (#707). A ceiling a person pinned is policy and
 blocks, including one that `klin setup --pin` or `klin policy --suggest`
 wrote, and `test_lines` is always pinned. A `complexity` finding blocks when a
 ceiling it is over blocks, and is report-only otherwise.
@@ -1496,11 +1496,12 @@ ceiling it is over blocks, and is report-only otherwise.
    there: it does not block, the Stop prints nothing for it, and the
    journal, `klin report` and `klin status` never hold it. The Stop takes no
    derivation sample for such a ceiling. Pinned by
-   `a_function_over_the_derived_lines_ceiling_alone_does_not_block_the_stop`
+   `a_function_over_the_derived_lines_ceiling_alone_does_not_block_the_stop`,
+   `a_function_over_the_derived_cc_ceiling_does_not_block_the_stop`
    and `a_report_only_finding_reaches_neither_the_report_nor_the_status`.
-   While the derived `cc` blocks, the gate still runs at the Stop. #707 makes
-   the derived `cc` report-only, so that under `{}` no ceiling blocks and the
-   gate does no work at the Stop.
+   When no ceiling blocks, as under `{}`, the Stop reads and parses no file
+   for the gate, and its work counters are 0. Pinned by
+   `under_an_empty_config_the_stop_reads_no_file_for_complexity`.
 2. The ratchet does not change. A function over a ceiling that blocks still
    carries its `lines`, so a rise of them is `worsened` at the Stop too
    (B.7.1). Pinned by
@@ -1517,22 +1518,23 @@ ceiling it is over blocks, and is report-only otherwise.
    text prints the new and worsened notes of a gate under one `INFO:` line
    that says no change is needed and that pinning the ceiling enforces it.
    Pinned by
-   `at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note`
+   `at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note`,
+   `at_klin_check_a_function_over_the_derived_cc_ceiling_is_a_report_only_note`
    and `a_new_and_a_worsened_report_only_finding_print_under_one_info_line`.
 4. A pinned ceiling blocks the Stop and fails `klin check`. Pinned by
    `a_function_over_a_pinned_lines_ceiling_blocks_the_stop`,
+   `a_function_over_a_pinned_cc_ceiling_blocks_the_stop_and_fails_check`,
    `a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop`,
    `a_function_over_the_length_ceiling_alone_fails` and
    `with_test_lines_pinned_a_test_function_past_it_fails`.
 5. The `derived:` and `pinned:` lines name the tier of each complexity
    ceiling in force, so `klin policy` prints them as a run does (11.6). The
-   line of the report-only ceiling ends with `report only: pin it to block`,
-   and the line of every other ceiling ends with `; blocks`. The `derived:`
-   line that `--pin` and `--suggest` print for the report-only ceiling ends
-   with `Derived, it only reports. Pinned, it blocks.` The line of a ceiling
-   that blocks when derived ends with `Pinned, it blocks.` Pinned by
+   line of a derived ceiling ends with `report only: pin it to block`, and
+   the line of a pinned ceiling ends with `; blocks`. The `derived:` line
+   that `--pin` and `--suggest` print for each ceiling ends with `Derived, it
+   only reports. Pinned, it blocks.` Pinned by
    `policy_names_the_derived_lines_ceiling_as_report_only`,
-   `policy_names_a_derived_cc_ceiling_and_pinned_length_ceilings_as_blocking`,
+   `policy_names_a_derived_cc_ceiling_as_report_only_and_pinned_length_ceilings_as_blocking`,
    `suggest_says_a_complexity_value_it_suggests_blocks_once_pinned` and
    `pin_says_the_complexity_ceilings_it_writes_block`.
 6. CI makes no annotation for the note. The job summary counts the notes on
