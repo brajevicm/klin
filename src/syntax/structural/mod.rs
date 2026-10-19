@@ -30,7 +30,7 @@ mod typescript;
 pub use cache::Cache;
 use cache::ReadCost;
 
-use adapter::{Adapter, above, text_of};
+use adapter::{Adapter, Scope, above, text_of};
 use facts::{
     Declaration, DeclarationKind, Export, ExternCrate, FileFacts, Import, ModuleDecl, Name,
     NameHash, Names, Outcome, QualifiedPath, Reference, ReferenceSite,
@@ -471,6 +471,7 @@ struct Reading<'a, 'b> {
     path: &'a str,
     source: &'a [u8],
     lines: Vec<&'a str>,
+    scope: Scope,
     declarations: Vec<Declaration>,
     imports: Vec<Import>,
     modules: Vec<ModuleDecl>,
@@ -493,6 +494,10 @@ impl<'a, 'b> Reading<'a, 'b> {
             path: file.path,
             source: file.source.as_bytes(),
             lines: file.source.lines().collect(),
+            scope: Scope {
+                script: (adapter.script)(file.root(), file.path),
+                ..Scope::default()
+            },
             declarations: Vec::new(),
             imports: Vec::new(),
             modules: Vec::new(),
@@ -607,7 +612,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
             text: self.text(node),
-            externally_visible: (self.adapter.visible)(node),
+            externally_visible: (self.adapter.visible)(node, &mut self.scope),
             entry_point,
             nesting: (self.adapter.nesting)(node, self.source),
             associated: above(node, self.adapter.methods_in).is_some(),
