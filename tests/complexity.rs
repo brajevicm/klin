@@ -2413,11 +2413,12 @@ fn at_klin_check_a_function_over_the_derived_cc_ceiling_is_a_report_only_note() 
 
 #[test]
 fn a_function_over_a_pinned_cc_ceiling_blocks_the_stop_and_fails_check() {
-    let tree = derived_cc();
+    let tree = Tree::new();
     tree.write(
         "klin.json",
         r#"{ "complexity": { "in": "src", "cc": 10 } }"#,
     );
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
     tree.base();
     tree.write("src/knot.rs", &exported_knot());
 

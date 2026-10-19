@@ -473,7 +473,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let mut spec = spec(project, at.caller)?;
     if spec.ceilings.held.is_empty() {
-        return Ok(nothing_blocks(out));
+        return Ok(held_nothing(out));
     }
     out.tell_each(std::mem::take(&mut spec.provenance));
     ratchet::noted_as(contract::check::DERIVATION, &spec.notes, out);
@@ -517,16 +517,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 
 /// A Stop under which no ceiling blocks reads no file: every derived ceiling only reports, and
 /// the Stop resolves none of them. Spec 9.7.
-fn nothing_blocks(out: &mut Sink) -> u8 {
+fn held_nothing(out: &mut Sink) -> u8 {
     out.record(|records| records.work = Some(ContentCost::default()));
     out.tell(contract::check::Told::judged(Line::new(
-        contract::check::Measured::Complexity(contract::check::Complexity {
-            judged: 0,
-            over: 0,
-            steps: Vec::new(),
-            unjudged: 0,
-            arrived: Vec::new(),
-        }),
+        contract::check::Measured::Complexity(contract::check::Complexity::default()),
         None,
     )));
     0
@@ -736,7 +730,8 @@ fn ceilings(
         let pin = section.get(rule.key.name);
         let resolved = match pin {
             Some(value) => Some(pinned(project, rule.key, value)?),
-            None => derived(project, &sample, rule, caller),
+            None if caller == Caller::Hook => None,
+            None => derived(project, &sample, rule),
         };
         if let Some((ceiling, said)) = resolved {
             provenance.push(said);
@@ -766,12 +761,8 @@ fn derived(
     project: &Project,
     sample: &OnceCell<(Sample, Option<String>)>,
     rule: &Rule,
-    caller: Caller,
 ) -> Option<(Ceiling, contract::check::Provenance)> {
     let (floor, measure) = rule.derived?;
-    if caller == Caller::Hook {
-        return None;
-    }
     let (found, commit) = sample.get_or_init(|| derived_sample(project));
     let value = measure(found).max(floor);
     let number = number_rule(value, floor, found.functions, commit.as_deref());

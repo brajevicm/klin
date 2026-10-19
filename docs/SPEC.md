@@ -1486,10 +1486,11 @@ summary and as an annotation (section 16.2).
 
 A row in the report-only tier of ADR 0073 has an N above 10 per 100 changes,
 and a person still wants its data. The `cc` and `lines` ceilings of
-`complexity` are this tier when klin derives them (#707). A ceiling a person pinned is policy and
-blocks, including one that `klin setup --pin` or `klin policy --suggest`
-wrote, and `test_lines` is always pinned. A `complexity` finding blocks when a
-ceiling it is over blocks, and is report-only otherwise.
+`complexity` are this tier when klin derives them (#707). A ceiling a person
+pinned is policy and blocks, including one that `klin setup --pin` or `klin
+policy --suggest` wrote, and `test_lines` is always pinned. A `complexity`
+finding blocks when a ceiling it is over blocks, and is report-only
+otherwise.
 
 1. The row is placed `{check}` (6.2). The Stop resolves only the ceilings
    that block, so a function over only a report-only ceiling is no finding
@@ -1500,7 +1501,7 @@ ceiling it is over blocks, and is report-only otherwise.
    `a_function_over_the_derived_cc_ceiling_does_not_block_the_stop`
    and `a_report_only_finding_reaches_neither_the_report_nor_the_status`.
    When no ceiling blocks, as under `{}`, the Stop reads and parses no file
-   for the gate, and its work counters are 0. Pinned by
+   for the gate, its work counters are 0, and its row carries no coverage. Pinned by
    `under_an_empty_config_the_stop_reads_no_file_for_complexity`.
 2. The ratchet does not change. A function over a ceiling that blocks still
    carries its `lines`, so a rise of them is `worsened` at the Stop too
@@ -3912,8 +3913,10 @@ Each check documents its rule. The rules for the shipped checks:
   recorded scope, a NOTE names both. Two scopes are compared after each is
   sorted and loses every path another path of its list holds and every
   `except` path outside every `in`, so one selection written two ways is one
-  scope. The fallback and the difference are `derivation` notes, which a stop
-  nothing blocks still tells the person.
+  scope. The fallback and the difference are `derivation` notes, which
+  `klin check` tells the person. The Stop takes no `complexity` sample, so it
+  has neither note (9.7). Pinned by
+  `a_check_tells_the_person_the_recorded_scope_lags` in `tests/survey.rs`.
 - `dead_symbols`: every Rust and TypeScript/TSX file selected by the compact
   scope. Its optional `ignore` list is a set of name globs.
 - `reachability`: one family per directory of the derivation commit whose
@@ -4424,7 +4427,8 @@ window is known is read again under it. A run by hand or in CI, whether
 stamp the checkout holds, so a change it judges never moves its own ceiling,
 even when the change is committed. The hook derives from the stamp's parent
 even when the state directory cannot be written, because the turn ref keeps
-the stamp. A run by hand that resolves no base has no `before`, and it
+the stamp. The Stop derives no `complexity` ceiling (9.7), so the two Stop
+pins below hold a `doc-size` ceiling. A run by hand that resolves no base has no `before`, and it
 derives from the stamp's parent, or from HEAD when no stamp is readable.
 `klin setup --pin` judges nothing and has no window, so every value it pins
 comes from that same commit, the stamp's parent or HEAD, as `radius` does.
