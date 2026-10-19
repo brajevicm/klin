@@ -113,6 +113,13 @@ const OWNERS: &[&str] = &[
     "interface_declaration",
 ];
 
+/// The expressions that wrap a value without changing which value it is.
+const TRANSPARENT: &[&str] = &[
+    "parenthesized_expression",
+    "as_expression",
+    "satisfies_expression",
+];
+
 /// The members a class or an interface body lists in its contract.
 const MEMBERS: &[&str] = &[
     "method_definition",
@@ -176,10 +183,23 @@ fn exported_by_name(body: Node, source: &[u8]) -> HashSet<String> {
     assigned
         .iter()
         .filter_map(|statement| statement.named_child(0))
+        .map(unwrapped)
         .filter(|value| value.kind() == "identifier")
         .map(|value| text_of(value, source))
         .chain(clause_names(&clauses, source).into_keys())
         .collect()
+}
+
+/// The expression inside the parentheses, `as` and `satisfies` that wrap it, which leave the
+/// value it names unchanged.
+fn unwrapped(mut value: Node) -> Node {
+    while TRANSPARENT.contains(&value.kind()) {
+        let Some(inner) = value.named_child(0) else {
+            break;
+        };
+        value = inner;
+    }
+    value
 }
 
 /// Whether a method is called without a reference that names it: whoever receives an object
