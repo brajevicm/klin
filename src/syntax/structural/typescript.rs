@@ -136,17 +136,20 @@ fn visible(node: Node, scope: &mut Scope) -> bool {
 fn called_without_its_name(node: Node) -> bool {
     METHODS.contains(&node.kind())
         && (node.parent().is_some_and(|held| held.kind() == "object")
-            || {
-                let mut cursor = node.walk();
-                node.children(&mut cursor)
-                    .any(|child| child.kind() == "override_modifier")
-            }
+            || overrides(node)
             || node.child_by_field_name("name").is_some_and(|name| {
                 !matches!(
                     name.kind(),
                     "property_identifier" | "private_property_identifier"
                 )
             }))
+}
+
+/// Whether `override` marks this member, so its base class calls it.
+fn overrides(node: Node) -> bool {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .any(|child| child.kind() == "override_modifier")
 }
 
 /// Whether this is a `.d.ts` file that `tsc` reads as a script under every `moduleDetection`,
