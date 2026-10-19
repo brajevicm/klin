@@ -53,7 +53,7 @@ pub const DELETED_TEST: &str = "deleted-test";
 
 /// The review item kind of a finding of a ride-along row at `klin check`. ADR 0073, spec 9.6.
 pub const RIDE_ALONG: &str = "ride-along";
-/// The note kind of a finding of a report-only row at `klin check`. ADR 0073.
+/// The note kind of a finding of a report-only row at `klin check`. ADR 0073, spec 9.7.
 pub const REPORT_ONLY: &str = "report-only";
 
 /// The review item kind of an accepted entry that matched nothing, which only a person acts on.
@@ -730,7 +730,7 @@ pub enum Ratchet {
         condition: String,
         failed: Vec<Failed>,
     },
-    /// The findings of report-only rows at `klin check`: notes. ADR 0073.
+    /// The findings of report-only rows at `klin check`: notes. ADR 0073, spec 9.7.
     Reported { unit: String, failed: Vec<Failed> },
     /// The accepted entries that matched nothing: a review item at `klin check`, and a note at
     /// the Stop. Never a failure. Spec 7.6.
@@ -743,7 +743,7 @@ pub enum Ratchet {
 impl Ratchet {
     /// Takes the findings of ride-along rows and of report-only rows out of a new or worsened
     /// result, each as a result of its own. What stays loses its text groups, whose leads index
-    /// the unsplit list. Spec 9.6.
+    /// the unsplit list. Spec 9.6, 9.7.
     pub fn split_tiers(&mut self) -> Vec<Ratchet> {
         let (Ratchet::New {
             unit,

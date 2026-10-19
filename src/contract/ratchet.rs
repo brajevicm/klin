@@ -211,7 +211,7 @@ struct Comparison {
 
 impl Comparison {
     /// Whether a failure is of a row that blocks, so the gate fails. A failure of a ride-along
-    /// row or a report-only row alone leaves the gate's exit at 0. Spec 9.6.
+    /// row or a report-only row alone leaves the gate's exit at 0. Spec 9.6, 9.7.
     fn blocks(&self, evaluator: &Evaluator) -> bool {
         let rose = self.rose.iter().map(|(finding, _)| finding);
         self.unmatched_findings

@@ -2260,5 +2260,45 @@ fn suggest_says_a_complexity_value_it_suggests_blocks_once_pinned() {
         "{}",
         run.out
     );
-    assert!(run.says("Pinned, it blocks."), "{}", run.out);
+    assert!(
+        run.says(". Derived, it only reports. Pinned, it blocks."),
+        "{}",
+        run.out
+    );
+    let cc = run
+        .out
+        .lines()
+        .find(|line| line.contains("derived: complexity cc"))
+        .expect("a derived cc line");
+    assert!(!cc.contains("Pinned"), "{}", run.out);
+}
+
+#[test]
+fn pin_says_the_derived_lines_ceiling_it_writes_blocks_once_pinned() {
+    let tree = derived_lines();
+    tree.write("klin.json", "{}");
+    tree.base();
+
+    let run = tree.run(&["setup", "--pin"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(". Derived, it only reports. Pinned, it blocks."),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_report_only_finding_reaches_neither_the_report_nor_the_status() {
+    let tree = derived_lines();
+    tree.write("src/long.rs", &exported("stretched", 30));
+
+    let stop = tree.stop();
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    let report = tree.run(&["report", "--json"]).json();
+    assert_eq!(report["counts"]["caught"], 0, "{report}");
+    assert_eq!(report["counts"]["reviews"], 0, "{report}");
+    let status = tree.run(&["status"]);
+    assert!(!status.says("src/long.rs"), "{}", status.out);
+    assert!(!tree.run(&["report"]).says("src/long.rs"), "{report}");
 }

@@ -48,8 +48,8 @@ N is the count of not-appropriate findings per 100 changes on the replay of
 | Blocks, with a safe remedy (a type, a comment, a marker) | N of 3 or less | Blocks the Stop |
 | Blocks, with a remedy that deletes code or changes behavior (orphan files, error handlers) | N of 1 or less | Blocks the Stop |
 | Rides a spent block, with a safe remedy | N above 3 and at most 10 | Appears only in a Stop that already blocks for another finding, through the mechanism of #584 |
-| Reports only | N above 10, when a person still wants the data | A note at `klin check`. The Stop never measures it |
-| Rejected | N above 10, or above 1 for a remedy that deletes code or changes behavior | No row |
+| Reports only | N above 10, and a person still wants the data | A note at `klin check`. The Stop never measures it |
+| Rejected | N above 10 and no person wants the data, or above 1 for a remedy that deletes code or changes behavior | No row |
 
 A row whose remedy deletes code or changes behavior never rides a spent
 block. The stricter bar exists because a wrong deletion can remove work the

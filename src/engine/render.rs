@@ -295,6 +295,11 @@ fn riders((unit, condition): (&str, &str), failed: &[Failed], out: &mut String) 
         "REVIEW: {} {unit} {condition}, of rows that fail no run:",
         failed.len()
     );
+    site_lines(failed, out);
+}
+
+/// Each finding on its own line, as `file:line  values  text`.
+fn site_lines(failed: &[Failed], out: &mut String) {
     for finding in failed {
         let _ = writeln!(
             out,
@@ -307,7 +312,7 @@ fn riders((unit, condition): (&str, &str), failed: &[Failed], out: &mut String) 
     }
 }
 
-/// The findings of report-only rows at `klin check`, which ask for nothing. ADR 0073.
+/// The findings of report-only rows at `klin check`, which ask for nothing. ADR 0073, spec 9.7.
 fn reported(unit: &str, failed: &[Failed], out: &mut String) {
     let _ = writeln!(
         out,
@@ -315,16 +320,7 @@ fn reported(unit: &str, failed: &[Failed], out: &mut String) {
          Pin the ceiling in klin.json to enforce it:",
         failed.len()
     );
-    for finding in failed {
-        let _ = writeln!(
-            out,
-            "  {}:{}  {}  {}",
-            finding.file,
-            finding.line,
-            finding.shown,
-            clip(&finding.text)
-        );
-    }
+    site_lines(failed, out);
 }
 
 fn worse(unit: &str, failed: &[Failed], out: &mut String) {

@@ -1496,13 +1496,20 @@ ceiling it is over blocks, and is report-only otherwise.
    there: it does not block, the Stop prints nothing for it, and the
    journal, `klin report` and `klin status` never hold it. The Stop takes no
    derivation sample for such a ceiling. Pinned by
-   `a_function_over_the_derived_lines_ceiling_alone_does_not_block_the_stop`.
+   `a_function_over_the_derived_lines_ceiling_alone_does_not_block_the_stop`
+   and `a_report_only_finding_reaches_neither_the_report_nor_the_status`.
+   While the derived `cc` blocks, the gate still runs at the Stop. #707 makes
+   the derived `cc` report-only, so that under `{}` no ceiling blocks and the
+   gate does no work at the Stop.
 2. The ratchet does not change. A function over a ceiling that blocks still
    carries its `lines`, so a rise of them is `worsened` at the Stop too
    (B.7.1). Pinned by
    `a_function_over_the_cc_ceiling_whose_length_grew_under_a_derived_lines_blocks_the_stop`.
    A function the base holds over a blocking ceiling that falls under it and
-   grows is report-only. Pinned by
+   grows is report-only. The two placements see it differently: the Stop
+   does not resolve the report-only ceiling, so the function is over nothing
+   there and passes, and `klin check` holds it over that ceiling, so it is a
+   `worsened` note. Pinned by
    `a_function_held_over_the_cc_ceiling_that_falls_under_it_and_grows_is_report_only`.
 3. At `klin check`, a new or worsened finding of the row is a note of kind
    `report-only`, with its `file`, `line` and `values`. It is no finding and
@@ -1512,13 +1519,16 @@ ceiling it is over blocks, and is report-only otherwise.
    `at_klin_check_a_function_over_the_derived_lines_ceiling_alone_is_a_report_only_note`.
 4. A pinned ceiling blocks the Stop and fails `klin check`. Pinned by
    `a_function_over_a_pinned_lines_ceiling_blocks_the_stop`,
-   `a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop` and
-   `a_function_over_the_length_ceiling_alone_fails`.
+   `a_function_over_a_pinned_test_lines_ceiling_blocks_the_stop`,
+   `a_function_over_the_length_ceiling_alone_fails` and
+   `with_test_lines_pinned_a_test_function_past_it_fails`.
 5. `klin policy` adds `report only: pin it to block` to the `derived:` line of
-   the ceiling, and the `derived:` lines of `--pin` and `--suggest` end with
-   `Pinned, it blocks.` Pinned by
-   `policy_names_the_derived_lines_ceiling_as_report_only` and
-   `suggest_says_a_complexity_value_it_suggests_blocks_once_pinned`.
+   the ceiling. The `derived:` line that `--pin` and `--suggest` print for it
+   ends with `Derived, it only reports. Pinned, it blocks.` The line of a
+   ceiling that blocks when derived says nothing more. Pinned by
+   `policy_names_the_derived_lines_ceiling_as_report_only`,
+   `suggest_says_a_complexity_value_it_suggests_blocks_once_pinned` and
+   `pin_says_the_derived_lines_ceiling_it_writes_blocks_once_pinned`.
 6. CI makes no annotation for the note. The job summary counts the notes on
    one line. Pinned by
    `a_report_only_finding_is_no_annotation_and_one_line_of_the_summary` in

@@ -33,9 +33,6 @@ pub const ACCEPTS: ratchet::Accepts = ratchet::Accepts {
 const CC_FLOOR: u64 = 10;
 const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
-/// The ceilings that only report when klin derives them: a function over one of them alone is a
-/// note at `klin check`, and the Stop never measures it. A pinned one blocks. ADR 0073.
-const REPORTS_WHEN_DERIVED: &[&str] = &[LINES.name];
 const PERCENTILE: usize = 95;
 
 /// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
@@ -65,6 +62,49 @@ pub const LINES: Key = Key {
     default: "",
     shape: crate::config::key::Shape::Ceiling,
 };
+
+/// One ceiling the section reads: its key, its words in the gate text, the floor and measure klin
+/// derives it from when the section leaves it out, and whether a derived one only reports. A
+/// report-only ceiling is a note at `klin check`, and the Stop never resolves it. ADR 0063,
+/// ADR 0073, spec 9.7.
+struct Rule {
+    key: Key,
+    words: (&'static str, &'static str),
+    derived: Option<Derivation>,
+    reports_when_derived: bool,
+}
+
+/// The floor a derived ceiling never goes below, and the measure of the sample it takes.
+type Derivation = (u64, fn(&Sample) -> u64);
+
+const RULES: [Rule; 3] = [
+    Rule {
+        key: CC,
+        words: ("cyclomatic > ", ""),
+        derived: Some((CC_FLOOR, sampled_cc)),
+        reports_when_derived: false,
+    },
+    Rule {
+        key: LINES,
+        words: ("body > ", " lines"),
+        derived: Some((LINES_FLOOR, sampled_lines)),
+        reports_when_derived: true,
+    },
+    Rule {
+        key: TEST_LINES,
+        words: ("test body > ", " lines"),
+        derived: None,
+        reports_when_derived: false,
+    },
+];
+
+fn sampled_cc(found: &Sample) -> u64 {
+    found.cc
+}
+
+fn sampled_lines(found: &Sample) -> u64 {
+    found.lines
+}
 
 pub const TEST_LINES: Key = Key {
     name: "test_lines",
@@ -299,12 +339,17 @@ impl Function {
         ceilings.exceeds(CC.name, self.cc) || ceilings.exceeds(self.length_key(), self.length())
     }
 
-    /// The function's values. A production function always carries its length, so a rise of it
-    /// is worse even where its length ceiling is not measured. ADR 0062 Q2.
+    /// Whether the function's length is one of its values. A production function always carries
+    /// it, so a rise of it is worse even where its length ceiling is not measured, and a test
+    /// function carries it only under a pinned `test_lines`. ADR 0062 Q2, spec 8.2.1.
+    fn carries_length(&self, ceilings: &Ceilings) -> bool {
+        !self.test || ceilings.holds(TEST_LINES.name)
+    }
+
     fn finding(&self, ceilings: &Ceilings) -> Finding {
         let mut values = Values::new();
         values.insert(CC.name.into(), self.cc.into());
-        if !self.test || ceilings.test_lines.is_some() {
+        if self.carries_length(ceilings) {
             values.insert(self.length_key().into(), self.length().into());
         }
         Finding {
@@ -317,56 +362,45 @@ impl Function {
     }
 }
 
-/// The ceilings in force. One the Stop does not measure is absent there. Spec 6.2.
+/// The ceilings in force, in the order of `RULES`. One the Stop does not measure is absent
+/// there. Spec 6.2.
 #[derive(Default)]
 struct Ceilings {
-    cc: Option<Ceiling>,
-    lines: Option<Ceiling>,
-    test_lines: Option<Ceiling>,
-    /// The ceilings in force that only report. ADR 0073.
-    reports: Vec<&'static str>,
+    held: Vec<Held>,
+}
+
+/// One ceiling in force, and whether it only reports. ADR 0073.
+struct Held {
+    rule: &'static Rule,
+    ceiling: Ceiling,
+    reports: bool,
 }
 
 impl Ceilings {
     fn named(&self) -> Vec<(&'static str, &Ceiling)> {
-        [
-            (CC.name, &self.cc),
-            (LINES.name, &self.lines),
-            (TEST_LINES.name, &self.test_lines),
-        ]
-        .into_iter()
-        .filter_map(|(key, ceiling)| ceiling.as_ref().map(|ceiling| (key, ceiling)))
-        .collect()
+        self.held
+            .iter()
+            .map(|held| (held.rule.key.name, &held.ceiling))
+            .collect()
     }
 
-    /// Puts a resolved ceiling in force. One klin derived for a key that only reports when
-    /// derived only reports. ADR 0073.
-    fn hold(&mut self, key: &'static str, ceiling: Ceiling, pinned: bool) {
-        if !pinned && REPORTS_WHEN_DERIVED.contains(&key) {
-            self.reports.push(key);
-        }
-        let slot = match key {
-            name if name == CC.name => &mut self.cc,
-            name if name == LINES.name => &mut self.lines,
-            _ => &mut self.test_lines,
-        };
-        *slot = Some(ceiling);
+    fn holds(&self, key: &str) -> bool {
+        self.held.iter().any(|held| held.rule.key.name == key)
     }
 
     fn exceeds(&self, key: &str, value: u64) -> bool {
-        self.named()
+        self.held
             .iter()
-            .any(|(named, ceiling)| *named == key && value > ceiling.value)
+            .any(|held| held.rule.key.name == key && value > held.ceiling.value)
     }
 
     /// A finding blocks when a ceiling it is over blocks, and only reports otherwise. ADR 0073.
     fn tier(&self, values: &Values) -> Tier {
-        let blocks = ACCEPTS.ratchets.iter().any(|key| {
-            !self.reports.contains(key)
-                && values
-                    .get(*key)
-                    .and_then(Value::as_u64)
-                    .is_some_and(|value| self.exceeds(key, value))
+        let blocks = self.held.iter().filter(|held| !held.reports).any(|held| {
+            values
+                .get(held.rule.key.name)
+                .and_then(Value::as_u64)
+                .is_some_and(|value| value > held.ceiling.value)
         });
         match blocks {
             true => Tier::Blocks,
@@ -521,7 +555,7 @@ fn unjudged_tests<'a>(
 ) -> Unjudged<'a> {
     let tests: Vec<&Function> = functions
         .iter()
-        .filter(|function| function.test && ceilings.test_lines.is_none())
+        .filter(|function| !function.carries_length(ceilings))
         .filter(|function| at.only.is_none_or(|only| only.contains(&function.file)))
         .collect();
     Unjudged {
@@ -606,22 +640,15 @@ fn spec(project: &Project, at_stop: bool) -> Result<Spec, Error> {
 }
 
 fn gate_text(ceilings: &Ceilings) -> String {
-    let said =
-        |ceiling: &Option<Ceiling>, words: fn(&Ceiling) -> String| ceiling.as_ref().map(words);
-    let parts: Vec<String> = [
-        said(&ceilings.cc, |ceiling| {
-            format!("cyclomatic > {}{}", ceiling.value, ceiling.note())
-        }),
-        said(&ceilings.lines, |ceiling| {
-            format!("body > {} lines{}", ceiling.value, ceiling.note())
-        }),
-        said(&ceilings.test_lines, |ceiling| {
-            format!("test body > {} lines{}", ceiling.value, ceiling.note())
-        }),
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
+    let parts: Vec<String> = ceilings
+        .held
+        .iter()
+        .map(|held| {
+            let (before, after) = held.rule.words;
+            let (value, note) = (held.ceiling.value, held.ceiling.note());
+            format!("{before}{value}{after}{note}")
+        })
+        .collect();
     let joined = match parts.as_slice() {
         [cc, lines, test] => format!("{cc} or {lines}, or {test}"),
         [first, second] => format!("{first} or {second}"),
@@ -665,15 +692,19 @@ fn ceilings(
     let sample = OnceCell::new();
     let mut ceilings = Ceilings::default();
     let mut provenance = Vec::new();
-    for key in [CC, LINES, TEST_LINES] {
-        let pin = section.get(key.name);
+    for rule in &RULES {
+        let pin = section.get(rule.key.name);
         let resolved = match pin {
-            Some(value) => Some(pinned(project, key, value)?),
-            None => derived(project, &sample, key, at_stop),
+            Some(value) => Some(pinned(project, rule.key, value)?),
+            None => derived(project, &sample, rule, at_stop),
         };
         if let Some((ceiling, said)) = resolved {
             provenance.push(said);
-            ceilings.hold(key.name, ceiling, pin.is_some());
+            ceilings.held.push(Held {
+                rule,
+                ceiling,
+                reports: pin.is_none() && rule.reports_when_derived,
+            });
         }
     }
     let file = config_name(&project.config.file);
@@ -693,33 +724,28 @@ fn ceilings(
 fn derived(
     project: &Project,
     sample: &OnceCell<(Sample, Option<String>)>,
-    key: Key,
+    rule: &Rule,
     at_stop: bool,
 ) -> Option<(Ceiling, contract::check::Provenance)> {
-    let (floor, measure): (u64, fn(&Sample) -> u64) = match key.name {
-        name if name == CC.name => (CC_FLOOR, |found| found.cc),
-        name if name == LINES.name => (LINES_FLOOR, |found| found.lines),
-        _ => return None,
-    };
-    let only_reports = REPORTS_WHEN_DERIVED.contains(&key.name);
-    if only_reports && at_stop {
+    let (floor, measure) = rule.derived?;
+    if rule.reports_when_derived && at_stop {
         return None;
     }
     let (found, commit) = sample.get_or_init(|| derived_sample(project));
     let value = measure(found).max(floor);
-    let rule = number_rule(value, floor, found.functions, commit.as_deref());
+    let number = number_rule(value, floor, found.functions, commit.as_deref());
     let mut recorded = commit
         .as_ref()
         .map(|_| format!("; recorded scope: {}", found.scope.description()))
         .unwrap_or_default();
-    if only_reports {
+    if rule.reports_when_derived {
         recorded.push_str("; report only: pin it to block");
     }
     let said = contract::check::Derived::sampled(
-        (SECTION, key.name),
+        (SECTION, rule.key.name),
         value.into(),
         value.to_string(),
-        (&rule, recorded),
+        (&number, recorded),
     );
     Some((Ceiling { value, step: None }, said.into()))
 }
@@ -740,19 +766,24 @@ pub fn suggested(project: &Project) -> Vec<(&'static str, u64, String)> {
     let (found, Some(commit)) = derived_sample(project) else {
         return Vec::new();
     };
-    [(CC, CC_FLOOR, found.cc), (LINES, LINES_FLOOR, found.lines)]
-        .into_iter()
-        .map(|(key, floor, measured)| {
-            let value = measured.max(floor);
-            let rule = number_rule(value, floor, found.functions, Some(&commit));
-            (
-                key.name,
+    RULES
+        .iter()
+        .filter_map(|rule| {
+            let (floor, measure) = rule.derived?;
+            let value = measure(&found).max(floor);
+            let number = number_rule(value, floor, found.functions, Some(&commit));
+            let tier = match rule.reports_when_derived {
+                true => ". Derived, it only reports. Pinned, it blocks.",
+                false => "",
+            };
+            Some((
+                rule.key.name,
                 value,
                 format!(
-                    "derived: {SECTION} {} {value} ({rule}). Pinned, it blocks.",
-                    key.name
+                    "derived: {SECTION} {} {value} ({number}){tier}",
+                    rule.key.name
                 ),
-            )
+            ))
         })
         .collect()
 }
