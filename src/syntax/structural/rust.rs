@@ -16,6 +16,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     identifiers: &["identifier", "type_identifier", "field_identifier"],
     methods_in: &["impl_item", "trait_item"],
     entry_points: &["main"],
+    called_without_its_name,
     visible,
     script,
     imported,
@@ -90,6 +91,11 @@ const SERDE_CALLABLES: &[&str] = &[
 /// trait states it, or a trait implementation carries it and the trait exposes it.
 fn visible(node: Node, _: &mut Scope) -> bool {
     marked(node) || above(node, &["trait_item"]).is_some() || implements_a_trait(node)
+}
+
+/// A Rust call names what it calls.
+fn called_without_its_name(_: Node) -> bool {
+    false
 }
 
 /// A Rust file is never a script.

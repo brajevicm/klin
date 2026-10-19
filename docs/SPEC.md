@@ -5054,7 +5054,15 @@ rules are pinned by `a_declaration_in_a_module_augmentation_is_not_judged`,
 `a_global_block_in_an_ambient_module_with_an_export_assignment_stays_global`,
 `a_declaration_in_a_typescript_script_file_is_not_judged`,
 `a_private_typescript_main_is_judged` and `a_class_constructor_is_not_judged`
-in `tests/dead_symbols.rs`. The `ignore` list adds name
+in `tests/dead_symbols.rs`. A TypeScript method that is called without a
+reference that names it is an entry point too: a method of an object literal,
+which whoever receives the object calls, a member marked `override`, which
+its base class calls, and a member whose name is a string, a number or a
+computed key, which no reference can write. The object literal itself is
+still judged where a declaration holds it. Pinned by
+`a_method_of_an_object_literal_is_not_judged_and_its_unused_object_is` and
+`an_override_and_a_member_no_name_can_reach_are_not_judged` in
+`tests/dead_symbols.rs`. The `ignore` list adds name
 globs. A glob is matched against each name a declaration binds, so a
 destructuring declaration is left out only when every name it binds matches
 one. The check is name-only: it does not resolve imports, types, reflection,

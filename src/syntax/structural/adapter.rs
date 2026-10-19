@@ -15,6 +15,8 @@ pub(crate) struct Adapter {
     pub methods_in: &'static [&'static str],
     /// Names invoked by the runtime without a source reference.
     pub entry_points: &'static [&'static str],
+    /// Whether a runtime or a framework calls this declaration without a reference that names it.
+    pub called_without_its_name: fn(Node) -> bool,
     /// Whether a declaration leaves its file, given what its file says.
     pub visible: fn(Node, &mut Scope) -> bool,
     /// Whether a file, by its root node and its path, is a script that declares globals.
@@ -54,10 +56,26 @@ pub(crate) struct Adapter {
 
 /// What a file says about every declaration in it: whether it is a script, and what each
 /// ambient module in it was found to export, by the module's start byte, so each is read once.
-#[derive(Default)]
 pub(crate) struct Scope {
     pub script: bool,
-    pub implicit: HashMap<usize, bool>,
+    implicit: HashMap<usize, bool>,
+}
+
+impl Scope {
+    pub fn new(script: bool) -> Scope {
+        Scope {
+            script,
+            implicit: HashMap::new(),
+        }
+    }
+
+    /// What the ambient module at `module` exports implicitly, read once for each module.
+    pub fn exports_implicitly(&mut self, module: Node, read: impl FnOnce() -> bool) -> bool {
+        *self
+            .implicit
+            .entry(module.start_byte())
+            .or_insert_with(read)
+    }
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept

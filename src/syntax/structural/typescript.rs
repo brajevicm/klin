@@ -25,6 +25,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     ],
     methods_in: &[],
     entry_points: &["constructor"],
+    called_without_its_name,
     visible,
     script,
     imported,
@@ -97,6 +98,13 @@ const FUNCTION_LIKE: &[&str] = &[
     "construct_signature",
 ];
 
+/// The methods a class, an interface or an object literal holds.
+const METHODS: &[&str] = &[
+    "method_definition",
+    "method_signature",
+    "abstract_method_signature",
+];
+
 /// The members a class or an interface body lists in its contract.
 const MEMBERS: &[&str] = &[
     "method_definition",
@@ -118,8 +126,29 @@ const EVERY: &str = "*";
 /// exported class leaves with the class. Otherwise the nearest ambient context decides, and a
 /// declaration outside every one leaves a script as a global.
 fn visible(node: Node, scope: &mut Scope) -> bool {
-    above(node, &["export_statement"]).is_some()
-        || ambient(node, &mut scope.implicit).unwrap_or(scope.script)
+    above(node, &["export_statement"]).is_some() || ambient(node, scope).unwrap_or(scope.script)
+}
+
+/// Whether a method is called without a reference that names it: whoever receives an object
+/// literal calls the methods it holds, a base class calls an `override`, and a string, a number
+/// or a computed key is no name a reference can write.
+fn called_without_its_name(node: Node) -> bool {
+    METHODS.contains(&node.kind())
+        && (node.parent().is_some_and(|held| held.kind() == "object")
+            || overrides(node)
+            || node.child_by_field_name("name").is_some_and(|name| {
+                !matches!(
+                    name.kind(),
+                    "property_identifier" | "private_property_identifier"
+                )
+            }))
+}
+
+/// Whether `override` marks this member, so its base class calls it.
+fn overrides(node: Node) -> bool {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .any(|child| child.kind() == "override_modifier")
 }
 
 /// Whether this is a `.d.ts` file that `tsc` reads as a script under every `moduleDetection`,
@@ -138,7 +167,7 @@ fn script(root: Node, path: &str) -> bool {
 /// What the nearest ambient context around this node says: `declare global { ... }` and a
 /// `global { ... }` block make it global, and a `declare module "x" { ... }` exports it where
 /// the module exports implicitly. `None` outside every ambient context.
-fn ambient(node: Node, implicit: &mut HashMap<usize, bool>) -> Option<bool> {
+fn ambient(node: Node, scope: &mut Scope) -> Option<bool> {
     std::iter::successors(node.parent(), Node::parent).find_map(|found| match found.kind() {
         "global_namespace" => Some(true),
         "ambient_declaration" if has_token(found, "global") => Some(true),
@@ -147,7 +176,7 @@ fn ambient(node: Node, implicit: &mut HashMap<usize, bool>) -> Option<bool> {
                 .child_by_field_name("name")
                 .is_some_and(|name| name.kind() == "string") =>
         {
-            Some(*implicit.entry(found.start_byte()).or_insert_with(|| {
+            Some(scope.exports_implicitly(found, || {
                 found
                     .child_by_field_name("body")
                     .is_some_and(exports_implicitly)
@@ -571,7 +600,7 @@ impl Overloads {
 /// and `async` are no part of it, and a member that has no overloads has none.
 fn overloadable(node: Node, source: &[u8]) -> Option<String> {
     let kind = match node.kind() {
-        "method_definition" | "method_signature" | "abstract_method_signature" => "method",
+        kind if METHODS.contains(&kind) => "method",
         "function_declaration" | "generator_function_declaration" | "function_signature" => {
             "function"
         }

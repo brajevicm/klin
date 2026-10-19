@@ -494,10 +494,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             path: file.path,
             source: file.source.as_bytes(),
             lines: file.source.lines().collect(),
-            scope: Scope {
-                script: (adapter.script)(file.root(), file.path),
-                ..Scope::default()
-            },
+            scope: Scope::new((adapter.script)(file.root(), file.path)),
             declarations: Vec::new(),
             imports: Vec::new(),
             modules: Vec::new(),
@@ -601,7 +598,8 @@ impl<'a, 'b> Reading<'a, 'b> {
             return;
         }
         let name = text_of(name, self.source);
-        let entry_point = self.adapter.entry_points.contains(&name.as_str());
+        let entry_point = self.adapter.entry_points.contains(&name.as_str())
+            || (self.adapter.called_without_its_name)(node);
         self.declarations.push(Declaration {
             name,
             bindings: bindings
