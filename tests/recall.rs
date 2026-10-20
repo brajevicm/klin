@@ -424,7 +424,7 @@ enum Tier {
     RidesAlong,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Pin {
     Caught,
     Missed,
@@ -644,7 +644,7 @@ fn recall(tier: Tier, findings: &[Value]) -> (String, Vec<&'static str>) {
 fn row_named(slop: &str) -> &'static Row {
     ROWS.iter()
         .find(|row| row.slop == slop)
-        .expect("a recall row")
+        .unwrap_or_else(|| panic!("no recall row named {slop:?}"))
 }
 
 fn planted_tree(config: &str, planted: &[(&str, String)]) -> Tree {
@@ -703,8 +703,10 @@ fn the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone() {
     let lines = planted_tree(r#"{"complexity": {"cc": 10, "lines": 25}}"#, &planted());
     let cc = planted_tree(r#"{"complexity": {"cc": 10, "lines": 1000}}"#, &planted());
 
-    assert!(pin(row, rule, &stop_findings(&lines)) == Caught);
-    assert!(pin(row, rule, &stop_findings(&cc)) == Missed);
+    let over_lines = stop_findings(&lines);
+    let over_nothing = stop_findings(&cc);
+    assert_eq!(pin(row, rule, &over_lines), Caught, "{over_lines:?}");
+    assert_eq!(pin(row, rule, &over_nothing), Missed, "{over_nothing:?}");
 }
 
 #[test]
@@ -726,5 +728,5 @@ fn a_ride_along_finding_is_no_catch_for_a_blocking_row() {
             .any(|finding| finding["rides_along"] == true && catches(row, rule, finding)),
         "{findings:?}"
     );
-    assert!(pin(row, rule, &findings) == Missed);
+    assert_eq!(pin(row, rule, &findings), Missed, "{findings:?}");
 }
