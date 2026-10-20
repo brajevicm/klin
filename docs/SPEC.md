@@ -6232,14 +6232,15 @@ index file of a directory that holds a `package.json`, whose `types` or
 as `price.ts` and `price/index.ts`, the import is a located local hole, never
 external. A bare specifier with no owning config, or that no paths rule and
 no `baseUrl` places, also goes on to the workspace step. A specifier that names
-a file of another kind is counted as external. A relative specifier that names
-no held TypeScript file is an asset import and is counted as external, not a
-hole, where its path, with any `?query` suffix stripped, ends in the extension
+a file of another kind is counted as external. A relative or paths specifier
+that names no held TypeScript file is an asset import and is counted as
+external, not a hole, where its located path asks for a `?raw`, `?url` or
+`?inline` query, or, with any `?query` suffix stripped, ends in the extension
 of one of Vite's known asset types, a style sheet language, `.json` or
-`.wasm`, in any letter case, such as `../logo.svg?react` or `./styles.css`
-(#672). Any other
-extension or none, such as `./worker?worker` or a missing `./user.service`,
-keeps the hole: the bundler may load such a path as a module. Pinned by
+`.wasm`, in any letter case. Examples are `../logo.svg?react`,
+`@/assets/logo.svg?react`, `./styles.css` and `./shader.glsl?raw` (#672). Any
+other path, such as `./worker?worker` or a missing `./user.service`, keeps the
+hole: the bundler may load such a path as a module. Pinned by
 `an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole`,
 `a_bare_import_under_the_base_url_is_a_local_edge` and
 `a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`

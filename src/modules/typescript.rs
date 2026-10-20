@@ -239,15 +239,8 @@ impl Lookup {
 
     /// Whether a name that reaches no held TypeScript file names something V1 does not resolve:
     /// an asset, or a file of another kind.
-    fn outside(
-        &self,
-        topology: &Topology,
-        specifier: &str,
-        base: &str,
-        candidates: &[String],
-    ) -> bool {
-        matches!(self, Lookup::Named)
-            && (asset(specifier) || another_kind(topology, base, candidates))
+    fn outside(&self, topology: &Topology, base: &str, candidates: &[String]) -> bool {
+        matches!(self, Lookup::Named) && (asset(base) || another_kind(topology, base, candidates))
     }
 }
 
@@ -287,7 +280,7 @@ fn dependency(
             None => depend(builder, modules, site, target),
         },
         [] if lookup.tries_packages(topology, specifier, base, &candidates) => return false,
-        [] if lookup.outside(topology, specifier, base, &candidates) => builder.external += 1,
+        [] if lookup.outside(topology, base, &candidates) => builder.external += 1,
         [] => hole(
             builder,
             site,
@@ -373,14 +366,14 @@ fn relative(specifier: &str) -> bool {
     matches!(specifier, "." | "..") || specifier.starts_with("./") || specifier.starts_with("../")
 }
 
-/// Whether a relative specifier, its `?query` stripped, names a file whose extension is an
-/// asset's, such as `.svg` or `.css`: a file a bundler loads.
-fn asset(specifier: &str) -> bool {
-    let path = specifier
-        .split_once('?')
-        .map_or(specifier, |(path, _)| path);
-    relative(specifier)
-        && std::path::Path::new(path)
+/// Whether a located path names a file a bundler loads as an asset: one whose `?query` asks for
+/// its text or URL, or whose extension, the query stripped, is an asset's, such as `.svg`.
+fn asset(base: &str) -> bool {
+    let (path, query) = base.split_once('?').unwrap_or((base, ""));
+    query
+        .split('&')
+        .any(|part| matches!(part, "raw" | "url" | "inline"))
+        || std::path::Path::new(path)
             .extension()
             .and_then(|extension| extension.to_str())
             .is_some_and(|extension| {
