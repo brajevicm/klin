@@ -699,16 +699,26 @@ these happened:
    alone is advisory. A reftable repository has no HEAD reflog when
    `git reflog exists HEAD` says so, even where `git reflog show` prints an
    empty log.
-2. **A branch change.** HEAD's symbolic ref differs from the recorded one,
-   and either HEAD's reflog since the recorded position holds a `checkout:`
-   entry that moved HEAD to another commit, or the stamp's parent is no
-   longer an ancestor of HEAD. So a checkout of a branch built on this one,
-   whose history still holds the stamp's parent, is a branch change.
+2. **A branch change.** Either of these:
+   - HEAD's reflog holds a `checkout:` entry, or the `branch: Reset` entry
+     of `git switch -C`, that moved HEAD to another commit, after the last
+     entry that put HEAD at the stamp's parent. Where no entry put HEAD
+     there, the reflog is read from the recorded position. This holds
+     whatever HEAD's symbolic ref is, so a checkout of a branch built on
+     this one, a `git switch -C` of the same branch onto another commit and
+     a checkout from one detached HEAD to another are branch changes. The
+     read starts at the parent because a Stop of an earlier release
+     recorded the history after such a checkout at a red Stop, so the
+     window it left recovers at the next Stop.
+   - HEAD's symbolic ref differs from the recorded one, and the stamp's
+     parent is no longer an ancestor of HEAD.
+
    `git switch -c` keeps the turn window, at the same HEAD as B.6.2 did and
    also between the agent's own commits, because its entry leaves HEAD at
-   the same commit. A stamp that recorded no ref or no reflog position, such
-   as one restored from its ref, and a HEAD with no reflog, take the ancestry
-   test alone.
+   the same commit. A stamp that recorded no reflog position, such as one
+   restored from its ref or one a branch fallback wrote, and a HEAD with no
+   reflog take the ancestry test alone. A stamp that recorded no ref takes
+   that test whatever the ref is.
 3. **Lost history.** The recorded default-branch merge-base is no longer an
    ancestor of HEAD, for example after the default branch was rewritten and
    the agent reset onto it, or after a reset onto history that shares no
@@ -775,8 +785,10 @@ because it sits on the branch the checkout left, and a window from it would
 read that branch's tests as deleted tests. Its journal outcome stays
 `branch-fallback`. When remote refs exist but the default
 branch is not a remote-tracking ref, rules 1 and 3 cannot fire, and rules 2
-and 4 are advisory. Each Stop there prints a note that no default branch
-resolves and that `git remote set-head origin --auto` names it, and `klin
+and 4 are advisory. The report of each Stop there, with a stamp or without
+one, holds a note that no default branch resolves and that `git remote
+set-head origin --auto` names it. The note reaches the agent with the report,
+so a Stop that tells nothing prints it no more than any other note. `klin
 status` prints the same line where it names the default branch.
 
 **Consequences.**

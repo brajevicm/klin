@@ -11,15 +11,19 @@ the version, so add the heading again after each release.
 
 - A checkout of a branch that already holds the commit the turn started
   from, such as an integration branch that merged this one, now makes the
-  next Stop advisory with `branch-changed`. That Stop used to judge every
-  commit between the two branches as the agent's work, block on them, and
-  keep the window red. `git switch -c` still keeps the turn window, even
-  when the agent commits before and after it.
+  next Stop advisory with `branch-changed`. So does a `git switch -C` of the
+  same branch onto another commit, and a checkout from one detached HEAD to
+  another. That Stop used to judge every commit between the two as the
+  agent's work, block on them, and keep the window red. A window an earlier
+  release left red this way recovers at the next Stop. `git switch -c`
+  still keeps the turn window, even when the agent commits before and after
+  it.
 - A clone whose `origin/HEAD` names a branch it never fetched, with one
   remote-tracking branch, now uses that branch as the default branch for
-  the advisory rules. Where no default branch resolves at all, each Stop and
-  `klin status` say so and name `git remote set-head origin --auto`.
-  `klin status --json` adds `window.remotes`.
+  the advisory rules. Where no default branch resolves at all, the Stop's
+  report and `klin status` say so and name
+  `git remote set-head origin --auto`. `klin status --json` adds
+  `window.remotes`.
 - `complexity` no longer blocks on a `cc` ceiling that klin derives. A
   function over it is an `INFO` note at `klin check`, and the Stop does not
   measure it. A `cc` you pin in `klin.json` still blocks, including one that

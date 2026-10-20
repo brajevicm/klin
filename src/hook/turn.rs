@@ -303,6 +303,7 @@ pub fn window(
     };
     let held = held(root, &at, flags, out);
     let here = Here::read(root, recorded_base(held.as_ref()));
+    note_no_default(&here, out);
     let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) else {
         if here.remotes {
             return Ok((branch(root, out)?, Some(Reason::StampMissing)));
@@ -313,7 +314,6 @@ pub fn window(
         return Ok((replaced(&at, held.as_ref(), mark, base, out), None));
     };
     if here.remotes {
-        note_no_default(&here, out);
         let reason = advisory(root, &at, stamp, &here);
         if reason.is_none() {
             settled(root, &at, stamp, &here, out);
@@ -442,7 +442,7 @@ fn tracked(root: &Path, at: &Path, stamp: &Stamp, here: &Here, branch: Tracked) 
 /// The note of a Stop in a clone with remotes where no default branch resolves, so rules 1 and
 /// 3 cannot fire for it. Spec 6.6.
 fn note_no_default(here: &Here, out: &mut String) {
-    if here.default.is_none() {
+    if here.remotes && here.default.is_none() {
         note(out, NO_DEFAULT);
     }
 }
@@ -499,21 +499,37 @@ fn forward(root: &Path, was: Option<&str>, now: Option<String>) -> Option<String
     }
 }
 
-/// Whether the branch changed under the turn: HEAD's symbolic ref differs from the one the
-/// stamp recorded, or the stamp recorded none, and either a checkout since the stamp moved HEAD
-/// to another commit or the stamp's parent left HEAD history. So `git switch -c`, before or
-/// after the turn's own commits, and an amend or a rebase of the turn's own commits on the same
-/// branch, keep the turn window, and a checkout of a branch built on this one does not. Spec 6.6.
+/// Whether the branch changed under the turn: a checkout or a branch reset moved HEAD to another
+/// commit since HEAD last stood at the stamp's parent, or HEAD's symbolic ref differs from the
+/// one the stamp recorded, or the stamp recorded none, and the stamp's parent left HEAD history.
+/// So `git switch -c`, before or after the turn's own commits, and an amend or a rebase of the
+/// turn's own commits on the same branch, keep the turn window. Spec 6.6.
 fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
     let moved = match (&stamp.history.head_ref, &here.head_ref) {
         (Some(was), Some(now)) => was != now,
         _ => true,
     };
-    let jumped = || {
-        here.reflog_since(stamp.history.reflog_position)
-            .is_some_and(|entries| entries.iter().any(stamp::ReflogEntry::jumped))
+    jumped(here, stamp) || (moved && abandoned(root, stamp))
+}
+
+/// Whether HEAD's reflog holds a jump after the last entry that put HEAD at the stamp's parent,
+/// or after the recorded position where no entry did. The parent, and not the position alone,
+/// starts the read, because an earlier release recorded the position past a checkout at a red
+/// Stop. A stamp that recorded no position, as one restored from its ref or one a branch
+/// fallback wrote, has no reflog to compare. Spec 6.6.
+fn jumped(here: &Here, stamp: &Stamp) -> bool {
+    let (Some(entries), Some(since)) = (
+        here.reflog.as_deref(),
+        here.reflog_since(stamp.history.reflog_position),
+    ) else {
+        return false;
     };
-    moved && (jumped() || abandoned(root, stamp))
+    let start = stamp
+        .parent
+        .as_deref()
+        .and_then(|parent| entries.iter().rposition(|entry| entry.to == parent))
+        .map_or(entries.len() - since.len(), |at| at + 1);
+    entries[start..].iter().any(stamp::ReflogEntry::jumped)
 }
 
 /// The fresh stamp an advisory Stop takes of the tree it measured, with the history as it now
@@ -554,6 +570,7 @@ fn read_only(root: &Path, out: &mut String) -> Result<(Window, Option<Reason>), 
         .filter(|stamp| stamp.commit.is_some() && resolves(root, stamp));
     let stamp = file.or_else(|| kept(root));
     let here = Here::read(root, recorded_base(stamp.as_ref()));
+    note_no_default(&here, out);
     let Some(stamp) = stamp else {
         return Ok((
             branch(root, out)?,
@@ -561,7 +578,6 @@ fn read_only(root: &Path, out: &mut String) -> Result<(Window, Option<Reason>), 
         ));
     };
     if here.remotes {
-        note_no_default(&here, out);
         let reason = at.and_then(|at| advisory(root, &at, &stamp, &here));
         return Ok((turn(&stamp), reason));
     }

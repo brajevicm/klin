@@ -237,10 +237,12 @@ pub struct ReflogEntry {
 }
 
 impl ReflogEntry {
-    /// A `checkout:` entry that moved HEAD to another commit, which `git switch -c` at the same
-    /// commit does not. Spec 6.6.
+    /// A `checkout:` entry, or the `branch: Reset` entry of `git switch -C`, that moved HEAD to
+    /// another commit, which `git switch -c` at the same commit does not. Spec 6.6.
     pub fn jumped(&self) -> bool {
-        self.said.starts_with("checkout:")
+        ["checkout:", "branch: Reset"]
+            .iter()
+            .any(|kind| self.said.starts_with(kind))
             && self.from.as_deref().is_some_and(|from| from != self.to)
     }
 }

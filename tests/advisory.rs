@@ -352,6 +352,47 @@ fn a_checkout_of_a_branch_that_holds_the_stamps_parent_makes_the_stop_advisory()
 }
 
 #[test]
+fn a_switch_that_resets_the_branch_onto_another_commit_makes_the_stop_advisory() {
+    let remote = beside_an_integration_branch(Remote::unstamped(CONFIG));
+    remote
+        .tree
+        .git(&["switch", "-q", "-C", "work", "integration"]);
+
+    assert_advisory(&remote.tree, "branch-changed");
+}
+
+#[test]
+fn a_checkout_from_one_detached_head_to_another_makes_the_stop_advisory() {
+    let remote = beside_an_integration_branch(Remote::unstamped(CONFIG));
+    remote.tree.git(&["checkout", "-q", "--detach", "work"]);
+    restamp(&remote.tree);
+    assert_eq!(remote.tree.field("head_ref"), "HEAD");
+    remote
+        .tree
+        .git(&["checkout", "-q", "--detach", "integration"]);
+
+    assert_advisory(&remote.tree, "branch-changed");
+}
+
+/// A red window an older release left after a checkout of `integration`: its Stop recorded the
+/// history after the checkout, the new ref and the reflog position past the checkout, and kept
+/// the stamp because the verdict was red.
+#[test]
+fn a_red_window_an_older_stop_settled_after_a_checkout_recovers_at_the_next_stop() {
+    let remote = beside_an_integration_branch(Remote::unstamped(CONFIG));
+    remote.tree.git(&["checkout", "-q", "integration"]);
+    let logged = std::fs::read_to_string(remote.tree.path(".git/logs/HEAD")).expect("reflog");
+    let text = std::fs::read_to_string(remote.tree.state("turn")).expect("the stamp");
+    let mut held: Value = serde_json::from_str(&text).expect("the stamp");
+    held["head_ref"] = "refs/heads/integration".into();
+    held["reflog_position"] = logged.lines().count().into();
+    held["verdict"] = "red".into();
+    std::fs::write(remote.tree.state("turn"), held.to_string()).expect("the stamp");
+
+    assert_advisory(&remote.tree, "branch-changed");
+}
+
+#[test]
 fn a_branch_made_between_the_agents_own_commits_keeps_the_turn_window() {
     let remote = Remote::new();
     remote.tree.write("notes.txt", "the agent's notes\n");
@@ -699,6 +740,24 @@ fn with_no_main_a_stop_finds_the_one_remote_branch_without_asking_git() {
     let traced = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(traced.contains("git"), "nothing traced: {traced}");
     assert!(!traced.contains("for-each-ref"), "{traced}");
+}
+
+#[test]
+fn with_no_default_branch_a_stop_with_no_stamp_says_so() {
+    let remote = on_a_clone_without_main();
+    remote.tree.git(&["push", "-q", "origin", "main:release"]);
+    remote.tree.git(&["fetch", "-q", "origin"]);
+    remote.tree.remove(".git/klin/turn");
+    remote
+        .tree
+        .git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
+    remote.tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&remote.tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(MOVED), "{}", run.out);
+    assert!(run.says("no default branch"), "{}", run.out);
+    assert_eq!(last_stop(&remote.tree)["advisory"], "stamp-missing");
 }
 
 #[test]
