@@ -2447,3 +2447,42 @@ fn under_an_empty_config_the_stop_reads_no_file_for_complexity() {
     assert_eq!(row["work"]["reads"], 0, "{report}");
     assert_eq!(row["work"]["parses"], 0, "{report}");
 }
+
+#[test]
+fn under_an_empty_config_a_stop_still_refuses_a_malformed_accepted_entry() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "complexity", "file": "src/knot.rs",
+                           "text": "pub fn knot(a: i32) -> i32 {", "lines": 13}] }"#,
+    );
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/knot.rs", &exported_knot());
+
+    let run = tree.stop();
+    assert!(run.says("does not give a number for cc"), "{}", run.out);
+}
+
+#[test]
+fn under_an_empty_config_a_stop_notes_an_accepted_entry_that_matches_nothing() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "complexity", "file": "src/knot.rs",
+                           "text": "fn vanished() {", "cc": 20, "lines": 40}] }"#,
+    );
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/knot.rs", &exported_knot());
+
+    let (run, report) = tree.stop_report();
+    assert_eq!(run.code, 0, "{}", run.out);
+    let notes = report["notes"].as_array().cloned().unwrap_or_default();
+    assert!(
+        notes.iter().any(|note| note["kind"] == "unmatched"
+            && note["check"] == "complexity"
+            && note["file"] == "src/knot.rs"),
+        "{report}"
+    );
+}

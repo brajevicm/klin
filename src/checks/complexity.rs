@@ -483,7 +483,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let mut spec = spec(project, at.caller)?;
     if spec.ceilings.is_empty() {
-        return Ok(held_nothing(out));
+        return held_nothing(&spec, at, out);
     }
     out.tell_each(std::mem::take(&mut spec.provenance));
     ratchet::noted_as(contract::check::DERIVATION, &spec.notes, out);
@@ -527,13 +527,20 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 
 /// A Stop that holds no ceiling reads no file: the section pins none, and the Stop resolves no
 /// derived ceiling. Spec 9.7.
-fn held_nothing(out: &mut Sink) -> u8 {
+fn held_nothing(spec: &Spec, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     out.record(|records| records.work = Some(ContentCost::default()));
-    out.tell(contract::check::Told::judged(Line::new(
-        contract::check::Measured::Complexity(contract::check::Complexity::default()),
-        None,
-    )));
-    0
+    let tier = |values: &Values| spec.ceilings.tier(values);
+    Ok(evaluator(spec, &tier).evaluate(
+        Vec::new(),
+        Vec::new(),
+        ratchet::accepted(&at.project.config, at.gate, &ACCEPTS)?,
+        at,
+        Line::new(
+            contract::check::Measured::Complexity(contract::check::Complexity::default()),
+            None,
+        ),
+        out,
+    ))
 }
 
 /// What the base holds over the ceilings, what it measured and what reading it cost, and the

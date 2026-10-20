@@ -966,20 +966,19 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
 
     let (held, report) = harness::stop_report(tree.root(), STOP, &[]);
     assert_eq!(held.code, 0, "{}", held.out);
-    let derived = harness::derived(&report);
-    let ceiling = find(&derived, |entry| {
-        entry["section"] == "doc_size" && entry["key"] == "CLAUDE.md"
-    });
     assert!(
-        ceiling["rule"]
-            .as_str()
-            .is_some_and(|rule| rule.contains("the derivation commit lacks")),
+        claude_rule(&report).contains("the derivation commit lacks"),
         "{report}"
     );
 
     assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
-    let moved = stop(&tree);
+    let (moved, report) = harness::stop_report(tree.root(), STOP, &[]);
     assert_eq!(moved.code, 0, "{}", moved.out);
+    assert_eq!(
+        claude_rule(&report),
+        "the word count at the derivation commit, rounded up to the next 50",
+        "{report}"
+    );
     let file = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
     let derived: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap_or_default())
         .unwrap_or_default();
@@ -987,6 +986,17 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
         derived["doc_size_instructions"]["CLAUDE.md"], 50,
         "{derived}"
     );
+}
+
+/// The rule the `doc-size` ceiling of `CLAUDE.md` came from at this Stop.
+fn claude_rule(report: &Value) -> String {
+    let derived = harness::derived(report);
+    find(&derived, |entry| {
+        entry["section"] == "doc_size" && entry["key"] == "CLAUDE.md"
+    })["rule"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
 }
 
 #[test]

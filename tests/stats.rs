@@ -1944,3 +1944,50 @@ fn a_session_scope_over_a_journal_with_no_session_id_says_it_could_not_place_it(
     assert!(run.says("holds no session"), "{}", run.out);
     assert!(!run.says("No regressions were found"), "{}", run.out);
 }
+
+/// A derived `cc` finding that blocked a Stop before #707 is not compared once a Stop no longer
+/// measures it, because `complexity` moved to semantics version 2. Spec 8.2, 8.3.
+#[test]
+fn a_derived_cc_regression_from_before_the_report_only_tier_is_not_compared() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn production() -> i32 { 1 }\n");
+    tree.base();
+    let branches: String = (0..10)
+        .map(|at| format!("    if a == {at} {{ return {at}; }}\n"))
+        .collect();
+    tree.write(
+        "src/knot.rs",
+        &format!("pub fn knot(a: i32) -> i32 {{\n{branches}    -1\n}}\n"),
+    );
+    let site = found(
+        "id-knot",
+        "complexity",
+        "src/knot.rs",
+        1,
+        "pub fn knot(a: i32) -> i32 {",
+        "Reduce the function's responsibility or decision complexity.",
+    );
+    let mut flagged = stop(400, true, vec![site], vec![]);
+    let result = &mut flagged["result"];
+    if let Some(rows) = result["capabilities"].as_array_mut() {
+        rows.push(
+            json!({"name": "complexity", "state": "active", "execution": "ok",
+                         "judgement": "fail"}),
+        );
+    }
+    if let Some(records) = result["measurements"].as_array_mut() {
+        records.push(
+            json!({"check": "complexity", "state": "complete", "holes": [],
+                            "basis": {"producer": {"capability": "complexity",
+                                                   "semantics_version": 1}}}),
+        );
+    }
+    journal(&tree, &[flagged]);
+
+    let run = tree.stop();
+    assert_eq!(run.code, 0, "{}", run.out);
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(json["counts"]["not_compared"], 1, "{json}");
+    assert_eq!(json["counts"]["fixed"], 0, "{json}");
+}

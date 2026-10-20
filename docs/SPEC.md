@@ -1501,8 +1501,16 @@ otherwise.
    `a_function_over_the_derived_cc_ceiling_does_not_block_the_stop`
    and `a_report_only_finding_reaches_neither_the_report_nor_the_status`.
    When no ceiling blocks, as under `{}`, the Stop reads and parses no file
-   for the gate, its work counters are 0, and its row carries no coverage. Pinned by
-   `under_an_empty_config_the_stop_reads_no_file_for_complexity`.
+   for the gate, its work counters are 0, and its row carries no coverage.
+   It still reads the accepted entries of the gate: a malformed one is the
+   same error as at `klin check`, and one in the window that matches nothing
+   is a note (7.6). #707 raised the semantics version of `complexity` to 2,
+   because the same tree no longer blocks on a derived `cc` (8.2). Pinned by
+   `under_an_empty_config_the_stop_reads_no_file_for_complexity`,
+   `under_an_empty_config_a_stop_still_refuses_a_malformed_accepted_entry`,
+   `under_an_empty_config_a_stop_notes_an_accepted_entry_that_matches_nothing`
+   and, in `tests/stats.rs`,
+   `a_derived_cc_regression_from_before_the_report_only_tier_is_not_compared`.
 2. The ratchet does not change. A function over a ceiling that blocks still
    carries its `lines`, so a rise of them is `worsened` at the Stop too
    (B.7.1). Pinned by
