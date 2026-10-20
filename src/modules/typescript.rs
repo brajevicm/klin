@@ -367,12 +367,12 @@ fn relative(specifier: &str) -> bool {
 }
 
 /// Whether a located path names a file a bundler loads as an asset: one whose `?query` asks for
-/// its text or URL, or whose extension, the query stripped, is an asset's, such as `.svg`.
+/// its text or URL and not for a worker, or whose extension, the query stripped, is an asset's,
+/// such as `.svg`.
 fn asset(base: &str) -> bool {
     let (path, query) = base.split_once('?').unwrap_or((base, ""));
-    query
-        .split('&')
-        .any(|part| matches!(part, "raw" | "url" | "inline"))
+    let asks = |names: &[&str]| query.split('&').any(|part| names.contains(&part));
+    asks(&["raw", "url", "inline"]) && !asks(&["worker", "sharedworker"])
         || std::path::Path::new(path)
             .extension()
             .and_then(|extension| extension.to_str())
