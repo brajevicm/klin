@@ -3052,9 +3052,12 @@ A capability earns a place by the whole loop, not by detector accuracy alone:
   "a long component with no branches" plants a function with no branch
   over the `lines` ceiling of the tree. The Stop does not resolve a derived
   `lines` ceiling (9.7), so the row is a pinned miss. A pinned `lines`
-  ceiling catches it and a pinned `cc` 10 alone does not (#698). Pinned by
-  `the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone`
-  and `a_ride_along_finding_is_no_catch_for_a_blocking_row`.
+  ceiling catches it and a pinned `cc` 10 alone does not (#698). The
+  `console.log` row counts only a finding whose values mention `console`,
+  so another escape on its line is no catch. Pinned by
+  `the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone`,
+  `a_ride_along_finding_is_no_catch_for_a_blocking_row` and
+  `another_escape_on_the_console_log_line_is_no_catch_for_its_row`.
   The precision replay, `scripts/replay/replay.py`, runs one row over a frozen
   sample of app histories and prints its not-appropriate findings per 100
   changes. It runs only locally, never in CI.

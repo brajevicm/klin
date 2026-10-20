@@ -436,9 +436,10 @@ enum Kind {
     Any,
     Has(&'static str),
     Is(&'static str, &'static str),
+    About(&'static str),
 }
 
-use Kind::{Any, Has, Is};
+use Kind::{About, Any, Has, Is};
 
 struct Rule(&'static str, Kind, Pin);
 
@@ -567,7 +568,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "a console.log",
-        &[Rule("escapes", Any, Missed)],
+        &[Rule("escapes", About("console"), Missed)],
         DASHBOARD_FILE,
         "console.log",
     ),
@@ -579,15 +580,20 @@ const ROWS: &[Row] = &[
     ),
 ];
 
-fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
-    let kind = match rule.1 {
+fn is_of(kind: &Kind, finding: &Value) -> bool {
+    let values = &finding["values"];
+    match kind {
         Any => true,
-        Has(key) => !finding["values"][key].is_null(),
-        Is(key, wanted) => finding["values"][key].as_str() == Some(wanted),
-    };
+        Has(key) => !values[key].is_null(),
+        Is(key, wanted) => values[key].as_str() == Some(wanted),
+        About(word) => values.to_string().contains(word),
+    }
+}
+
+fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
     finding["check"] == rule.0
         && finding["file"] == row.file
-        && kind
+        && is_of(&rule.1, finding)
         && finding["text"].as_str().unwrap_or("").contains(row.text)
 }
 
@@ -660,6 +666,14 @@ fn planted_tree(config: &str, planted: &[(&str, String)]) -> Tree {
     tree
 }
 
+fn with_console_line(changed: &str) -> Vec<(&'static str, String)> {
+    let line = r#"console.log("loading stats for", userId);"#;
+    planted()
+        .into_iter()
+        .map(|(path, text)| (path, text.replace(line, changed)))
+        .collect()
+}
+
 fn stop_findings(tree: &Tree) -> Vec<Value> {
     let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -701,7 +715,7 @@ fn the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone() {
     let row = row_named("a long component with no branches");
     let rule = &row.rules[0];
     let lines = planted_tree(r#"{"complexity": {"cc": 10, "lines": 25}}"#, &planted());
-    let cc = planted_tree(r#"{"complexity": {"cc": 10, "lines": 1000}}"#, &planted());
+    let cc = planted_tree(r#"{"complexity": {"cc": 10}}"#, &planted());
 
     let over_lines = stop_findings(&lines);
     let over_nothing = stop_findings(&cc);
@@ -711,21 +725,48 @@ fn the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone() {
 
 #[test]
 fn a_ride_along_finding_is_no_catch_for_a_blocking_row() {
-    let row = row_named("a console.log");
+    let row = row(
+        "any escape on the console.log line",
+        &[Rule("escapes", Any, Missed)],
+        DASHBOARD_FILE,
+        "console.log",
+    );
     let rule = &row.rules[0];
-    let line = r#"console.log("loading stats for", userId);"#;
-    let ignored = format!("{line} // biome-ignore lint/suspicious/noConsole: console.log");
-    let planted: Vec<(&str, String)> = planted()
-        .into_iter()
-        .map(|(path, text)| (path, text.replace(line, &ignored)))
-        .collect();
 
-    let findings = stop_findings(&planted_tree("{}\n", &planted));
+    let findings = stop_findings(&planted_tree(
+        "{}\n",
+        &with_console_line(
+            r#"console.log("loading stats for", userId); // biome-ignore lint/suspicious/noConsole: x"#,
+        ),
+    ));
 
     assert!(
         findings
             .iter()
-            .any(|finding| finding["rides_along"] == true && catches(row, rule, finding)),
+            .any(|finding| finding["rides_along"] == true && catches(&row, rule, finding)),
+        "{findings:?}"
+    );
+    assert_eq!(pin(&row, rule, &findings), Missed, "{findings:?}");
+}
+
+#[test]
+fn another_escape_on_the_console_log_line_is_no_catch_for_its_row() {
+    let row = row_named("a console.log");
+    let rule = &row.rules[0];
+
+    let findings = stop_findings(&planted_tree(
+        "{}\n",
+        &with_console_line(r#"console.log("loading stats for", userId as any);"#),
+    ));
+
+    assert!(
+        findings.iter().any(|finding| finding["check"] == "escapes"
+            && finding["values"]["escape"] == "any"
+            && finding["rides_along"] != true
+            && finding["text"]
+                .as_str()
+                .unwrap_or("")
+                .contains("console.log")),
         "{findings:?}"
     );
     assert_eq!(pin(row, rule, &findings), Missed, "{findings:?}");
