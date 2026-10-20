@@ -63,6 +63,7 @@ fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
             standing,
         } => document((name, *words, ceiling), standing, with_ok, out),
         Told::Ratchet(said) => ratchet(said, detail, out),
+        Told::Hole(hole) => holed(hole, detail, out),
         other => said(other, out),
     }
 }
@@ -71,10 +72,13 @@ fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
 fn said(told: &Told, out: &mut String) {
     match told {
         Told::Plain(said) => plain(said, out),
-        Told::Hole(hole) => holed(hole, out),
         Told::Listed(listed) => sites(listed, out),
         Told::Incomplete(hole) => incomplete(hole, out),
-        Told::Judged { .. } | Told::Document { .. } | Told::Ratchet(_) | Told::Provenance(_) => (),
+        Told::Judged { .. }
+        | Told::Document { .. }
+        | Told::Ratchet(_)
+        | Told::Hole(_)
+        | Told::Provenance(_) => (),
     }
 }
 
@@ -100,9 +104,9 @@ pub fn incomplete(hole: &Incomplete, out: &mut String) {
     let _ = writeln!(out, "HOLE: {}{detail} — {}", hole.reason.name(), hole.text);
 }
 
-/// The forms a gate could not resolve, under its row. A file a gate could not measure prints
-/// once for the run, where the runner sorts it. Spec 7.2.
-fn holed(hole: &Hole, out: &mut String) {
+/// The forms a gate could not resolve, under its row, as `detail` lists them. A file a gate
+/// could not measure prints once for the run, where the runner sorts it. Spec 7.2, 10.6.
+fn holed(hole: &Hole, detail: Detail, out: &mut String) {
     let Hole::Unresolved {
         opened,
         kind,
@@ -116,12 +120,14 @@ fn holed(hole: &Hole, out: &mut String) {
         true => "REVIEW",
         false => "NOTE",
     };
-    block(
+    queued(
         out,
-        &format!("{word}: {units} {}:", unresolved(*kind)),
+        (&format!("{word}: {units} {}:", unresolved(*kind)), "form"),
         forms
             .iter()
-            .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text)),
+            .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text))
+            .collect(),
+        detail,
     );
 }
 
@@ -256,12 +262,18 @@ fn new_sites(heading: &str, failed: &[Failed], detail: Detail, out: &mut String)
             )
         })
         .collect();
+    queued(out, (heading, "site"), rows, detail);
+}
+
+/// Rows under their heading in `detail`, and where it caps them, the command that lists every
+/// one of `what`. Spec 10.6.
+fn queued(out: &mut String, (heading, what): (&str, &str), rows: Vec<String>, detail: Detail) {
     if detail == Detail::Whole {
         return block(out, heading, rows.into_iter());
     }
     let rest = match rows.len() > SHOWN {
-        true => " — klin check --changed lists every site",
-        false => "",
+        true => format!(" — klin check --changed lists every {what}"),
+        false => String::new(),
     };
     let _ = writeln!(out, "{}{rest}", capped(heading, &rows));
 }

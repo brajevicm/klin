@@ -1364,6 +1364,42 @@ fn equally_specific_typescript_wildcards_remain_unproved() {
     );
 }
 
+/// Spec 10.6.
+#[test]
+fn the_stop_text_lists_twenty_unresolved_forms_and_counts_the_rest() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "web/tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./model/*"],"@/*tail":["./view/*"]}}}"#,
+    );
+    tree.write("web/model/tail.ts", "export const x = 1;\n");
+    tree.write(
+        "web/view/index.ts",
+        &"import { x } from \"@/tail\";\n".repeat(25),
+    );
+    let forms = |out: &str| {
+        out.lines()
+            .filter(|line| line.contains("from \"@/tail\""))
+            .count()
+    };
+
+    let hook = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    let check = tree.run(&["check", "--changed"]);
+
+    let said = hook.json()["systemMessage"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert_eq!(hook.code, 0, "{}", hook.out);
+    assert_eq!(forms(&said), 20, "{said}");
+    assert!(
+        said.contains("  … and 5 more — klin check --changed lists every form\n"),
+        "{said}"
+    );
+    assert_eq!(forms(&check.out), 25, "{}", check.out);
+}
+
 #[test]
 fn a_paths_config_does_not_prove_aliases_for_a_file_outside_its_project_roots() {
     let tree = Tree::new();

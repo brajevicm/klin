@@ -1702,8 +1702,11 @@ Per evidence kind:
 
 The Stop text is a bounded repair queue. A gate lists at most 20 new sites.
 When it leaves out new sites, it says how many and that `klin check
---changed` lists every one. Repeated evidence that a family identifies safely is shown
-once.
+--changed` lists every one. A NOTE or review item of forms a gate could not
+resolve lists at most 20 forms the same way, and says that `klin check
+--changed` lists every form. Repeated evidence that a family identifies safely
+is shown once. Pinned by
+`the_stop_text_lists_twenty_unresolved_forms_and_counts_the_rest`.
 
 A FAIL's heading counts the new sites "beyond the N the base holds". N counts
 only the failing sites the base holds. An accepted entry is not one, and
