@@ -27,7 +27,7 @@ const SHOWN: usize = 20;
 /// as `klin check` prints them, or the first `SHOWN` of them with no word that nothing matched,
 /// as the Stop prints them. Spec 10.6.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Detail {
+pub enum Detail {
     Whole,
     Capped,
 }
@@ -274,14 +274,27 @@ fn queued(
     rows: Vec<String>,
     detail: Detail,
 ) {
-    if detail == Detail::Whole {
-        return block(out, heading, rows.into_iter());
-    }
-    let rest = match rows.len() > SHOWN {
-        true => format!(" — klin check --changed lists every {what}"),
-        false => String::new(),
+    let _ = writeln!(out, "{heading}");
+    indented(out, (&rows, what), detail);
+}
+
+/// The rows indented, as `detail` lists them, and where it caps them, how many more there are
+/// and the command that lists every one of `what`. Spec 10.6.
+fn indented(out: &mut String, (rows, what): (&[String], &'static str), detail: Detail) {
+    let shown = match detail {
+        Detail::Whole => rows.len(),
+        Detail::Capped => rows.len().min(SHOWN),
     };
-    let _ = writeln!(out, "{}{rest}", capped(heading, &rows));
+    for row in &rows[..shown] {
+        let _ = writeln!(out, "  {row}");
+    }
+    if rows.len() > shown {
+        let _ = writeln!(
+            out,
+            "  … and {} more — klin check --changed lists every {what}",
+            rows.len() - shown
+        );
+    }
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside
@@ -1336,30 +1349,20 @@ pub fn lost_row(sorted: &[Unmeasured], held: &[String]) -> Option<String> {
 
 /// The line of each opened gap and coverage note `klin check` prints, or at the Stop, of the
 /// first `SHOWN` of them as notes the agent sees, with how many more there are. Spec 7.2, 10.6.
-pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
+pub fn unmeasured_lines(sorted: &[Unmeasured], detail: Detail) -> String {
     let lines: Vec<String> = sorted
         .iter()
         .filter_map(|item| {
-            let word = match (item.class, at_stop) {
+            let word = match (item.class, detail) {
                 (Class::Lost, _) => return None,
-                (Class::Opened, false) => "REVIEW",
-                (Class::Opened, true) | (Class::Limit, _) => "NOTE",
+                (Class::Opened, Detail::Whole) => "REVIEW",
+                (Class::Opened, Detail::Capped) | (Class::Limit, _) => "NOTE",
             };
-            Some(format!("  {word}: {}\n", unmeasured_said(item)))
+            Some(format!("{word}: {}", unmeasured_said(item)))
         })
         .collect();
-    let shown = match at_stop {
-        true => SHOWN,
-        false => usize::MAX,
-    };
-    let mut out: String = lines.iter().take(shown).map(String::as_str).collect();
-    if lines.len() > shown {
-        let _ = writeln!(
-            out,
-            "  … and {} more — klin check --changed lists every file",
-            lines.len() - shown
-        );
-    }
+    let mut out = String::new();
+    indented(&mut out, (&lines, "file"), detail);
     out
 }
 
