@@ -2551,3 +2551,32 @@ fn a_parent_written_with_backslashes_is_a_local_parent() {
     let run = an_alias_from_model_to_view(&tree, r#"{"extends":".\\config\\base.json"}"#);
     assert_model_to_view(&run);
 }
+
+#[test]
+fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
+    let run = |specifier: &str| {
+        let tree = Tree::new();
+        tree.write("klin.json", WEB);
+        tree.write("web/view/index.ts", "export const view = 1;\n");
+        tree.write(
+            "web/model/index.ts",
+            &format!("import x from \"{specifier}\";\n"),
+        );
+        tree.run(&["check", "layering"])
+    };
+    for specifier in ["../logo.svg?react", "./styles.css"] {
+        let run = run(specifier);
+        assert_eq!(run.code, 0, "{specifier}: {}", run.out);
+        assert!(
+            run.says("1 external or unsupported") && !run.says("names no TypeScript file"),
+            "{specifier}: {}",
+            run.out
+        );
+    }
+    let run = run("./worker?worker");
+    assert!(
+        run.says("./worker?worker names no TypeScript file the tree holds"),
+        "{}",
+        run.out
+    );
+}

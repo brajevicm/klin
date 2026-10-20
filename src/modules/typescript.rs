@@ -21,6 +21,8 @@ const STANDS_FOR: &[(&str, &[&str])] = &[
 
 const WITHOUT: &[&str] = &[".ts", ".tsx", "/index.ts", "/index.tsx"];
 
+const MODULE_EXTENSIONS: &[&str] = &["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"];
+
 pub(super) fn resolve(builder: &mut Builder) {
     let topology = builder.topology;
     let paths = super::typescript_paths::Paths::read(topology);
@@ -224,7 +226,9 @@ fn dependency(
             None => depend(builder, modules, site, target),
         },
         [] if lookup.tries_packages(topology, specifier, base, &candidates) => return false,
-        [] if matches!(lookup, Lookup::Named) && another_kind(topology, base, &candidates) => {
+        [] if asset(specifier)
+            || matches!(lookup, Lookup::Named) && another_kind(topology, base, &candidates) =>
+        {
             builder.external += 1
         }
         [] => hole(
@@ -310,6 +314,19 @@ fn package_name(specifier: &str) -> bool {
 
 fn relative(specifier: &str) -> bool {
     matches!(specifier, "." | "..") || specifier.starts_with("./") || specifier.starts_with("../")
+}
+
+/// Whether a relative specifier, its `?query` stripped, names a file whose extension is not a
+/// module's, such as `.svg` or `.css`: an asset a bundler loads.
+fn asset(specifier: &str) -> bool {
+    let path = specifier
+        .split_once('?')
+        .map_or(specifier, |(path, _)| path);
+    let name = path.rsplit('/').next().unwrap_or(path);
+    relative(specifier)
+        && name.rsplit_once('.').is_some_and(|(stem, extension)| {
+            !stem.is_empty() && !extension.is_empty() && !MODULE_EXTENSIONS.contains(&extension)
+        })
 }
 
 /// The TypeScript files a relative specifier may name, joined to the importing file's directory.
