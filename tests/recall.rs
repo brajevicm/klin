@@ -666,11 +666,16 @@ fn planted_tree(config: &str, planted: &[(&str, String)]) -> Tree {
     tree
 }
 
+const CONSOLE_LINE: &str = r#"console.log("loading stats for", userId);"#;
+
 fn with_console_line(changed: &str) -> Vec<(&'static str, String)> {
-    let line = r#"console.log("loading stats for", userId);"#;
+    assert!(
+        DASHBOARD.contains(CONSOLE_LINE),
+        "the console.log line moved"
+    );
     planted()
         .into_iter()
-        .map(|(path, text)| (path, text.replace(line, changed)))
+        .map(|(path, text)| (path, text.replace(CONSOLE_LINE, changed)))
         .collect()
 }
 
@@ -735,9 +740,9 @@ fn a_ride_along_finding_is_no_catch_for_a_blocking_row() {
 
     let findings = stop_findings(&planted_tree(
         "{}\n",
-        &with_console_line(
-            r#"console.log("loading stats for", userId); // biome-ignore lint/suspicious/noConsole: x"#,
-        ),
+        &with_console_line(&format!(
+            "{CONSOLE_LINE} // biome-ignore lint/suspicious/noConsole: x"
+        )),
     ));
 
     assert!(
@@ -751,23 +756,23 @@ fn a_ride_along_finding_is_no_catch_for_a_blocking_row() {
 
 #[test]
 fn another_escape_on_the_console_log_line_is_no_catch_for_its_row() {
-    let row = row_named("a console.log");
-    let rule = &row.rules[0];
+    let console = row_named("a console.log");
 
     let findings = stop_findings(&planted_tree(
         "{}\n",
-        &with_console_line(r#"console.log("loading stats for", userId as any);"#),
+        &with_console_line(&CONSOLE_LINE.replace("userId", "userId as any")),
     ));
+    let any = row(
+        "an as any on the console.log line",
+        &[Rule("escapes", Is("escape", "any"), Caught)],
+        DASHBOARD_FILE,
+        "console.log",
+    );
 
-    assert!(
-        findings.iter().any(|finding| finding["check"] == "escapes"
-            && finding["values"]["escape"] == "any"
-            && finding["rides_along"] != true
-            && finding["text"]
-                .as_str()
-                .unwrap_or("")
-                .contains("console.log")),
+    assert_eq!(pin(&any, &any.rules[0], &findings), Caught, "{findings:?}");
+    assert_eq!(
+        pin(console, &console.rules[0], &findings),
+        Missed,
         "{findings:?}"
     );
-    assert_eq!(pin(row, rule, &findings), Missed, "{findings:?}");
 }
