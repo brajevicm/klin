@@ -692,9 +692,11 @@ these happened:
    conflict. The default branch is found by candidate 4 of B.6.3
    without the GitHub variables, and only a remote-tracking ref
    (`refs/remotes/...`) counts. When none of those names resolves and the
-   clone holds exactly one remote-tracking branch past every
-   `<remote>/HEAD`, that branch is the default branch, as in a clone whose
-   `origin/HEAD` names an `origin/main` it never fetched. The reflog is compared by entry position,
+   clone holds exactly one remote-tracking branch that is not a symbolic
+   ref such as `<remote>/HEAD`, that branch is the default branch, as in a
+   clone whose `origin/HEAD` names an `origin/main` it never fetched. A
+   branch whose name ends in `HEAD`, such as `origin/topic/HEAD`, counts as
+   a remote-tracking branch. The reflog is compared by entry position,
    never by time. When HEAD has no reflog, a merge-base that moved forward
    alone is advisory. A reftable repository has no HEAD reflog when
    `git reflog exists HEAD` says so, even where `git reflog show` prints an
@@ -702,8 +704,10 @@ these happened:
 2. **A branch change.** Either of these:
    - HEAD's reflog holds a `checkout:` entry, or the `branch: Reset` entry
      of `git switch -C`, that moved HEAD to another commit, after the last
-     entry that put HEAD at the stamp's parent. Where no entry put HEAD
-     there, the reflog is read from the recorded position. This holds
+     entry that put HEAD at the stamp's parent, wherever that entry stands
+     against the recorded position, so a reflog git shortened below the
+     position is still read. Where no entry put HEAD there, the reflog is
+     read from the recorded position. This holds
      whatever HEAD's symbolic ref is, so a checkout of a branch built on
      this one, a `git switch -C` of the same branch onto another commit and
      a checkout from one detached HEAD to another are branch changes. The

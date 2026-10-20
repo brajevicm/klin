@@ -374,6 +374,27 @@ fn a_checkout_from_one_detached_head_to_another_makes_the_stop_advisory() {
     assert_advisory(&remote.tree, "branch-changed");
 }
 
+#[test]
+fn a_checkout_still_in_a_reflog_git_shortened_makes_the_stop_advisory() {
+    let remote = beside_an_integration_branch(Remote::unstamped(CONFIG));
+    remote.tree.git(&["checkout", "-q", "integration"]);
+    let logged = std::fs::read_to_string(remote.tree.path(".git/logs/HEAD")).expect("reflog");
+    for oldest in (2..logged.lines().count()).rev() {
+        remote
+            .tree
+            .git(&["reflog", "delete", &format!("HEAD@{{{oldest}}}")]);
+    }
+    let kept = std::fs::read_to_string(remote.tree.path(".git/logs/HEAD")).expect("reflog");
+    let position: usize = remote
+        .tree
+        .field("reflog_position")
+        .parse()
+        .expect("a position");
+    assert!(kept.lines().count() < position, "{kept}");
+
+    assert_advisory(&remote.tree, "branch-changed");
+}
+
 /// A red window an older release left after a checkout of `integration`: its Stop recorded the
 /// history after the checkout, the new ref and the reflog position past the checkout, and kept
 /// the stamp because the verdict was red.
@@ -684,7 +705,11 @@ fn status_names_the_default_branch_and_the_last_advisory_stop() {
 /// A clone whose `origin/HEAD` names an `origin/main` it never fetched, with `origin/develop`
 /// the one remote-tracking branch, and one prompt's stamp taken.
 fn on_a_clone_without_main() -> Remote {
-    let remote = Remote::unstamped(CONFIG);
+    without_main(Remote::unstamped(CONFIG))
+}
+
+/// The same clone shape around a remote a test already built.
+fn without_main(remote: Remote) -> Remote {
     remote.tree.git(&["push", "-q", "origin", "main:develop"]);
     git(
         remote.bare.path(),
@@ -758,6 +783,38 @@ fn with_no_default_branch_a_stop_with_no_stamp_says_so() {
     assert!(run.says(MOVED), "{}", run.out);
     assert!(run.says("no default branch"), "{}", run.out);
     assert_eq!(last_stop(&remote.tree)["advisory"], "stamp-missing");
+}
+
+#[test]
+fn in_a_reftable_repository_a_remote_branch_named_head_is_a_second_remote_branch() {
+    let remote = without_main(reftable());
+    let status = remote.tree.run(&["status", "--json"]).json();
+    assert_eq!(
+        status["window"]["default_branch"], "refs/remotes/origin/develop",
+        "{status}"
+    );
+    remote
+        .tree
+        .git(&["push", "-q", "origin", "main:topic/HEAD"]);
+    remote.tree.git(&["fetch", "-q", "origin"]);
+    let status = remote.tree.run(&["status", "--json"]).json();
+    assert_eq!(status["window"]["default_branch"], Value::Null, "{status}");
+}
+
+#[test]
+fn a_remote_branch_named_head_is_a_second_remote_branch() {
+    let remote = on_a_clone_without_main();
+    remote
+        .tree
+        .git(&["push", "-q", "origin", "main:topic/HEAD"]);
+    remote.tree.git(&["fetch", "-q", "origin"]);
+    for repack in [false, true] {
+        if repack {
+            remote.tree.git(&["pack-refs", "--all"]);
+        }
+        let status = remote.tree.run(&["status", "--json"]).json();
+        assert_eq!(status["window"]["default_branch"], Value::Null, "{status}");
+    }
 }
 
 #[test]

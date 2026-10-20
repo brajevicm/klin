@@ -306,8 +306,13 @@ impl Here {
                 if !remotes {
                     return None;
                 }
-                let listed = repo.text(&["for-each-ref", "--format=%(refname)", "refs/remotes"])?;
-                only_remote(listed.lines().map(str::to_string))
+                let listed = repo.text(&["for-each-ref", BRANCH_NAMES, "refs/remotes"])?;
+                only_remote(
+                    listed
+                        .lines()
+                        .filter(|name| !name.is_empty())
+                        .map(str::to_string),
+                )
             })
             .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
             stacked: stacked.and_then(|name| Some((name.to_string(), resolve(root, name)?))),
@@ -433,7 +438,8 @@ impl Refs {
             .then_some(commit)
     }
 
-    /// The names of the remote-tracking refs, loose and packed.
+    /// The names of the remote-tracking branches, loose and packed, past every symbolic ref such
+    /// as `<remote>/HEAD`. Git packs no symbolic ref.
     fn remote_names(&self) -> impl Iterator<Item = String> {
         let mut names = Vec::new();
         ref_files(
@@ -441,6 +447,7 @@ impl Refs {
             "refs/remotes",
             &mut names,
         );
+        names.retain(|name| self.symbolic(name).is_none());
         names.extend(self.packed.lines().filter_map(|line| {
             let (_, named) = line.split_once(' ')?;
             named
@@ -451,12 +458,15 @@ impl Refs {
     }
 }
 
-/// The one remote-tracking branch among `names`, past every `<remote>/HEAD`, and `None` where
+/// A `for-each-ref` format that prints each ref's name and an empty line for a symbolic ref, such
+/// as `<remote>/HEAD`, so a branch whose name ends in `HEAD` still counts.
+const BRANCH_NAMES: &str = "--format=%(if)%(symref)%(then)%(else)%(refname)%(end)";
+
+/// The one remote-tracking branch among `names`, which hold no symbolic ref, and `None` where
 /// there are none or several. Spec 6.6.
-fn only_remote(names: impl Iterator<Item = String>) -> Option<String> {
-    let mut branches = names.filter(|name| !name.ends_with("/HEAD"));
-    let only = branches.next()?;
-    branches.all(|name| name == only).then_some(only)
+fn only_remote(mut names: impl Iterator<Item = String>) -> Option<String> {
+    let only = names.next()?;
+    names.all(|name| name == only).then_some(only)
 }
 
 /// Every ref file under `dir`, named from `prefix`.

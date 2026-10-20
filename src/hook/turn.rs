@@ -515,21 +515,21 @@ fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
 /// Whether HEAD's reflog holds a jump after the last entry that put HEAD at the stamp's parent,
 /// or after the recorded position where no entry did. The parent, and not the position alone,
 /// starts the read, because an earlier release recorded the position past a checkout at a red
-/// Stop. A stamp that recorded no position, as one restored from its ref or one a branch
-/// fallback wrote, has no reflog to compare. Spec 6.6.
+/// Stop, and because git may expire old entries until the reflog is shorter than the position.
+/// A stamp that recorded no position, as one restored from its ref or one a branch fallback
+/// wrote, has no reflog to compare. Spec 6.6.
 fn jumped(here: &Here, stamp: &Stamp) -> bool {
-    let (Some(entries), Some(since)) = (
-        here.reflog.as_deref(),
-        here.reflog_since(stamp.history.reflog_position),
-    ) else {
+    let (Some(entries), Some(_)) = (here.reflog.as_deref(), stamp.history.reflog_position) else {
         return false;
     };
-    let start = stamp
+    let from_parent = stamp
         .parent
         .as_deref()
         .and_then(|parent| entries.iter().rposition(|entry| entry.to == parent))
-        .map_or(entries.len() - since.len(), |at| at + 1);
-    entries[start..].iter().any(stamp::ReflogEntry::jumped)
+        .map(|at| &entries[at + 1..]);
+    from_parent
+        .or_else(|| here.reflog_since(stamp.history.reflog_position))
+        .is_some_and(|entries| entries.iter().any(stamp::ReflogEntry::jumped))
 }
 
 /// The fresh stamp an advisory Stop takes of the tree it measured, with the history as it now
