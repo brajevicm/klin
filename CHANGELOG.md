@@ -5,6 +5,19 @@ Each release adds a section here before the release PR. The section opens with
 table. Write it under `## Unreleased`; the release PR renames that heading to
 the version, so add the heading again after each release.
 
+## Unreleased
+
+### What changes for you
+
+- `complexity` no longer blocks on a `cc` ceiling that klin derives. A
+  function over it is an `INFO` note at `klin check`, and the Stop does not
+  measure it. A `cc` you pin in `klin.json` still blocks, including one that
+  `klin setup --pin` or `klin policy --suggest` wrote. When `klin.json` pins
+  no complexity value, the Stop reads no file for `complexity`.
+- `complexity` moves to semantics version 2. `klin report` shows a
+  derived-`cc` regression from before the upgrade as not compared, and does
+  not count it as fixed.
+
 ## 0.5.6
 
 ### What changes for you
