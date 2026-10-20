@@ -65,10 +65,21 @@ fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
         } => document((name, *words, ceiling), standing, with_ok, out),
         Told::Ratchet(said) => ratchet(said, detail, out),
         Told::Hole(hole) => holed(hole, detail, out),
-        Told::Listed(listed) => sites(listed, out),
+        other => said(other, out),
+    }
+}
+
+/// One item that says the same in every report.
+fn said(told: &Told, out: &mut String) {
+    match told {
         Told::Plain(said) => plain(said, out),
+        Told::Listed(listed) => sites(listed, out),
         Told::Incomplete(hole) => incomplete(hole, out),
-        Told::Judged { .. } | Told::Provenance(_) => (),
+        Told::Judged { .. }
+        | Told::Document { .. }
+        | Told::Ratchet(_)
+        | Told::Hole(_)
+        | Told::Provenance(_) => (),
     }
 }
 
