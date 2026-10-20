@@ -107,6 +107,7 @@ fn integration(one: &Integration) -> Value {
 /// Spec 6.6, 10.7, 11.4.
 fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     let held = stamp::read(at)?;
+    let here = Here::read(root, None);
     let mut window = json!({
         "verdict": held.verdict.name(),
         "age_seconds": known(held.time).map(|time| now().saturating_sub(time)),
@@ -115,7 +116,8 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         "unasked": [],
         "error": null,
         "aborted_since": null,
-        "default_branch": Here::read(root, None).default.map(|(name, _)| name),
+        "default_branch": here.default.map(|(name, _)| name),
+        "remotes": here.remotes,
         "last_advisory": last_advisory(lines),
         "notices": journal::open_notices(lines, held.commit.as_deref())
             .into_iter()
@@ -322,8 +324,14 @@ fn window_text(window: &Value, out: &mut String) {
 
 /// The default-branch ref the advisory rules read, and the last advisory Stop. Spec 6.6.
 fn history_text(window: &Value, out: &mut String) {
-    if let Some(branch) = window["default_branch"].as_str() {
-        let _ = writeln!(out, "  default branch: {branch}");
+    match window["default_branch"].as_str() {
+        Some(branch) => {
+            let _ = writeln!(out, "  default branch: {branch}");
+        }
+        None if window["remotes"] == true => {
+            let _ = writeln!(out, "  {}", turn::NO_DEFAULT);
+        }
+        None => {}
     }
     let advisory = &window["last_advisory"];
     if let Some(reason) = advisory["reason"].as_str() {
