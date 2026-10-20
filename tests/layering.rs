@@ -2554,7 +2554,7 @@ fn a_parent_written_with_backslashes_is_a_local_parent() {
 
 #[test]
 fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
-    let run = |specifier: &str| {
+    let check = |specifier: &str| {
         let tree = Tree::new();
         tree.write("klin.json", WEB);
         tree.write("web/view/index.ts", "export const view = 1;\n");
@@ -2565,7 +2565,7 @@ fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
         tree.run(&["check", "layering"])
     };
     for specifier in ["../logo.svg?react", "./styles.css"] {
-        let run = run(specifier);
+        let run = check(specifier);
         assert_eq!(run.code, 0, "{specifier}: {}", run.out);
         assert!(
             run.says("1 external or unsupported") && !run.says("names no TypeScript file"),
@@ -2573,10 +2573,16 @@ fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
             run.out
         );
     }
-    let run = run("./worker?worker");
-    assert!(
-        run.says("./worker?worker names no TypeScript file the tree holds"),
-        "{}",
-        run.out
-    );
+    for specifier in ["./worker?worker", "./user.service"] {
+        let run = check(specifier);
+        assert_eq!(run.code, 0, "{specifier}: {}", run.out);
+        assert!(
+            run.says("0 external or unsupported")
+                && run.says(&format!(
+                    "{specifier} names no TypeScript file the tree holds"
+                )),
+            "{specifier}: {}",
+            run.out
+        );
+    }
 }

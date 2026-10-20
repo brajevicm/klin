@@ -4,7 +4,8 @@
 //! `.cjs` specifier stands for, and otherwise `.ts`, `.tsx`, `index.ts` and `index.tsx`. Two
 //! candidates are a hole, never a choice. Explicit tsconfig paths aliases use that same rule.
 //! Unproved local aliases are holes. A bare name that no alias places goes on to the workspace
-//! packages the root lists; other packages and targets of another kind stay outside V1.
+//! packages the root lists; other packages, asset imports and targets of another kind stay outside
+//! V1.
 
 use std::collections::BTreeMap;
 
@@ -21,7 +22,54 @@ const STANDS_FOR: &[(&str, &[&str])] = &[
 
 const WITHOUT: &[&str] = &[".ts", ".tsx", "/index.ts", "/index.tsx"];
 
-const MODULE_EXTENSIONS: &[&str] = &["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"];
+/// The extensions of the files a bundler loads as assets, after Vite's known asset types.
+const ASSETS: &[&str] = &[
+    "css",
+    "less",
+    "sass",
+    "scss",
+    "styl",
+    "stylus",
+    "pcss",
+    "postcss",
+    "sss",
+    "json",
+    "wasm",
+    "apng",
+    "avif",
+    "bmp",
+    "cur",
+    "gif",
+    "ico",
+    "jfif",
+    "jpeg",
+    "jpg",
+    "jxl",
+    "pjp",
+    "pjpeg",
+    "png",
+    "svg",
+    "webp",
+    "aac",
+    "flac",
+    "m4a",
+    "mov",
+    "mp3",
+    "mp4",
+    "ogg",
+    "opus",
+    "vtt",
+    "wav",
+    "webm",
+    "eot",
+    "otf",
+    "ttf",
+    "woff",
+    "woff2",
+    "pdf",
+    "txt",
+    "webmanifest",
+];
 
 pub(super) fn resolve(builder: &mut Builder) {
     let topology = builder.topology;
@@ -188,6 +236,19 @@ impl Lookup {
             }
         }
     }
+
+    /// Whether a name that reaches no held TypeScript file names something V1 does not resolve:
+    /// an asset, or a file of another kind.
+    fn outside(
+        &self,
+        topology: &Topology,
+        specifier: &str,
+        base: &str,
+        candidates: &[String],
+    ) -> bool {
+        matches!(self, Lookup::Named)
+            && (asset(specifier) || another_kind(topology, base, candidates))
+    }
 }
 
 /// The `package.json` of the directory a path names, which may name its entry point.
@@ -226,11 +287,7 @@ fn dependency(
             None => depend(builder, modules, site, target),
         },
         [] if lookup.tries_packages(topology, specifier, base, &candidates) => return false,
-        [] if asset(specifier)
-            || matches!(lookup, Lookup::Named) && another_kind(topology, base, &candidates) =>
-        {
-            builder.external += 1
-        }
+        [] if lookup.outside(topology, specifier, base, &candidates) => builder.external += 1,
         [] => hole(
             builder,
             site,
@@ -316,17 +373,17 @@ fn relative(specifier: &str) -> bool {
     matches!(specifier, "." | "..") || specifier.starts_with("./") || specifier.starts_with("../")
 }
 
-/// Whether a relative specifier, its `?query` stripped, names a file whose extension is not a
-/// module's, such as `.svg` or `.css`: an asset a bundler loads.
+/// Whether a relative specifier, its `?query` stripped, names a file whose extension is an
+/// asset's, such as `.svg` or `.css`: a file a bundler loads.
 fn asset(specifier: &str) -> bool {
     let path = specifier
         .split_once('?')
         .map_or(specifier, |(path, _)| path);
-    let name = path.rsplit('/').next().unwrap_or(path);
     relative(specifier)
-        && name.rsplit_once('.').is_some_and(|(stem, extension)| {
-            !stem.is_empty() && !extension.is_empty() && !MODULE_EXTENSIONS.contains(&extension)
-        })
+        && std::path::Path::new(path)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| ASSETS.contains(&extension))
 }
 
 /// The TypeScript files a relative specifier may name, joined to the importing file's directory.

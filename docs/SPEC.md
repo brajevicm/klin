@@ -6234,10 +6234,11 @@ external. A bare specifier with no owning config, or that no paths rule and
 no `baseUrl` places, also goes on to the workspace step. A specifier that names
 a file of another kind is counted as external. A relative specifier that names
 no held TypeScript file is an asset import and is counted as external, not a
-hole, where its path, with any `?query` suffix stripped, ends in an extension
-other than `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` or `.cjs`, such
-as `../logo.svg?react` or `./styles.css` (#672). A `?query` on a path with a
-module extension or none, such as `./worker?worker`, is not stripped. Pinned by
+hole, where its path, with any `?query` suffix stripped, ends in the extension
+of one of Vite's known asset types, a style sheet language, `.json` or
+`.wasm`, such as `../logo.svg?react` or `./styles.css` (#672). Any other
+extension or none, such as `./worker?worker` or a missing `./user.service`,
+keeps the hole: the bundler may load such a path as a module. Pinned by
 `an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole`,
 `a_bare_import_under_the_base_url_is_a_local_edge` and
 `a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`
