@@ -17,6 +17,13 @@ the version, so add the heading again after each release.
 - `complexity` moves to semantics version 2. `klin report` shows a
   derived-`cc` regression from before the upgrade as not compared, and does
   not count it as fixed.
+- An asset import, such as `import Logo from "../logo.svg?react"`, the same
+  path through a `paths` alias, or a `./styles.css` the tree does not hold, is
+  no longer a hole. klin strips a `?query` suffix, and a path that ends in an
+  asset extension, such as an SVG, PNG, CSS or JSON file, counts as external
+  or unsupported. So does any path with a `?raw` or `?url` query, unless the
+  query also asks for a worker.
+  `./worker?worker` and a missing `./user.service` are still holes.
 
 ## 0.5.6
 
