@@ -1317,7 +1317,11 @@ impl CheckDocument {
         } else {
             out.push_str(&row.unwrap_or_default());
         }
-        out.push_str(&render::unmeasured_lines(sorted, args.at_stop()));
+        let detail = match args.at_stop() {
+            true => render::Detail::Capped,
+            false => render::Detail::Whole,
+        };
+        out.push_str(&render::unmeasured_lines(sorted, detail));
     }
 
     /// A review item per opened gap and a coverage note per limit, every sorted file counted as

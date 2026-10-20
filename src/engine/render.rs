@@ -23,11 +23,11 @@ use crate::contract::holes::{self, Unmeasured};
 /// How many rows a listed block prints before it says how many more there are.
 const SHOWN: usize = 20;
 
-/// How a gate's new sites print: every one with what it matched, as `klin check` prints them,
-/// or the first `SHOWN` of them with no word that nothing matched, as the Stop prints them.
-/// Spec 10.6.
+/// How a gate's new sites and unresolved forms print: every one, each site with what it matched,
+/// as `klin check` prints them, or the first `SHOWN` of them with no word that nothing matched,
+/// as the Stop prints them. Spec 10.6.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Detail {
+pub enum Detail {
     Whole,
     Capped,
 }
@@ -52,7 +52,8 @@ fn rendered(told: &[Told], with_ok: bool, detail: Detail) -> String {
     out
 }
 
-/// One item, where `with_ok` says whether its `OK:` lines print.
+/// One item, where `with_ok` says whether its `OK:` lines print and `detail` how its sites and
+/// forms print.
 fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
     match told {
         Told::Judged { line, held } if with_ok => judged(line, *held, out),
@@ -63,6 +64,7 @@ fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
             standing,
         } => document((name, *words, ceiling), standing, with_ok, out),
         Told::Ratchet(said) => ratchet(said, detail, out),
+        Told::Hole(hole) => holed(hole, detail, out),
         other => said(other, out),
     }
 }
@@ -71,10 +73,13 @@ fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
 fn said(told: &Told, out: &mut String) {
     match told {
         Told::Plain(said) => plain(said, out),
-        Told::Hole(hole) => holed(hole, out),
         Told::Listed(listed) => sites(listed, out),
         Told::Incomplete(hole) => incomplete(hole, out),
-        Told::Judged { .. } | Told::Document { .. } | Told::Ratchet(_) | Told::Provenance(_) => (),
+        Told::Judged { .. }
+        | Told::Document { .. }
+        | Told::Ratchet(_)
+        | Told::Hole(_)
+        | Told::Provenance(_) => (),
     }
 }
 
@@ -100,9 +105,9 @@ pub fn incomplete(hole: &Incomplete, out: &mut String) {
     let _ = writeln!(out, "HOLE: {}{detail} — {}", hole.reason.name(), hole.text);
 }
 
-/// The forms a gate could not resolve, under its row. A file a gate could not measure prints
-/// once for the run, where the runner sorts it. Spec 7.2.
-fn holed(hole: &Hole, out: &mut String) {
+/// The forms a gate could not resolve, under its row, as `detail` lists them. A file a gate
+/// could not measure prints once for the run, where the runner sorts it. Spec 7.2, 10.6.
+fn holed(hole: &Hole, detail: Detail, out: &mut String) {
     let Hole::Unresolved {
         opened,
         kind,
@@ -116,12 +121,14 @@ fn holed(hole: &Hole, out: &mut String) {
         true => "REVIEW",
         false => "NOTE",
     };
-    block(
+    queued(
         out,
-        &format!("{word}: {units} {}:", unresolved(*kind)),
+        (&format!("{word}: {units} {}:", unresolved(*kind)), "form"),
         forms
             .iter()
-            .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text)),
+            .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text))
+            .collect(),
+        detail,
     );
 }
 
@@ -212,7 +219,7 @@ fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
             );
             new_sites(&heading, failed, detail, out);
         }
-        Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
+        Ratchet::Worse { unit, failed, .. } => worse(unit, failed, detail, out),
         Ratchet::Asked { unit, failed, .. } => asked(unit, failed, out),
         Ratchet::RidesAlong {
             unit,
@@ -256,14 +263,38 @@ fn new_sites(heading: &str, failed: &[Failed], detail: Detail, out: &mut String)
             )
         })
         .collect();
-    if detail == Detail::Whole {
-        return block(out, heading, rows.into_iter());
-    }
-    let rest = match rows.len() > SHOWN {
-        true => " — klin check --changed lists every site",
-        false => "",
+    queued(out, (heading, "site"), rows, detail);
+}
+
+/// Rows under their heading in `detail`, and where it caps them, the command that lists every
+/// one of `what`. Spec 10.6.
+fn queued(
+    out: &mut String,
+    (heading, what): (&str, &'static str),
+    rows: Vec<String>,
+    detail: Detail,
+) {
+    let _ = writeln!(out, "{heading}");
+    indented(out, (&rows, what), detail);
+}
+
+/// The rows indented, as `detail` lists them, and where it caps them, how many more there are
+/// and the command that lists every one of `what`. Spec 10.6.
+fn indented(out: &mut String, (rows, what): (&[String], &'static str), detail: Detail) {
+    let shown = match detail {
+        Detail::Whole => rows.len(),
+        Detail::Capped => rows.len().min(SHOWN),
     };
-    let _ = writeln!(out, "{}{rest}", capped(heading, &rows));
+    for row in &rows[..shown] {
+        let _ = writeln!(out, "  {row}");
+    }
+    if rows.len() > shown {
+        let _ = writeln!(
+            out,
+            "  … and {} more — klin check --changed lists every {what}",
+            rows.len() - shown
+        );
+    }
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside
@@ -323,29 +354,38 @@ fn reported(unit: &str, failed: &[Failed], out: &mut String) {
     site_lines(failed, out);
 }
 
-fn worse(unit: &str, failed: &[Failed], out: &mut String) {
-    let _ = writeln!(
+fn worse(unit: &str, failed: &[Failed], detail: Detail, out: &mut String) {
+    let rows = failed
+        .iter()
+        .map(|finding| {
+            let (was, from) = finding
+                .was
+                .as_ref()
+                .map(|was| (was.shown.as_str(), was.at.as_deref()))
+                .unwrap_or_default();
+            let from = from.map(|file| format!(" at {file}")).unwrap_or_default();
+            format!(
+                "{}:{}  {}, was {was}{from}  {}{}",
+                finding.file,
+                finding.line,
+                finding.shown,
+                clip(&finding.text),
+                against(finding, Detail::Whole)
+            )
+        })
+        .collect();
+    queued(
         out,
-        "FAIL: {} {unit} got worse — the ratchet only tightens:",
-        failed.len()
+        (
+            &format!(
+                "FAIL: {} {unit} got worse — the ratchet only tightens:",
+                failed.len()
+            ),
+            "site",
+        ),
+        rows,
+        detail,
     );
-    for finding in failed {
-        let (was, from) = finding
-            .was
-            .as_ref()
-            .map(|was| (was.shown.as_str(), was.at.as_deref()))
-            .unwrap_or_default();
-        let from = from.map(|file| format!(" at {file}")).unwrap_or_default();
-        let _ = writeln!(
-            out,
-            "  {}:{}  {}, was {was}{from}  {}{}",
-            finding.file,
-            finding.line,
-            finding.shown,
-            clip(&finding.text),
-            against(finding, Detail::Whole)
-        );
-    }
 }
 
 /// The deleted tests a Stop asks about: a question, never a failure. Spec 9.2.
@@ -1307,18 +1347,22 @@ pub fn lost_row(sorted: &[Unmeasured], held: &[String]) -> Option<String> {
     Some(out)
 }
 
-/// The line of each opened gap and coverage note `klin check` prints, or at the Stop, of each
-/// opened gap alone as a note the agent sees. Spec 7.2.
-pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
+/// The line of each opened gap and coverage note `klin check` prints, or at the Stop, of the
+/// first `SHOWN` of them as notes the agent sees, with how many more there are. Spec 7.2, 10.6.
+pub fn unmeasured_lines(sorted: &[Unmeasured], detail: Detail) -> String {
+    let lines: Vec<String> = sorted
+        .iter()
+        .filter_map(|item| {
+            let word = match (item.class, detail) {
+                (Class::Lost, _) => return None,
+                (Class::Opened, Detail::Whole) => "REVIEW",
+                (Class::Opened, Detail::Capped) | (Class::Limit, _) => "NOTE",
+            };
+            Some(format!("{word}: {}", unmeasured_said(item)))
+        })
+        .collect();
     let mut out = String::new();
-    for item in sorted {
-        let word = match (item.class, at_stop) {
-            (Class::Lost, _) => continue,
-            (Class::Opened, false) => "REVIEW",
-            (Class::Opened, true) | (Class::Limit, _) => "NOTE",
-        };
-        let _ = writeln!(out, "  {word}: {}", unmeasured_said(item));
-    }
+    indented(&mut out, (&lines, "file"), detail);
     out
 }
 

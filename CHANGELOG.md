@@ -24,6 +24,11 @@ the version, so add the heading again after each release.
   or unsupported. So does any path with a `?raw` or `?url` query, unless the
   query also asks for a worker.
   `./worker?worker` and a missing `./user.service` are still holes.
+- The Stop lists at most 20 forms that a gate could not resolve, 20 sites
+  that got worse, and 20 files it could not measure. Each list then says how
+  many more there are and that `klin check --changed` lists every one. The
+  Stop used to print all of them. A question about deleted tests still names
+  every test.
 
 ## 0.5.6
 

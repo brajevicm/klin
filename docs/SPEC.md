@@ -1702,8 +1702,20 @@ Per evidence kind:
 
 The Stop text is a bounded repair queue. A gate lists at most 20 new sites.
 When it leaves out new sites, it says how many and that `klin check
---changed` lists every one. Repeated evidence that a family identifies safely is shown
-once.
+--changed` lists every one. These lists have the same cap of 20, and each
+says that `klin check --changed` lists every site, form or file:
+
+- the sites of a gate that got worse;
+- a NOTE or review item of forms a gate could not resolve;
+- the notes of files that the run could not measure.
+
+An `ASK` of deleted tests names every one, because the next stop lets all of
+them through (8.2). Repeated evidence that a family identifies safely is shown
+once. Pinned by
+`the_stop_text_lists_twenty_worsened_sites_and_counts_the_rest`,
+`the_stop_text_lists_twenty_unresolved_forms_and_counts_the_rest`,
+`the_stop_text_lists_twenty_files_it_could_not_measure_and_counts_the_rest`
+and `a_stop_that_blocks_names_every_deleted_test_it_then_lets_through`.
 
 A FAIL's heading counts the new sites "beyond the N the base holds". N counts
 only the failing sites the base holds. An accepted entry is not one, and
@@ -5690,7 +5702,7 @@ These holes
 are notes where the base holds them, review items at `klin check` where the
 change opened them, and notes at the Stop (7.2), and never a FAIL. Each block
 of them counts the app packages its forms keep from being judged, not the
-forms, and lists every form under it. A member of
+forms, and lists every form under it, or the first 20 at the Stop (10.6). A member of
 a derived family that an app owns is judged by app mode alone, so one file
 has one finding. A changed run walks both trees whole and compares findings by
 identity, as the family rule does; the walk reads the facts the run already
