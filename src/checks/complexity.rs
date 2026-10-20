@@ -383,11 +383,11 @@ struct Ceilings {
     held: Vec<Held>,
 }
 
-/// One ceiling in force, and whether it only reports. ADR 0073.
+/// One ceiling in force, and its tier: a pinned one blocks, a derived one only reports. ADR 0073.
 struct Held {
     rule: &'static Rule,
     ceiling: Ceiling,
-    reports: bool,
+    tier: Tier,
 }
 
 impl Held {
@@ -397,6 +397,12 @@ impl Held {
 }
 
 impl Ceilings {
+    /// True only at a Stop whose section pins no ceiling, since `klin check` always holds the
+    /// derived ones. Spec 9.7.
+    fn is_empty(&self) -> bool {
+        self.held.is_empty()
+    }
+
     fn named(&self) -> Vec<(&'static str, &Ceiling)> {
         self.held
             .iter()
@@ -416,12 +422,16 @@ impl Ceilings {
 
     /// A finding blocks when a ceiling it is over blocks, and only reports otherwise. ADR 0073.
     fn tier(&self, values: &Values) -> Tier {
-        let blocks = self.held.iter().filter(|held| !held.reports).any(|held| {
-            values
-                .get(held.rule.key.name)
-                .and_then(Value::as_u64)
-                .is_some_and(|value| held.exceeded_by(value))
-        });
+        let blocks = self
+            .held
+            .iter()
+            .filter(|held| held.tier == Tier::Blocks)
+            .any(|held| {
+                values
+                    .get(held.rule.key.name)
+                    .and_then(Value::as_u64)
+                    .is_some_and(|value| held.exceeded_by(value))
+            });
         match blocks {
             true => Tier::Blocks,
             false => Tier::Reports,
@@ -472,7 +482,7 @@ pub fn derive(project: &Project) -> Result<Provenance, Error> {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let mut spec = spec(project, at.caller)?;
-    if spec.ceilings.held.is_empty() {
+    if spec.ceilings.is_empty() {
         return Ok(held_nothing(out));
     }
     out.tell_each(std::mem::take(&mut spec.provenance));
@@ -515,8 +525,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// A Stop under which no ceiling blocks reads no file: every derived ceiling only reports, and
-/// the Stop resolves none of them. Spec 9.7.
+/// A Stop that holds no ceiling reads no file: the section pins none, and the Stop resolves no
+/// derived ceiling. Spec 9.7.
 fn held_nothing(out: &mut Sink) -> u8 {
     out.record(|records| records.work = Some(ContentCost::default()));
     out.tell(contract::check::Told::judged(Line::new(
@@ -738,7 +748,10 @@ fn ceilings(
             ceilings.held.push(Held {
                 rule,
                 ceiling,
-                reports: pin.is_none(),
+                tier: match pin {
+                    Some(_) => Tier::Blocks,
+                    None => Tier::Reports,
+                },
             });
         }
     }
