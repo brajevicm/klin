@@ -598,7 +598,7 @@ fn a_change_that_would_raise_its_own_ceiling() -> Tree {
 }
 
 fn derived_at_the_base(tree: &Tree, run: &Run) {
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says(&format!(
             "derived: complexity cc 11 (95th percentile of 50 functions at {}, floor 10)",
@@ -684,14 +684,9 @@ fn doc_size_run_on_its_own_derives_from_the_base() {
 
 #[test]
 fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent() {
-    let tree = a_change_that_would_raise_its_own_ceiling();
-    tree.git(&["reset", "-q", "--hard", "HEAD~1"]);
-    tree.write("klin.json", "{}");
-    tree.commit("the configuration");
-    let parent = tree.revision("HEAD")[..7].to_string();
-    assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
-    tree.write("src/more.rs", &many(TANGLED, 50));
-    tree.commit("a change inside the turn that would move the percentile");
+    let tree = a_document_in_a_turn();
+    tree.words("AGENTS.md", 400);
+    tree.commit("a document inside the turn that would raise its own ceiling");
     tree.write(".git/unusable", "a file where the state directory would go");
 
     let (_, report) = harness::stop_report(
@@ -700,24 +695,27 @@ fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent
         &[("KLIN_STATE_DIR", &tree.at(".git/unusable"))],
     );
     assert_eq!(report["window"]["kind"], "turn", "{report}");
-    let cc = stop_cc(&report);
-    assert_eq!(cc["value"], 11, "{report}");
-    let rule = format!("95th percentile of 50 functions at {parent}, floor 10;");
-    assert!(
-        cc["rule"]
-            .as_str()
-            .is_some_and(|said| said.starts_with(&rule)),
-        "{report}"
-    );
+    assert_eq!(stop_document_ceiling(&report), 50, "{report}");
 }
 
-/// The `complexity` `cc` a Stop's check document records as derived.
-fn stop_cc(report: &Value) -> Value {
+/// A tree whose instruction file has 5 words at the base, inside a turn whose stamp's parent is
+/// that base.
+fn a_document_in_a_turn() -> Tree {
+    let tree = Tree::new();
+    tree.words("AGENTS.md", 5);
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
+    tree
+}
+
+fn stop_document_ceiling(report: &Value) -> Value {
     let derived = &harness::derived(report);
     find(derived, |entry| {
-        entry["section"] == "complexity" && entry["key"] == "cc"
-    })
-    .clone()
+        entry["section"] == "doc_size" && entry["key"] == "AGENTS.md"
+    })["value"]
+        .clone()
 }
 
 fn pinned_cc(tree: &Tree) -> Value {
@@ -780,13 +778,13 @@ fn a_function_only_in_the_working_tree_does_not_move_the_percentile() {
     tree.write("extra/knot.rs", &many(TANGLED, 50));
 
     let run = gate(&tree);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
         "{}",
         run.out
     );
-    assert!(run.says("FAIL  complexity"), "{}", run.out);
+    assert!(run.says("extra/knot.rs"), "{}", run.out);
 }
 
 /// An instruction file the derivation commit lacks takes the 50-word default, which reads
@@ -860,13 +858,13 @@ fn a_ceiling_pinned_beside_a_derived_one_is_used_as_written() {
 }
 
 #[test]
-fn a_new_function_over_the_derived_ceiling_fails() {
+fn a_new_function_over_the_derived_ceiling_is_a_report_only_note() {
     let tree = project();
     tree.write("src/knot.rs", TANGLED);
 
     let run = gate(&tree);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("FAIL  complexity"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("INFO: 1 function(s)"), "{}", run.out);
     assert!(run.says("src/knot.rs:1  cc 12, 17 lines"), "{}", run.out);
 }
 
@@ -962,36 +960,43 @@ fn an_uncommitted_scope_edit_changes_judgment_but_not_the_ceiling() {
 
 #[test]
 fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
-    let tree = Tree::new();
-    tree.write("src/clean.rs", &many(CLEAN, 50));
-    tree.write("src/big.rs", &many(TANGLED, 50));
-    tree.write(
-        "klin.json",
-        r#"{ "complexity": { "except": "src/big.rs" } }"#,
-    );
-    tree.base();
-    assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
-    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
-    tree.commit("widen the recorded scope later");
+    let tree = a_document_in_a_turn();
+    tree.words("CLAUDE.md", 40);
+    tree.commit("an instruction file inside the turn");
 
     let (held, report) = harness::stop_report(tree.root(), STOP, &[]);
-    let cc = stop_cc(&report);
-    assert_eq!(cc["value"], 10, "{report}");
+    assert_eq!(held.code, 0, "{}", held.out);
     assert!(
-        cc["rule"]
-            .as_str()
-            .is_some_and(|rule| rule.starts_with("the floor of 10, over 50 function(s) at")),
+        claude_rule(&report).contains("the derivation commit lacks"),
         "{report}"
     );
 
-    assert_eq!(held.code, 0, "{}", held.out);
     assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
-    let moved = stop(&tree);
+    let (moved, report) = harness::stop_report(tree.root(), STOP, &[]);
     assert_eq!(moved.code, 0, "{}", moved.out);
+    assert_eq!(
+        claude_rule(&report),
+        "the word count at the derivation commit, rounded up to the next 50",
+        "{report}"
+    );
     let file = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
     let derived: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap_or_default())
         .unwrap_or_default();
-    assert_eq!(derived["complexity"]["cc"], 12, "{derived}");
+    assert_eq!(
+        derived["doc_size_instructions"]["CLAUDE.md"], 50,
+        "{derived}"
+    );
+}
+
+/// The rule the `doc-size` ceiling of `CLAUDE.md` came from at this Stop.
+fn claude_rule(report: &Value) -> String {
+    let derived = harness::derived(report);
+    find(&derived, |entry| {
+        entry["section"] == "doc_size" && entry["key"] == "CLAUDE.md"
+    })["rule"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
 }
 
 #[test]
@@ -1170,7 +1175,7 @@ fn a_recorded_complexity_set_to_false_falls_back_to_the_whole_repository_loudly(
 }
 
 #[test]
-fn a_stop_nothing_blocks_tells_the_person_the_recorded_scope_lags() {
+fn a_check_tells_the_person_the_recorded_scope_lags() {
     let tree = Tree::new();
     tree.write("src/clean.rs", &many(CLEAN, 50));
     tree.write(
@@ -1178,25 +1183,12 @@ fn a_stop_nothing_blocks_tells_the_person_the_recorded_scope_lags() {
         r#"{ "complexity": { "except": "src/big.rs" } }"#,
     );
     tree.base();
-    assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
     tree.write(
         "klin.json",
         r#"{ "complexity": { "except": ["src/big.rs", "src/gone.rs"] } }"#,
     );
 
-    let run = harness::feed(
-        tree.root(),
-        harness::AGENT,
-        r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
-    );
+    let run = tree.run(&["check", "complexity"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let told = run
-        .printed
-        .lines()
-        .find_map(|line| {
-            let held: Value = serde_json::from_str(line).ok()?;
-            held.get("systemMessage")?.as_str().map(str::to_string)
-        })
-        .unwrap_or_default();
-    assert!(told.contains("today's complexity scope"), "{}", run.out);
+    assert!(run.says("today's complexity scope"), "{}", run.out);
 }

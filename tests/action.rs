@@ -272,6 +272,8 @@ fn a_green_job_warns_of_a_klin_json_change_klin_could_not_judge() {
 #[test]
 fn the_action_annotates_failing_findings_before_review_items_and_counts_the_rest() {
     let tree = tree();
+    tree.write("klin.json", r#"{ "complexity": { "cc": 10 } }"#);
+    tree.base();
     let complex: String = (0..12).map(|at| format!("pub fn f{at}{COMPLEX}")).collect();
     tree.write("src/complex.rs", &complex);
     for at in 0..12 {

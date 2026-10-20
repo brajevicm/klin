@@ -385,6 +385,7 @@ pub enum Measured {
 
 /// The functions `complexity` judged, the dated steps of the ceilings in force, and the test
 /// functions it did not judge on length with the files among them a window added or renamed.
+#[derive(Default)]
 pub struct Complexity {
     pub judged: usize,
     pub over: usize,

@@ -295,7 +295,7 @@ pub const CATALOGUE: &[Row] = &[
         section: complexity::SECTION,
         activation: Activation::Automatic,
         placement: Placement::StopAndCheck,
-        semantics: 1,
+        semantics: 2,
         keys: complexity::KEYS,
         reference_text: None,
         languages: Some(syntax::language_extensions),

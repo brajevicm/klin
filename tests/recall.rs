@@ -451,7 +451,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "a long copied component",
-        &[Rule("complexity", Has("lines"), Caught)],
+        &[Rule("complexity", Has("lines"), Missed)],
         DASHBOARD_FILE,
         "",
     ),
