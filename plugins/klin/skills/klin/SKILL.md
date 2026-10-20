@@ -27,7 +27,9 @@ same gate still found does.
 1. Read the site each finding names. A finding is one violation at one site,
    not a report about the whole file.
 2. Fix the code at that site.
-3. Run `klin check --changed` to see whether the fix holds.
+
+The next stop judges the fix. Do not run `klin check` to see whether it
+holds.
 
 `klin check` exits 2 when klin or any one check could not run, even beside a
 FAIL. Otherwise it exits 1 when a finding failed, 3 when a measurement was
@@ -214,8 +216,8 @@ produces.
 
 - `klin check --changed` runs the gates over the files this branch changed
   against its base, the window CI judges. It can name debt an earlier turn
-  added. `klin check NAME...` runs only the named gates, and `--json` prints
-  one JSON object.
+  added. Run it only when the person asks for it. `klin check NAME...` runs
+  only the named gates, and `--json` prints one JSON object.
 - `klin status` reads the configuration, each host integration and the
   turn's window, with why it is red, and runs no check. Its window verdict
   is the last stop's, not the tree as it stands.

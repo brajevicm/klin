@@ -95,6 +95,10 @@ the version, so add the heading again after each release.
   instruction that forbids text, code or a file. The klin skill tells the
   agent how to propose one from your `AGENTS.md`, and to write it only after
   you say yes.
+- The klin skill no longer tells the agent to run `klin check --changed`
+  after it fixes a finding. The next Stop judges the fix, and the agent runs
+  `klin check` only when the person asks for it. `klin setup` replaces a
+  skill that an earlier `klin setup` wrote without asking.
 
 ## 0.5.6
 
