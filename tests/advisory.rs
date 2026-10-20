@@ -81,6 +81,11 @@ impl Remote {
 
     /// A commit someone else pushes to `main` that writes one file.
     fn pushed(&self, file: &str, contents: &str) {
+        self.pushed_to("main", file, contents);
+    }
+
+    /// A commit someone else pushes to `branch` that writes one file.
+    fn pushed_to(&self, branch: &str, file: &str, contents: &str) {
         let other = tempfile::tempdir().expect("temporary directory");
         let at = other.path().join("clone");
         git(
@@ -88,6 +93,8 @@ impl Remote {
             &[
                 "clone",
                 "-q",
+                "-b",
+                branch,
                 &self.bare.path().display().to_string(),
                 "clone",
             ],
@@ -107,7 +114,7 @@ impl Remote {
                 "someone else's work",
             ],
         );
-        git(&at, &["push", "-q", "origin", "main"]);
+        git(&at, &["push", "-q", "origin", branch]);
     }
 }
 
@@ -323,6 +330,37 @@ fn a_switch_to_a_branch_without_the_stamps_parent_makes_the_stop_advisory() {
     remote.tree.git(&["checkout", "-q", "main"]);
 
     assert_advisory(&remote.tree, "branch-changed");
+}
+
+/// The agent on `work` with one prompt's stamp taken, and `integration`, a branch built on
+/// `work` that holds someone else's finding.
+fn beside_an_integration_branch(remote: Remote) -> Remote {
+    remote.tree.git(&["checkout", "-q", "-b", "integration"]);
+    remote.tree.write("src/theirs.rs", text::ONE);
+    remote.tree.commit("someone else's work, merged");
+    remote.tree.git(&["checkout", "-q", "work"]);
+    prompt(&remote.tree);
+    remote
+}
+
+#[test]
+fn a_checkout_of_a_branch_that_holds_the_stamps_parent_makes_the_stop_advisory() {
+    let remote = beside_an_integration_branch(Remote::unstamped(CONFIG));
+    remote.tree.git(&["checkout", "-q", "integration"]);
+
+    assert_advisory(&remote.tree, "branch-changed");
+}
+
+#[test]
+fn a_branch_made_between_the_agents_own_commits_keeps_the_turn_window() {
+    let remote = Remote::new();
+    remote.tree.write("notes.txt", "the agent's notes\n");
+    remote.tree.commit("the agent's own commit");
+    remote.tree.git(&["switch", "-q", "-c", "another"]);
+    remote.tree.write("more.txt", "more of the agent's notes\n");
+    remote.tree.commit("the agent's next commit");
+
+    assert_turn_blocks(&remote.tree);
 }
 
 #[test]
@@ -563,6 +601,7 @@ fn a_stop_where_nothing_moved_starts_no_git_merge_base() {
     let traced = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(traced.contains("git"), "nothing traced: {traced}");
     assert!(!traced.contains("merge-base"), "{traced}");
+    assert!(!traced.contains("for-each-ref"), "{traced}");
 }
 
 #[test]
@@ -599,6 +638,68 @@ fn status_names_the_default_branch_and_the_last_advisory_stop() {
     let text = remote.tree.run(&["status"]);
     assert!(text.says("refs/remotes/origin/main"), "{}", text.out);
     assert!(text.says("branch-changed"), "{}", text.out);
+}
+
+/// A clone whose `origin/HEAD` names an `origin/main` it never fetched, with `origin/develop`
+/// the one remote-tracking branch, and one prompt's stamp taken.
+fn on_a_clone_without_main() -> Remote {
+    let remote = Remote::unstamped(CONFIG);
+    remote.tree.git(&["push", "-q", "origin", "main:develop"]);
+    git(
+        remote.bare.path(),
+        &["symbolic-ref", "HEAD", "refs/heads/develop"],
+    );
+    git(remote.bare.path(), &["branch", "-q", "-D", "main"]);
+    remote.tree.git(&["fetch", "-q", "--prune", "origin"]);
+    remote.tree.git(&[
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+    ]);
+    prompt(&remote.tree);
+    remote
+}
+
+#[test]
+fn with_no_default_branch_status_and_the_stop_say_so() {
+    let remote = on_a_clone_without_main();
+    remote.tree.git(&["push", "-q", "origin", "main:release"]);
+    remote.tree.git(&["fetch", "-q", "origin"]);
+    let status = remote.tree.run(&["status", "--json"]).json();
+    assert_eq!(status["window"]["default_branch"], Value::Null, "{status}");
+
+    let text = remote.tree.run(&["status"]);
+    assert!(text.says("no default branch"), "{}", text.out);
+    assert!(
+        text.says("git remote set-head origin --auto"),
+        "{}",
+        text.out
+    );
+    remote.tree.write("src/lib.rs", text::WRAPPED);
+    let run = stop(&remote.tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no default branch"), "{}", run.out);
+}
+
+#[test]
+fn with_one_remote_branch_and_no_main_a_pull_of_that_branch_is_advisory() {
+    let remote = on_a_clone_without_main();
+    let status = remote.tree.run(&["status", "--json"]).json();
+    assert_eq!(
+        status["window"]["default_branch"], "refs/remotes/origin/develop",
+        "{status}"
+    );
+    remote.pushed_to("develop", "src/theirs.rs", text::ONE);
+    remote.tree.git(&[
+        "pull",
+        "-q",
+        "--no-rebase",
+        "--no-edit",
+        "origin",
+        "develop",
+    ]);
+
+    assert_advisory(&remote.tree, "incoming-commits");
 }
 
 #[test]
@@ -729,6 +830,20 @@ fn in_a_reftable_repository_a_pull_of_main_is_advisory() {
         .git(&["pull", "-q", "--ff-only", "origin", "main"]);
 
     assert_advisory(&remote.tree, "incoming-commits");
+}
+
+#[test]
+fn in_a_reftable_repository_a_checkout_of_a_branch_that_holds_the_stamps_parent_is_advisory() {
+    let tree = Tree::bare();
+    tree.git(&["init", "-q", "--ref-format=reftable", "-b", "main"]);
+    tree.write("klin.json", CONFIG);
+    tree.write("src/lib.rs", CLEAN);
+    tree.commit("the base");
+    tree.git(&["checkout", "-q", "-b", "work"]);
+    let remote = beside_an_integration_branch(Remote::adopt(tree));
+    remote.tree.git(&["checkout", "-q", "integration"]);
+
+    assert_advisory(&remote.tree, "branch-changed");
 }
 
 /// The agent on the default branch, level with `origin/main`, and one prompt's stamp taken.

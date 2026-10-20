@@ -313,6 +313,7 @@ pub fn window(
         return Ok((replaced(&at, held.as_ref(), mark, base, out), None));
     };
     if here.remotes {
+        note_no_default(&here, out);
         let reason = advisory(root, &at, stamp, &here);
         if reason.is_none() {
             settled(root, &at, stamp, &here, out);
@@ -438,6 +439,14 @@ fn tracked(root: &Path, at: &Path, stamp: &Stamp, here: &Here, branch: Tracked) 
     }
 }
 
+/// The note of a Stop in a clone with remotes where no default branch resolves, so rules 1 and
+/// 3 cannot fire for it. Spec 6.6.
+fn note_no_default(here: &Here, out: &mut String) {
+    if here.default.is_none() {
+        note(out, NO_DEFAULT);
+    }
+}
+
 /// Rule 3: HEAD no longer holds the recorded merge-base, on git's proven answer alone.
 fn lost(root: &Path, recorded: &str) -> Option<Reason> {
     (Repo::at(root).contains(recorded) == Some(false)).then_some(Reason::HistoryLost)
@@ -450,7 +459,7 @@ fn incoming(here: &Here, stamp: &Stamp) -> bool {
         .is_none_or(|entries| {
             entries
                 .iter()
-                .any(|entry| INCOMING.iter().any(|kind| entry.starts_with(kind)))
+                .any(|entry| INCOMING.iter().any(|kind| entry.said.starts_with(kind)))
         })
 }
 
@@ -491,15 +500,20 @@ fn forward(root: &Path, was: Option<&str>, now: Option<String>) -> Option<String
 }
 
 /// Whether the branch changed under the turn: HEAD's symbolic ref differs from the one the
-/// stamp recorded, or the stamp recorded none, and the stamp's parent left HEAD history. So
-/// `git switch -c` at the same HEAD, and an amend or a rebase of the turn's own commits on the
-/// same branch, keep the turn window. Spec 6.6.
+/// stamp recorded, or the stamp recorded none, and either a checkout since the stamp moved HEAD
+/// to another commit or the stamp's parent left HEAD history. So `git switch -c`, before or
+/// after the turn's own commits, and an amend or a rebase of the turn's own commits on the same
+/// branch, keep the turn window, and a checkout of a branch built on this one does not. Spec 6.6.
 fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
     let moved = match (&stamp.history.head_ref, &here.head_ref) {
         (Some(was), Some(now)) => was != now,
         _ => true,
     };
-    moved && abandoned(root, stamp)
+    let jumped = || {
+        here.reflog_since(stamp.history.reflog_position)
+            .is_some_and(|entries| entries.iter().any(stamp::Entry::jumped))
+    };
+    moved && (jumped() || abandoned(root, stamp))
 }
 
 /// The fresh stamp an advisory Stop takes of the tree it measured, with the history as it now
@@ -547,6 +561,7 @@ fn read_only(root: &Path, out: &mut String) -> Result<(Window, Option<Reason>), 
         ));
     };
     if here.remotes {
+        note_no_default(&here, out);
         let reason = at.and_then(|at| advisory(root, &at, &stamp, &here));
         return Ok((turn(&stamp), reason));
     }
@@ -748,9 +763,15 @@ const GONE: &str = "the turn stamp and its ref are both gone, so klin wrote no f
 const GONE_ON_A_STOP: &str = "no turn stamp resolves, in the turn file or in the ref, so this \
                               stop judges the whole branch and writes the base it judged \
                               against as the stamp";
-const LEFT_BEHIND: &str = "this turn started from a commit HEAD no longer holds, so the turn \
-                           stamp cannot describe this turn and this stop judges the whole \
-                           branch instead";
+/// Why a clone with remotes has no default branch for the advisory rules, and how to name one.
+/// Spec 6.6.
+pub const NO_DEFAULT: &str = "no default branch resolves among the remote-tracking refs, so a \
+                              merge of it or a rewrite of it cannot make a stop advisory; `git \
+                              remote set-head origin --auto` names it";
+const LEFT_BEHIND: &str = "the branch changed under this turn, because HEAD no longer holds the \
+                           commit the turn started from or a checkout moved HEAD to another \
+                           commit, so the turn stamp cannot describe this turn and this stop \
+                           judges the whole branch instead";
 
 /// The stamp: a commit over a tree of everything `.gitignore` does not exclude, with HEAD as
 /// its parent, held under a ref so `git gc` does not prune it. Spec 6.5. The index starts

@@ -691,15 +691,23 @@ these happened:
    `reset` entry, or the `commit (merge)` entry of a merge that stopped on a
    conflict. The default branch is found by candidate 4 of B.6.3
    without the GitHub variables, and only a remote-tracking ref
-   (`refs/remotes/...`) counts. The reflog is compared by entry position,
+   (`refs/remotes/...`) counts. When none of those names resolves and the
+   clone holds exactly one remote-tracking branch past every
+   `<remote>/HEAD`, that branch is the default branch, as in a clone whose
+   `origin/HEAD` names an `origin/main` it never fetched. The reflog is compared by entry position,
    never by time. When HEAD has no reflog, a merge-base that moved forward
    alone is advisory. A reftable repository has no HEAD reflog when
    `git reflog exists HEAD` says so, even where `git reflog show` prints an
    empty log.
 2. **A branch change.** HEAD's symbolic ref differs from the recorded one,
-   and the stamp's parent is no longer an ancestor of HEAD. `git switch -c`
-   at the same HEAD keeps the turn window, as B.6.2 did. A stamp that
-   recorded no ref, such as one restored from its ref, takes the ancestry
+   and either HEAD's reflog since the recorded position holds a `checkout:`
+   entry that moved HEAD to another commit, or the stamp's parent is no
+   longer an ancestor of HEAD. So a checkout of a branch built on this one,
+   whose history still holds the stamp's parent, is a branch change.
+   `git switch -c` keeps the turn window, at the same HEAD as B.6.2 did and
+   also between the agent's own commits, because its entry leaves HEAD at
+   the same commit. A stamp that recorded no ref or no reflog position, such
+   as one restored from its ref, and a HEAD with no reflog, take the ancestry
    test alone.
 3. **Lost history.** The recorded default-branch merge-base is no longer an
    ancestor of HEAD, for example after the default branch was rewritten and
@@ -767,7 +775,9 @@ because it sits on the branch the checkout left, and a window from it would
 read that branch's tests as deleted tests. Its journal outcome stays
 `branch-fallback`. When remote refs exist but the default
 branch is not a remote-tracking ref, rules 1 and 3 cannot fire, and rules 2
-and 4 are advisory.
+and 4 are advisory. Each Stop there prints a note that no default branch
+resolves and that `git remote set-head origin --auto` names it, and `klin
+status` prints the same line where it names the default branch.
 
 **Consequences.**
 
@@ -794,7 +804,9 @@ default-branch commit). `session`, `prompt` and `stop` read HEAD, HEAD's
 symbolic ref, the default-branch ref and HEAD's reflog as files, after one
 `git rev-parse` finds the git directory. Where the repository stores refs in
 a reftable, klin asks git for them, HEAD's reflog included. `pre_tool` reads
-none of them. klin starts `git merge-base` only when the pair changed, which
+none of them. Only in a clone with remotes where no name of candidate 4
+resolves does klin start one `git for-each-ref` to find the one
+remote-tracking branch. klin starts `git merge-base` only when the pair changed, which
 happens on the first Stop or prompt after each commit. An advisory Stop adds
 a stamp capture to an ordinary Stop (section 14.4).
 
@@ -2318,7 +2330,7 @@ into a `measurement-lost` finding, a review item or a coverage note.
 valid, error}`, `integrations [{host, scope, route, state, detail}]`,
 `state_dir`, `cache_dir`, `window {verdict, age_seconds, open [finding
 ids], open_sites [the same findings as file:line], unasked [deleted-test sites], error, aborted_since,
-default_branch, last_advisory {time, reason} or null, notices [{time,
+default_branch, remotes, last_advisory {time, reason} or null, notices [{time,
 message}]}` or null,
 and `last_stop {time, verdict, historical: true}` or null.
 
@@ -2331,7 +2343,10 @@ outside `CI`, without `KLIN_NO_UPDATE_CHECK`, and with auto-update on
 (section 11.9).
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
-`green` (section 6.6). `open`, `open_sites` and `unasked` are empty unless the verdict is
+`green` (section 6.6). `default_branch` is the ref the advisory rules of
+section 6.6 read, or null where none resolves. `remotes` is true when any
+`refs/remotes/*` ref exists, and the text prints the no-default-branch note
+only then. `open`, `open_sites` and `unasked` are empty unless the verdict is
 `red`. Each `unasked` entry is the site as `file:line  text` of a deleted test, so a gate
 that errors adds none. `error` is null
 unless the verdict is `unjudged`, and `aborted_since` is null unless it is
