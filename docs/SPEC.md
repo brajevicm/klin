@@ -3049,8 +3049,12 @@ A capability earns a place by the whole loop, not by detector accuracy alone:
   kind, or more than one when the row is open to more than one check, and
   each has its own pin. A row that closes a gap changes its pin. It reports ride-along rows apart.
   A ride-along finding is no catch for a row in the blocking tier. The row
-  "a long component with no branches" plants a function over the `lines`
-  floor with no branch, so only a `lines` ceiling can catch it (#698).
+  "a long component with no branches" plants a function with no branch
+  over the `lines` ceiling of the tree. The Stop does not resolve a derived
+  `lines` ceiling (9.7), so the row is a pinned miss. A pinned `lines`
+  ceiling catches it and a pinned `cc` 10 alone does not (#698). Pinned by
+  `the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone`
+  and `a_ride_along_finding_is_no_catch_for_a_blocking_row`.
   The precision replay, `scripts/replay/replay.py`, runs one row over a frozen
   sample of app histories and prints its not-appropriate findings per 100
   changes. It runs only locally, never in CI.

@@ -380,8 +380,7 @@ const FORMAT_FILE: &str = "lib/format.ts";
 const ROUTE_FILE: &str = "app/(chat)/api/usage/route.ts";
 const TEST_FILE: &str = "tests/e2e/chat.test.ts";
 
-const BASE: [(&str, &str); 12] = [
-    ("klin.json", "{}\n"),
+const BASE: [(&str, &str); 11] = [
     ("package.json", PACKAGE),
     ("app/layout.tsx", LAYOUT),
     ("app/page.tsx", PAGE),
@@ -587,14 +586,20 @@ fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
         Is(key, wanted) => finding["values"][key].as_str() == Some(wanted),
     };
     finding["check"] == rule.0
-        && !(row.tier == Tier::Blocks && finding["rides_along"] == true)
         && finding["file"] == row.file
         && kind
         && finding["text"].as_str().unwrap_or("").contains(row.text)
 }
 
+fn counts_for(tier: Tier, finding: &Value) -> bool {
+    tier == Tier::RidesAlong || finding["rides_along"] != true
+}
+
 fn pin(row: &Row, rule: &Rule, findings: &[Value]) -> Pin {
-    match findings.iter().any(|finding| catches(row, rule, finding)) {
+    match findings
+        .iter()
+        .any(|finding| counts_for(row.tier, finding) && catches(row, rule, finding))
+    {
         true => Caught,
         false => Missed,
     }
@@ -636,17 +641,35 @@ fn recall(tier: Tier, findings: &[Value]) -> (String, Vec<&'static str>) {
     (format!("{head}\n{}", lines.join("\n")), wrong)
 }
 
-#[test]
-fn the_planted_turn_catches_exactly_the_pinned_rows() {
+fn row_named(slop: &str) -> &'static Row {
+    ROWS.iter()
+        .find(|row| row.slop == slop)
+        .expect("a recall row")
+}
+
+fn planted_tree(config: &str, planted: &[(&str, String)]) -> Tree {
     let tree = Tree::new();
+    tree.write("klin.json", config);
     for (path, text) in BASE {
         tree.write(path, text);
     }
     tree.base();
-    let planted = planted();
-    for (path, text) in &planted {
+    for (path, text) in planted {
         tree.write(path, text);
     }
+    tree
+}
+
+fn stop_findings(tree: &Tree) -> Vec<Value> {
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    report["findings"].as_array().cloned().unwrap_or_default()
+}
+
+#[test]
+fn the_planted_turn_catches_exactly_the_pinned_rows() {
+    let planted = planted();
+    let tree = planted_tree("{}\n", &planted);
     let texts = BASE.iter().map(|(_, text)| *text);
     assert!(
         !texts
@@ -671,4 +694,37 @@ fn the_planted_turn_catches_exactly_the_pinned_rows() {
         "{summary}\n{}",
         run.out
     );
+}
+
+#[test]
+fn the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone() {
+    let row = row_named("a long component with no branches");
+    let rule = &row.rules[0];
+    let lines = planted_tree(r#"{"complexity": {"cc": 10, "lines": 25}}"#, &planted());
+    let cc = planted_tree(r#"{"complexity": {"cc": 10, "lines": 1000}}"#, &planted());
+
+    assert!(pin(row, rule, &stop_findings(&lines)) == Caught);
+    assert!(pin(row, rule, &stop_findings(&cc)) == Missed);
+}
+
+#[test]
+fn a_ride_along_finding_is_no_catch_for_a_blocking_row() {
+    let row = row_named("a console.log");
+    let rule = &row.rules[0];
+    let line = r#"console.log("loading stats for", userId);"#;
+    let ignored = format!("{line} // biome-ignore lint/suspicious/noConsole: console.log");
+    let planted: Vec<(&str, String)> = planted()
+        .into_iter()
+        .map(|(path, text)| (path, text.replace(line, &ignored)))
+        .collect();
+
+    let findings = stop_findings(&planted_tree("{}\n", &planted));
+
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding["rides_along"] == true && catches(row, rule, finding)),
+        "{findings:?}"
+    );
+    assert!(pin(row, rule, &findings) == Missed);
 }
