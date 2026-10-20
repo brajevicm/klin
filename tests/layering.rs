@@ -2564,7 +2564,7 @@ fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
         );
         tree.run(&["check", "layering"])
     };
-    for specifier in ["../logo.svg?react", "./styles.css"] {
+    for specifier in ["../logo.svg?react", "./styles.css", "./logo.SVG"] {
         let run = check(specifier);
         assert_eq!(run.code, 0, "{specifier}: {}", run.out);
         assert!(

@@ -6236,7 +6236,8 @@ a file of another kind is counted as external. A relative specifier that names
 no held TypeScript file is an asset import and is counted as external, not a
 hole, where its path, with any `?query` suffix stripped, ends in the extension
 of one of Vite's known asset types, a style sheet language, `.json` or
-`.wasm`, such as `../logo.svg?react` or `./styles.css` (#672). Any other
+`.wasm`, in any letter case, such as `../logo.svg?react` or `./styles.css`
+(#672). Any other
 extension or none, such as `./worker?worker` or a missing `./user.service`,
 keeps the hole: the bundler may load such a path as a module. Pinned by
 `an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole`,

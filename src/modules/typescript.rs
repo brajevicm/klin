@@ -383,7 +383,11 @@ fn asset(specifier: &str) -> bool {
         && std::path::Path::new(path)
             .extension()
             .and_then(|extension| extension.to_str())
-            .is_some_and(|extension| ASSETS.contains(&extension))
+            .is_some_and(|extension| {
+                ASSETS
+                    .iter()
+                    .any(|asset| asset.eq_ignore_ascii_case(extension))
+            })
 }
 
 /// The TypeScript files a relative specifier may name, joined to the importing file's directory.
