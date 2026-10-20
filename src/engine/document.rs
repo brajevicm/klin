@@ -1960,6 +1960,7 @@ mod tests {
         },
         worsened: ratchet::Worsened::Fails,
         fails: None,
+        unjudged: None,
     };
 
     fn site(kind: &str) -> ratchet::Finding {

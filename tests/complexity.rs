@@ -2536,3 +2536,31 @@ fn a_stop_that_skips_the_derived_cc_still_notes_an_entry_for_a_function_that_is_
 
     assert_eq!(stop_unmatched(&tree), 1);
 }
+
+/// Two methods with one declaration line in one file: a short one and one of 25 lines, which
+/// only the accepted entry holds over the pinned `lines`.
+fn twin_declarations() -> String {
+    let body = "        let a = 1;\n".repeat(23);
+    format!(
+        "pub struct Short;\npub struct Long;\n\nimpl Short {{\n    pub fn calculate(&self) -> i32 {{\n        1\n    }}\n}}\n\nimpl Long {{\n    pub fn calculate(&self) -> i32 {{\n{body}    }}\n}}\n"
+    )
+}
+
+#[test]
+fn a_stop_that_skips_the_derived_cc_still_holds_a_twin_declaration_its_entry_accepts() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": "src", "lines": 10 },
+             "accepted": [{"gate": "complexity", "file": "src/twins.rs",
+                           "text": "pub fn calculate(&self) -> i32 {", "cc": 1, "lines": 25}] }"#,
+    );
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/twins.rs", &twin_declarations());
+
+    let check = tree.run(&["check", "complexity"]);
+    assert_eq!(check.code, 0, "{}", check.out);
+    assert!(!check.says("matched nothing"), "{}", check.out);
+    assert_eq!(stop_unmatched(&tree), 0);
+}

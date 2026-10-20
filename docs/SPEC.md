@@ -1507,12 +1507,14 @@ otherwise.
    unmatched: `klin check` judges that (7.6).
    A Stop that holds a ceiling but skips a derived one cannot tell whether a
    function it measured, and that no held ceiling finds, is over the skipped
-   ceiling. It calls the accepted entry of such a function neither matched
-   nor unmatched. An entry for a function the Stop did not find is still a
-   note. Pinned by
-   `a_stop_that_skips_the_derived_cc_does_not_call_an_entry_it_could_not_judge_unmatched`
+   ceiling. The entry of such a function stays in the match, so a function
+   at the same site over a held ceiling still finds it, and the Stop calls
+   it neither matched nor unmatched. An entry for a function the Stop did
+   not find is still a note. Pinned by
+   `a_stop_that_skips_the_derived_cc_does_not_call_an_entry_it_could_not_judge_unmatched`,
+   `a_stop_that_skips_the_derived_cc_still_notes_an_entry_for_a_function_that_is_gone`
    and
-   `a_stop_that_skips_the_derived_cc_still_notes_an_entry_for_a_function_that_is_gone`. #707 raised the semantics version of `complexity` to 2,
+   `a_stop_that_skips_the_derived_cc_still_holds_a_twin_declaration_its_entry_accepts`. #707 raised the semantics version of `complexity` to 2,
    because the same tree no longer blocks on a derived `cc` (8.2). Pinned by
    `under_an_empty_config_the_stop_reads_no_file_for_complexity`,
    `under_an_empty_config_a_stop_still_refuses_a_malformed_accepted_entry`,

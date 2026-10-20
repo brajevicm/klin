@@ -133,6 +133,7 @@ fn judged(
         tier: &ratchet::every_row_blocks,
         worsened: ratchet::Worsened::Fails,
         fails: None,
+        unjudged: None,
     };
     Ok(evaluator.evaluate(
         now,

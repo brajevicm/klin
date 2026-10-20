@@ -518,11 +518,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         arrived: unjudged.1,
     };
     let tier = |values: &Values| spec.ceilings.tier(values);
-    let accepted = ratchet::accepted(&project.config, at.gate, &ACCEPTS)?;
-    let code = evaluator(&spec, &tier).evaluate(
+    let unjudged = |entry: &Values| cannot_judge(entry, &sweep.functions, &spec.ceilings);
+    let judging = Evaluator {
+        unjudged: Some(&unjudged),
+        ..evaluator(&spec, &tier)
+    };
+    let code = judging.evaluate(
         now,
         before.found,
-        judgeable(accepted, &sweep.functions, &spec.ceilings),
+        ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
         at,
         Line::new(contract::check::Measured::Complexity(counts), said),
         out,
@@ -545,26 +549,18 @@ fn held_nothing(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(0)
 }
 
-/// The accepted entries this run can judge. A Stop that skipped a derived ceiling cannot tell
-/// whether a function it measured, and that no held ceiling finds, is over the skipped one, so
-/// it leaves that function's entry out of the match and does not call it unmatched. An entry
-/// for a function the run did not find stays in. Spec 7.6, 9.7.
-fn judgeable(accepted: Vec<Values>, functions: &[Function], ceilings: &Ceilings) -> Vec<Values> {
-    if !ceilings.skips_a_derived_one() {
-        return accepted;
-    }
-    let unjudged = |entry: &Values| {
-        let site = |key| entry.get(key).and_then(Value::as_str);
-        functions.iter().any(|function| {
+/// Whether a Stop that skipped a derived ceiling could not judge this accepted entry: a function
+/// at its site that the Stop measured and no held ceiling finds may still be over the skipped
+/// one. The entry stays in the match, so a function at the same site over a held ceiling still
+/// finds it, and the Stop only calls it neither matched nor unmatched. Spec 7.6, 9.7.
+fn cannot_judge(entry: &Values, functions: &[Function], ceilings: &Ceilings) -> bool {
+    let site = |key| entry.get(key).and_then(Value::as_str);
+    ceilings.skips_a_derived_one()
+        && functions.iter().any(|function| {
             !function.over(ceilings)
                 && site("file") == Some(&token::redact(&function.file))
                 && site("text") == Some(&token::redact(&function.text))
         })
-    };
-    accepted
-        .into_iter()
-        .filter(|entry| !unjudged(entry))
-        .collect()
 }
 
 /// What the base holds over the ceilings, what it measured and what reading it cost, and the
@@ -680,6 +676,7 @@ fn evaluator<'a>(spec: &'a Spec, tier: &'a dyn Fn(&Values) -> Tier) -> Evaluator
         tier,
         worsened: ratchet::Worsened::Fails,
         fails: None,
+        unjudged: None,
     }
 }
 

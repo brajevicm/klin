@@ -463,6 +463,7 @@ fn evaluator() -> Evaluator<'static> {
         tier: &ratchet::every_row_blocks,
         worsened: ratchet::Worsened::Fails,
         fails: Some(fails_when_new),
+        unjudged: None,
     }
 }
 

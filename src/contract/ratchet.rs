@@ -492,6 +492,10 @@ pub struct Evaluator<'a> {
     /// above zero does not say so. `None` reads any ratcheted value other than zero as failing.
     /// Spec 10.6.
     pub fails: Option<fn(&Values) -> bool>,
+    /// Whether this run could not judge an accepted entry, for a Stop that skipped a ceiling.
+    /// The match still sees the entry, but the run calls it neither matched nor unmatched.
+    /// `None` judges every entry. Spec 7.6, 9.7.
+    pub unjudged: Option<&'a dyn Fn(&Values) -> bool>,
 }
 
 /// What a gate makes of a finding whose value rose. Spec 9.2.
@@ -774,13 +778,18 @@ fn text(entry: &Values, key: &str) -> String {
 }
 
 fn notes(comparison: &Comparison, evaluator: &Evaluator, at: &Context, out: &mut Sink) {
-    if comparison.unmatched_accepted.is_empty() {
+    let judged = |entry: &&Values| evaluator.unjudged.is_none_or(|unjudged| !unjudged(entry));
+    let unmatched: Vec<&Values> = comparison
+        .unmatched_accepted
+        .iter()
+        .filter(judged)
+        .collect();
+    if unmatched.is_empty() {
         return;
     }
     out.tell(Ratchet::AcceptedUnmatched {
-        entries: comparison
-            .unmatched_accepted
-            .iter()
+        entries: unmatched
+            .into_iter()
             .map(|entry| Unmatched {
                 entry: entry_of(entry),
                 shown: (evaluator.format_metrics)(entry),

@@ -208,6 +208,7 @@ pub const KIND: Kind = Kind {
         tier: &tier,
         worsened: ratchet::Worsened::Fails,
         fails: None,
+        unjudged: None,
     },
 };
 

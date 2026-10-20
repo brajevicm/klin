@@ -341,6 +341,7 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
         tier: &ratchet::every_row_blocks,
         worsened: ratchet::Worsened::Fails,
         fails: None,
+        unjudged: None,
     }
 }
 
