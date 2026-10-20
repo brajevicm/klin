@@ -24,11 +24,15 @@ the version, so add the heading again after each release.
   report and `klin status` say so and name
   `git remote set-head origin --auto`. `klin status --json` adds
   `window.remotes`.
-- `complexity` no longer blocks on a `cc` ceiling that klin derives. A
-  function over it is an `INFO` note at `klin check`, and the Stop does not
-  measure it. A `cc` you pin in `klin.json` still blocks, including one that
-  `klin setup --pin` or `klin policy --suggest` wrote. When `klin.json` pins
-  no complexity value, the Stop reads no file for `complexity`.
+- `complexity` no longer blocks on a `cc` or `lines` ceiling that klin
+  derives. A function over one is an `INFO` note at `klin check`, and the
+  Stop does not measure it. A `cc` or `lines` you pin in `klin.json` still
+  blocks, including one that `klin setup --pin` or `klin policy --suggest`
+  wrote. When `klin.json` pins no complexity value, the Stop reads no file
+  for `complexity`.
+- Each complexity ceiling line in `klin policy` and in a run says whether it
+  blocks or only reports. The Action's job summary counts report-only notes
+  on one line and annotates none of them.
 - `complexity` moves to semantics version 2. `klin report` shows a
   derived-`cc` regression from before the upgrade as not compared, and does
   not count it as fixed.
@@ -44,6 +48,53 @@ the version, so add the heading again after each release.
   many more there are and that `klin check --changed` lists every one. The
   Stop used to print all of them. A question about deleted tests still names
   every test.
+- A `layering` layer can take its own `except`, so an outer layer can leave
+  a nested layer its files. An `except` path outside the layer's own `in`,
+  one that holds no Rust or TypeScript file, or one that leaves the layer no
+  file is a configuration error.
+- App reachability now judges a Vite app with no entry point. klin takes its
+  entries from the module scripts in its `index.html`. Such a package used
+  to be a hole. It is still a hole when it holds `.vue`, `.svelte` or
+  `.astro` files, when `index.html` has an inline module script with code or
+  a `%...%` placeholder in a `src`, or when no script names a TypeScript file
+  of the package.
+- A bare import that names a workspace package, such as `@acme/ui` or
+  `@acme/ui/button`, now resolves into that package after `paths` and
+  `baseUrl`, the way tsc reaches it through `node_modules`. `layering` and
+  app reachability see these imports as edges, so `layering` can report a
+  violation it missed before. klin reads the root `package.json`
+  `workspaces` list, with literal paths and one-segment `*` only. A package
+  that writes `exports`, pnpm workspaces and Yarn PnP stay external.
+- `paths` aliases now follow a local `extends` chain in a TypeScript config
+  the way tsc merges it. A parent named without `./` or `../` is a package,
+  as in tsc. A `${configDir}` value in
+  `baseUrl`, a `paths` target, `include`, `exclude`, `files`, `outDir` or
+  `declarationDir` leaves the alias a hole.
+- `dead-symbols` reports fewer TypeScript false positives. On 15 TypeScript
+  repositories, its findings fell from 1,696 to 299. It no longer judges:
+  - class constructors
+  - declarations in a `declare module "x"` augmentation
+  - declarations in a TypeScript declaration file with no import or export
+  - methods of an object literal, `override` methods, and members with a
+    string, number or computed name
+  - members of a class that `export { Box }`, `export = Box` or
+    `export default Box` exposes
+
+  A `#private` method that `this.#step()` calls is no longer dead. An unused
+  one still is.
+- The app hole note now counts packages. It used to count imports, so one
+  Next app with three unproved `@/` aliases read `3 app package(s) klin could
+  not prove`. It now reads `1 app package(s)`. The JSON keeps one record per
+  import.
+- klin redacts a live-shaped key, such as an `sk-proj-` key, in everything it
+  prints or records: finding text, errors, `klin policy`, host responses, the
+  journal and `KLIN_HOOK_REPORT`. A finding's identity hashes the redacted
+  text. To accept such a finding, copy the `file` and `text` that its report
+  shows.
+- The `doc-size` remedy now names a `conventions` rule as the gate for an
+  instruction that forbids text, code or a file. The klin skill tells the
+  agent how to propose one from your `AGENTS.md`, and to write it only after
+  you say yes.
 - The klin skill no longer tells the agent to run `klin check --changed`
   after it fixes a finding. The next Stop judges the fix, and the agent runs
   `klin check` only when the person asks for it. `klin setup` replaces a
