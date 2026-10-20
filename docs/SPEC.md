@@ -5693,7 +5693,7 @@ These holes
 are notes where the base holds them, review items at `klin check` where the
 change opened them, and notes at the Stop (7.2), and never a FAIL. Each block
 of them counts the app packages its forms keep from being judged, not the
-forms, and lists every form under it. A member of
+forms, and lists every form under it, or the first 20 at the Stop (10.6). A member of
 a derived family that an app owns is judged by app mode alone, so one file
 has one finding. A changed run walks both trees whole and compares findings by
 identity, as the family rule does; the walk reads the facts the run already

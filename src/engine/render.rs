@@ -23,9 +23,9 @@ use crate::contract::holes::{self, Unmeasured};
 /// How many rows a listed block prints before it says how many more there are.
 const SHOWN: usize = 20;
 
-/// How a gate's new sites print: every one with what it matched, as `klin check` prints them,
-/// or the first `SHOWN` of them with no word that nothing matched, as the Stop prints them.
-/// Spec 10.6.
+/// How a gate's new sites and unresolved forms print: every one, each site with what it matched,
+/// as `klin check` prints them, or the first `SHOWN` of them with no word that nothing matched,
+/// as the Stop prints them. Spec 10.6.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Detail {
     Whole,
@@ -267,7 +267,12 @@ fn new_sites(heading: &str, failed: &[Failed], detail: Detail, out: &mut String)
 
 /// Rows under their heading in `detail`, and where it caps them, the command that lists every
 /// one of `what`. Spec 10.6.
-fn queued(out: &mut String, (heading, what): (&str, &str), rows: Vec<String>, detail: Detail) {
+fn queued(
+    out: &mut String,
+    (heading, what): (&str, &'static str),
+    rows: Vec<String>,
+    detail: Detail,
+) {
     if detail == Detail::Whole {
         return block(out, heading, rows.into_iter());
     }
