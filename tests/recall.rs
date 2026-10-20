@@ -332,15 +332,55 @@ test.describe("chat", () => {
 });
 "#;
 
+const SETTINGS: &str = r#"export function SettingsPanel({ name, email }: { name: string; email: string }) {
+  return (
+    <form className="flex flex-col gap-4 p-6">
+      <h2 className="text-lg font-semibold">Settings</h2>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Name</span>
+        <input name="name" defaultValue={name} className="rounded border p-2" />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Email</span>
+        <input name="email" type="email" defaultValue={email} className="rounded border p-2" />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Language</span>
+        <select name="language" className="rounded border p-2">
+          <option value="en">English</option>
+          <option value="de">German</option>
+          <option value="fr">French</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Theme</span>
+        <select name="theme" className="rounded border p-2">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2">
+        <input name="notifications" type="checkbox" />
+        <span className="text-sm">Email notifications</span>
+      </label>
+      <button type="submit" className="rounded bg-black p-2 text-white">
+        Save
+      </button>
+    </form>
+  );
+}
+"#;
+
 const STATS_FILE: &str = "hooks/use-usage-stats.ts";
 const DASHBOARD_FILE: &str = "components/chat/usage-dashboard.tsx";
 const COPY_FILE: &str = "components/chat/usage-dashboard-v2.tsx";
+const SETTINGS_FILE: &str = "components/chat/settings-panel.tsx";
 const FORMAT_FILE: &str = "lib/format.ts";
 const ROUTE_FILE: &str = "app/(chat)/api/usage/route.ts";
 const TEST_FILE: &str = "tests/e2e/chat.test.ts";
 
-const BASE: [(&str, &str); 12] = [
-    ("klin.json", "{}\n"),
+const BASE: [(&str, &str); 11] = [
     ("package.json", PACKAGE),
     ("app/layout.tsx", LAYOUT),
     ("app/page.tsx", PAGE),
@@ -371,6 +411,7 @@ fn planted() -> Vec<(&'static str, String)> {
             DASHBOARD.replace("UsageDashboard(", "UsageDashboardV2("),
         ),
         (STATS_FILE, USE_USAGE_STATS.to_string()),
+        (SETTINGS_FILE, SETTINGS.to_string()),
         (FORMAT_FILE, FORMAT.to_string()),
         (ROUTE_FILE, route),
         (TEST_FILE, CHAT_TEST_AFTER.to_string()),
@@ -383,7 +424,7 @@ enum Tier {
     RidesAlong,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Pin {
     Caught,
     Missed,
@@ -395,9 +436,10 @@ enum Kind {
     Any,
     Has(&'static str),
     Is(&'static str, &'static str),
+    About(&'static str),
 }
 
-use Kind::{Any, Has, Is};
+use Kind::{About, Any, Has, Is};
 
 struct Rule(&'static str, Kind, Pin);
 
@@ -453,6 +495,12 @@ const ROWS: &[Row] = &[
         "a long copied component",
         &[Rule("complexity", Has("lines"), Missed)],
         DASHBOARD_FILE,
+        "",
+    ),
+    row(
+        "a long component with no branches",
+        &[Rule("complexity", Has("lines"), Missed)],
+        SETTINGS_FILE,
         "",
     ),
     row(
@@ -520,7 +568,7 @@ const ROWS: &[Row] = &[
     ),
     row(
         "a console.log",
-        &[Rule("escapes", Any, Missed)],
+        &[Rule("escapes", About("console"), Missed)],
         DASHBOARD_FILE,
         "console.log",
     ),
@@ -532,20 +580,32 @@ const ROWS: &[Row] = &[
     ),
 ];
 
-fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
-    let kind = match rule.1 {
+fn is_of(kind: &Kind, finding: &Value) -> bool {
+    let values = &finding["values"];
+    match kind {
         Any => true,
-        Has(key) => !finding["values"][key].is_null(),
-        Is(key, wanted) => finding["values"][key].as_str() == Some(wanted),
-    };
+        Has(key) => !values[key].is_null(),
+        Is(key, wanted) => values[key].as_str() == Some(wanted),
+        About(word) => values.to_string().contains(word),
+    }
+}
+
+fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
     finding["check"] == rule.0
         && finding["file"] == row.file
-        && kind
+        && is_of(&rule.1, finding)
         && finding["text"].as_str().unwrap_or("").contains(row.text)
 }
 
+fn counts_for(tier: Tier, finding: &Value) -> bool {
+    tier == Tier::RidesAlong || finding["rides_along"] != true
+}
+
 fn pin(row: &Row, rule: &Rule, findings: &[Value]) -> Pin {
-    match findings.iter().any(|finding| catches(row, rule, finding)) {
+    match findings
+        .iter()
+        .any(|finding| counts_for(row.tier, finding) && catches(row, rule, finding))
+    {
         true => Caught,
         false => Missed,
     }
@@ -587,17 +647,48 @@ fn recall(tier: Tier, findings: &[Value]) -> (String, Vec<&'static str>) {
     (format!("{head}\n{}", lines.join("\n")), wrong)
 }
 
-#[test]
-fn the_planted_turn_catches_exactly_the_pinned_rows() {
+fn row_named(slop: &str) -> &'static Row {
+    ROWS.iter()
+        .find(|row| row.slop == slop)
+        .unwrap_or_else(|| panic!("no recall row named {slop:?}"))
+}
+
+fn planted_tree(config: &str, planted: &[(&str, String)]) -> Tree {
     let tree = Tree::new();
+    tree.write("klin.json", config);
     for (path, text) in BASE {
         tree.write(path, text);
     }
     tree.base();
-    let planted = planted();
-    for (path, text) in &planted {
+    for (path, text) in planted {
         tree.write(path, text);
     }
+    tree
+}
+
+const CONSOLE_LINE: &str = r#"console.log("loading stats for", userId);"#;
+
+fn with_console_line(changed: &str) -> Vec<(&'static str, String)> {
+    assert!(
+        DASHBOARD.contains(CONSOLE_LINE),
+        "the console.log line moved"
+    );
+    planted()
+        .into_iter()
+        .map(|(path, text)| (path, text.replace(CONSOLE_LINE, changed)))
+        .collect()
+}
+
+fn stop_findings(tree: &Tree) -> Vec<Value> {
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    report["findings"].as_array().cloned().unwrap_or_default()
+}
+
+#[test]
+fn the_planted_turn_catches_exactly_the_pinned_rows() {
+    let planted = planted();
+    let tree = planted_tree("{}\n", &planted);
     let texts = BASE.iter().map(|(_, text)| *text);
     assert!(
         !texts
@@ -621,5 +712,67 @@ fn the_planted_turn_catches_exactly_the_pinned_rows() {
         wrong_blocking.is_empty() && wrong_riding.is_empty(),
         "{summary}\n{}",
         run.out
+    );
+}
+
+#[test]
+fn the_long_component_with_no_branches_is_caught_by_a_lines_ceiling_alone() {
+    let row = row_named("a long component with no branches");
+    let rule = &row.rules[0];
+    let lines = planted_tree(r#"{"complexity": {"cc": 10, "lines": 25}}"#, &planted());
+    let cc = planted_tree(r#"{"complexity": {"cc": 10}}"#, &planted());
+
+    let over_lines = stop_findings(&lines);
+    let over_nothing = stop_findings(&cc);
+    assert_eq!(pin(row, rule, &over_lines), Caught, "{over_lines:?}");
+    assert_eq!(pin(row, rule, &over_nothing), Missed, "{over_nothing:?}");
+}
+
+#[test]
+fn a_ride_along_finding_is_no_catch_for_a_blocking_row() {
+    let row = row(
+        "any escape on the console.log line",
+        &[Rule("escapes", Any, Missed)],
+        DASHBOARD_FILE,
+        "console.log",
+    );
+    let rule = &row.rules[0];
+
+    let findings = stop_findings(&planted_tree(
+        "{}\n",
+        &with_console_line(&format!(
+            "{CONSOLE_LINE} // biome-ignore lint/suspicious/noConsole: x"
+        )),
+    ));
+
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding["rides_along"] == true && catches(&row, rule, finding)),
+        "{findings:?}"
+    );
+    assert_eq!(pin(&row, rule, &findings), Missed, "{findings:?}");
+}
+
+#[test]
+fn another_escape_on_the_console_log_line_is_no_catch_for_its_row() {
+    let console = row_named("a console.log");
+
+    let findings = stop_findings(&planted_tree(
+        "{}\n",
+        &with_console_line(&CONSOLE_LINE.replace("userId", "userId as any")),
+    ));
+    let any = row(
+        "an as any on the console.log line",
+        &[Rule("escapes", Is("escape", "any"), Caught)],
+        DASHBOARD_FILE,
+        "console.log",
+    );
+
+    assert_eq!(pin(&any, &any.rules[0], &findings), Caught, "{findings:?}");
+    assert_eq!(
+        pin(console, &console.rules[0], &findings),
+        Missed,
+        "{findings:?}"
     );
 }
