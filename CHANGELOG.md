@@ -65,16 +65,16 @@ the version, so add the heading again after each release.
   violation it missed before. klin reads the root `package.json`
   `workspaces` list, with literal paths and one-segment `*` only. A package
   that writes `exports`, pnpm workspaces and Yarn PnP stay external.
-- `paths` aliases now follow a local `extends` chain in `tsconfig.json` the
-  way tsc merges it. A parent named without `./` or `../`, such as
-  `.config/base.json`, is a package, as in tsc. A `${configDir}` value in
+- `paths` aliases now follow a local `extends` chain in a TypeScript config
+  the way tsc merges it. A parent named without `./` or `../` is a package,
+  as in tsc. A `${configDir}` value in
   `baseUrl`, a `paths` target, `include`, `exclude`, `files`, `outDir` or
   `declarationDir` leaves the alias a hole.
 - `dead-symbols` reports fewer TypeScript false positives. On 15 TypeScript
   repositories, its findings fell from 1,696 to 299. It no longer judges:
   - class constructors
   - declarations in a `declare module "x"` augmentation
-  - declarations in a `.d.ts` file with no import or export
+  - declarations in a TypeScript declaration file with no import or export
   - methods of an object literal, `override` methods, and members with a
     string, number or computed name
   - members of a class that `export { Box }`, `export = Box` or
