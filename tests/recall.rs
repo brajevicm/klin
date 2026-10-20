@@ -332,9 +332,50 @@ test.describe("chat", () => {
 });
 "#;
 
+const SETTINGS: &str = r#"export function SettingsPanel({ name, email }: { name: string; email: string }) {
+  return (
+    <form className="flex flex-col gap-4 p-6">
+      <h2 className="text-lg font-semibold">Settings</h2>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Name</span>
+        <input name="name" defaultValue={name} className="rounded border p-2" />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Email</span>
+        <input name="email" type="email" defaultValue={email} className="rounded border p-2" />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Language</span>
+        <select name="language" className="rounded border p-2">
+          <option value="en">English</option>
+          <option value="de">German</option>
+          <option value="fr">French</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">Theme</span>
+        <select name="theme" className="rounded border p-2">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2">
+        <input name="notifications" type="checkbox" />
+        <span className="text-sm">Email notifications</span>
+      </label>
+      <button type="submit" className="rounded bg-black p-2 text-white">
+        Save
+      </button>
+    </form>
+  );
+}
+"#;
+
 const STATS_FILE: &str = "hooks/use-usage-stats.ts";
 const DASHBOARD_FILE: &str = "components/chat/usage-dashboard.tsx";
 const COPY_FILE: &str = "components/chat/usage-dashboard-v2.tsx";
+const SETTINGS_FILE: &str = "components/chat/settings-panel.tsx";
 const FORMAT_FILE: &str = "lib/format.ts";
 const ROUTE_FILE: &str = "app/(chat)/api/usage/route.ts";
 const TEST_FILE: &str = "tests/e2e/chat.test.ts";
@@ -371,6 +412,7 @@ fn planted() -> Vec<(&'static str, String)> {
             DASHBOARD.replace("UsageDashboard(", "UsageDashboardV2("),
         ),
         (STATS_FILE, USE_USAGE_STATS.to_string()),
+        (SETTINGS_FILE, SETTINGS.to_string()),
         (FORMAT_FILE, FORMAT.to_string()),
         (ROUTE_FILE, route),
         (TEST_FILE, CHAT_TEST_AFTER.to_string()),
@@ -453,6 +495,12 @@ const ROWS: &[Row] = &[
         "a long copied component",
         &[Rule("complexity", Has("lines"), Missed)],
         DASHBOARD_FILE,
+        "",
+    ),
+    row(
+        "a long component with no branches",
+        &[Rule("complexity", Has("lines"), Missed)],
+        SETTINGS_FILE,
         "",
     ),
     row(
@@ -539,6 +587,7 @@ fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
         Is(key, wanted) => finding["values"][key].as_str() == Some(wanted),
     };
     finding["check"] == rule.0
+        && !(row.tier == Tier::Blocks && finding["rides_along"] == true)
         && finding["file"] == row.file
         && kind
         && finding["text"].as_str().unwrap_or("").contains(row.text)

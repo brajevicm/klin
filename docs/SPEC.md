@@ -3043,11 +3043,14 @@ A capability earns a place by the whole loop, not by detector accuracy alone:
   0073. A remedy that deletes code or changes behavior takes the stricter
   tier. A row that catches the reflexive form of a shortcut may block even
   when a cheap rewording passes it (ADR 0073).
-- Two tools measure a row. The recall suite, `tests/recall.rs`, plants 17
+- Two tools measure a row. The recall suite, `tests/recall.rs`, plants 18
   rows of agent slop in a Next.js tree, runs a Stop, and pins each row as
   caught or missed by a catch rule. The rule names one check and finding
   kind, or more than one when the row is open to more than one check, and
   each has its own pin. A row that closes a gap changes its pin. It reports ride-along rows apart.
+  A ride-along finding is no catch for a row in the blocking tier. The row
+  "a long component with no branches" plants a function over the `lines`
+  floor with no branch, so only a `lines` ceiling can catch it (#698).
   The precision replay, `scripts/replay/replay.py`, runs one row over a frozen
   sample of app histories and prints its not-appropriate findings per 100
   changes. It runs only locally, never in CI.
