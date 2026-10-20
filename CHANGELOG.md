@@ -44,6 +44,10 @@ the version, so add the heading again after each release.
   many more there are and that `klin check --changed` lists every one. The
   Stop used to print all of them. A question about deleted tests still names
   every test.
+- The klin skill no longer tells the agent to run `klin check --changed`
+  after it fixes a finding. The next Stop judges the fix, and the agent runs
+  `klin check` only when the person asks for it. `klin setup` replaces a
+  skill that an earlier `klin setup` wrote without asking.
 
 ## 0.5.6
 
