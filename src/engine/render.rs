@@ -52,7 +52,8 @@ fn rendered(told: &[Told], with_ok: bool, detail: Detail) -> String {
     out
 }
 
-/// One item, where `with_ok` says whether its `OK:` lines print.
+/// One item, where `with_ok` says whether its `OK:` lines print and `detail` how its sites and
+/// forms print.
 fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
     match told {
         Told::Judged { line, held } if with_ok => judged(line, *held, out),
@@ -64,21 +65,10 @@ fn one(told: &Told, (with_ok, detail): (bool, Detail), out: &mut String) {
         } => document((name, *words, ceiling), standing, with_ok, out),
         Told::Ratchet(said) => ratchet(said, detail, out),
         Told::Hole(hole) => holed(hole, detail, out),
-        other => said(other, out),
-    }
-}
-
-/// One item that says the same in every report.
-fn said(told: &Told, out: &mut String) {
-    match told {
-        Told::Plain(said) => plain(said, out),
         Told::Listed(listed) => sites(listed, out),
+        Told::Plain(said) => plain(said, out),
         Told::Incomplete(hole) => incomplete(hole, out),
-        Told::Judged { .. }
-        | Told::Document { .. }
-        | Told::Ratchet(_)
-        | Told::Hole(_)
-        | Told::Provenance(_) => (),
+        Told::Judged { .. } | Told::Provenance(_) => (),
     }
 }
 
@@ -218,7 +208,7 @@ fn ratchet(said: &Ratchet, detail: Detail, out: &mut String) {
             );
             new_sites(&heading, failed, detail, out);
         }
-        Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
+        Ratchet::Worse { unit, failed, .. } => worse(unit, failed, detail, out),
         Ratchet::Asked { unit, failed, .. } => asked(unit, failed, out),
         Ratchet::RidesAlong {
             unit,
@@ -340,29 +330,38 @@ fn reported(unit: &str, failed: &[Failed], out: &mut String) {
     site_lines(failed, out);
 }
 
-fn worse(unit: &str, failed: &[Failed], out: &mut String) {
-    let _ = writeln!(
+fn worse(unit: &str, failed: &[Failed], detail: Detail, out: &mut String) {
+    let rows = failed
+        .iter()
+        .map(|finding| {
+            let (was, from) = finding
+                .was
+                .as_ref()
+                .map(|was| (was.shown.as_str(), was.at.as_deref()))
+                .unwrap_or_default();
+            let from = from.map(|file| format!(" at {file}")).unwrap_or_default();
+            format!(
+                "{}:{}  {}, was {was}{from}  {}{}",
+                finding.file,
+                finding.line,
+                finding.shown,
+                clip(&finding.text),
+                against(finding, Detail::Whole)
+            )
+        })
+        .collect();
+    queued(
         out,
-        "FAIL: {} {unit} got worse — the ratchet only tightens:",
-        failed.len()
+        (
+            &format!(
+                "FAIL: {} {unit} got worse — the ratchet only tightens:",
+                failed.len()
+            ),
+            "site",
+        ),
+        rows,
+        detail,
     );
-    for finding in failed {
-        let (was, from) = finding
-            .was
-            .as_ref()
-            .map(|was| (was.shown.as_str(), was.at.as_deref()))
-            .unwrap_or_default();
-        let from = from.map(|file| format!(" at {file}")).unwrap_or_default();
-        let _ = writeln!(
-            out,
-            "  {}:{}  {}, was {was}{from}  {}{}",
-            finding.file,
-            finding.line,
-            finding.shown,
-            clip(&finding.text),
-            against(finding, Detail::Whole)
-        );
-    }
 }
 
 /// The deleted tests a Stop asks about: a question, never a failure. Spec 9.2.
@@ -1324,17 +1323,31 @@ pub fn lost_row(sorted: &[Unmeasured], held: &[String]) -> Option<String> {
     Some(out)
 }
 
-/// The line of each opened gap and coverage note `klin check` prints, or at the Stop, of each
-/// opened gap alone as a note the agent sees. Spec 7.2.
+/// The line of each opened gap and coverage note `klin check` prints, or at the Stop, of the
+/// first `SHOWN` of them as notes the agent sees, with how many more there are. Spec 7.2, 10.6.
 pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
-    let mut out = String::new();
-    for item in sorted {
-        let word = match (item.class, at_stop) {
-            (Class::Lost, _) => continue,
-            (Class::Opened, false) => "REVIEW",
-            (Class::Opened, true) | (Class::Limit, _) => "NOTE",
-        };
-        let _ = writeln!(out, "  {word}: {}", unmeasured_said(item));
+    let lines: Vec<String> = sorted
+        .iter()
+        .filter_map(|item| {
+            let word = match (item.class, at_stop) {
+                (Class::Lost, _) => return None,
+                (Class::Opened, false) => "REVIEW",
+                (Class::Opened, true) | (Class::Limit, _) => "NOTE",
+            };
+            Some(format!("  {word}: {}\n", unmeasured_said(item)))
+        })
+        .collect();
+    let shown = match at_stop {
+        true => SHOWN,
+        false => usize::MAX,
+    };
+    let mut out: String = lines.iter().take(shown).map(String::as_str).collect();
+    if lines.len() > shown {
+        let _ = writeln!(
+            out,
+            "  … and {} more — klin check --changed lists every file",
+            lines.len() - shown
+        );
     }
     out
 }

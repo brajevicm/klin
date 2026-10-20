@@ -573,6 +573,63 @@ fn the_stop_text_lists_twenty_new_sites_of_a_gate_and_counts_the_rest() {
     assert_eq!(sites(&check.out), 25, "{}", check.out);
 }
 
+/// The text a Stop prints, whether it blocks or passes with a note.
+fn stop_text(run: &harness::Run) -> String {
+    match run.code {
+        0 => run.json()["systemMessage"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        _ => run.out.clone(),
+    }
+}
+
+/// The Stop text and the `klin check --changed` text, with how many lines of each say `row`.
+fn counted(tree: &Tree, row: &str) -> (String, usize, usize) {
+    let said = stop_text(&stop(tree));
+    let check = tree.run(&["check", "--changed"]);
+    let count = |out: &str| out.lines().filter(|line| line.contains(row)).count();
+    (said.clone(), count(&said), count(&check.out))
+}
+
+/// Spec 10.6.
+#[test]
+fn the_stop_text_lists_twenty_worsened_sites_and_counts_the_rest() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 3}}"#);
+    for at in 0..25 {
+        tree.write(&format!("src/f{at}.rs"), &branchy(4));
+    }
+    tree.base();
+    for at in 0..25 {
+        tree.write(&format!("src/f{at}.rs"), &branchy(5));
+    }
+
+    let (said, stopped, checked) = counted(&tree, "pub fn branchy");
+
+    assert_eq!((stopped, checked), (20, 25), "{said}");
+    assert!(
+        said.contains("  … and 5 more — klin check --changed lists every site\n"),
+        "{said}"
+    );
+}
+
+/// Spec 10.6.
+#[test]
+fn the_stop_text_lists_twenty_files_it_could_not_measure_and_counts_the_rest() {
+    let tree = tree(r#"{"complexity": {"in": "src", "cc": 3}}"#);
+    for at in 0..25 {
+        tree.write(&format!("src/bad{at}.rs"), "fn broken( {\n");
+    }
+
+    let (said, stopped, checked) = counted(&tree, "is not measured (unreadable)");
+
+    assert_eq!((stopped, checked), (20, 25), "{said}");
+    assert!(
+        said.contains("  … and 5 more — klin check --changed lists every file\n"),
+        "{said}"
+    );
+}
+
 /// `klin status` names each open finding by file and line, and each time as an age a person
 /// reads. Spec 11.4.
 #[test]
