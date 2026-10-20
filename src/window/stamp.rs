@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -268,7 +267,10 @@ impl Here {
             head: refs.resolve("HEAD"),
             head_ref: Some(head_ref.unwrap_or_else(|| "HEAD".to_string())),
             default: default_candidates(refs.symbolic("refs/remotes/origin/HEAD"), || {
-                remotes.then(|| only_remote(refs.remote_names())).flatten()
+                if !remotes {
+                    return None;
+                }
+                only_remote(refs.remote_names())
             })
             .find_map(|name| Some((name.clone(), refs.resolve(&name)?))),
             stacked: stacked.and_then(|name| Some((name.to_string(), refs.resolve(name)?))),
@@ -299,9 +301,11 @@ impl Here {
                     .unwrap_or_else(|| "HEAD".to_string()),
             ),
             default: default_candidates(symbolic("refs/remotes/origin/HEAD"), || {
-                let listed = remotes
-                    .then(|| repo.text(&["for-each-ref", "--format=%(refname)", "refs/remotes"]));
-                only_remote(listed??.lines().map(str::to_string))
+                if !remotes {
+                    return None;
+                }
+                let listed = repo.text(&["for-each-ref", "--format=%(refname)", "refs/remotes"])?;
+                only_remote(listed.lines().map(str::to_string))
             })
             .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
             stacked: stacked.and_then(|name| Some((name.to_string(), resolve(root, name)?))),
@@ -448,10 +452,9 @@ impl Refs {
 /// The one remote-tracking branch among `names`, past every `<remote>/HEAD`, and `None` where
 /// there are none or several. Spec 6.6.
 fn only_remote(names: impl Iterator<Item = String>) -> Option<String> {
-    let branches: BTreeSet<String> = names.filter(|name| !name.ends_with("/HEAD")).collect();
-    let mut branches = branches.into_iter();
+    let mut branches = names.filter(|name| !name.ends_with("/HEAD"));
     let only = branches.next()?;
-    branches.next().is_none().then_some(only)
+    branches.all(|name| name == only).then_some(only)
 }
 
 /// Every ref file under `dir`, named from `prefix`.
