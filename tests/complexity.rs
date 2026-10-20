@@ -2465,24 +2465,27 @@ fn under_an_empty_config_a_stop_still_refuses_a_malformed_accepted_entry() {
 }
 
 #[test]
-fn under_an_empty_config_a_stop_notes_an_accepted_entry_that_matches_nothing() {
+fn under_an_empty_config_a_stop_does_not_call_an_accepted_entry_it_never_measured_unmatched() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
         r#"{ "accepted": [{"gate": "complexity", "file": "src/knot.rs",
-                           "text": "fn vanished() {", "cc": 20, "lines": 40}] }"#,
+                           "text": "pub fn knot(a: i32) -> i32 {", "cc": 11, "lines": 13}] }"#,
     );
     tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
     tree.base();
     tree.write("src/knot.rs", &exported_knot());
 
+    let check = tree.run(&["check", "complexity"]);
+    assert_eq!(check.code, 0, "{}", check.out);
+    assert!(!check.says("matched nothing"), "{}", check.out);
     let (run, report) = tree.stop_report();
     assert_eq!(run.code, 0, "{}", run.out);
     let notes = report["notes"].as_array().cloned().unwrap_or_default();
     assert!(
-        notes.iter().any(|note| note["kind"] == "unmatched"
-            && note["check"] == "complexity"
-            && note["file"] == "src/knot.rs"),
+        !notes
+            .iter()
+            .any(|note| note["kind"] == "unmatched" && note["check"] == "complexity"),
         "{report}"
     );
 }
