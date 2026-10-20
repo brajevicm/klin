@@ -2575,6 +2575,7 @@ fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
         "@/assets/logo.svg?react",
         "./shader.glsl?raw",
         "./template.html?url",
+        "./styles.css?inline",
     ] {
         let run = check(specifier);
         assert_eq!(run.code, 0, "{specifier}: {}", run.out);
@@ -2589,6 +2590,8 @@ fn an_asset_import_is_unsupported_and_a_query_on_a_module_path_stays_a_hole() {
         "./worker?worker&inline",
         "./worker?sharedworker&inline",
         "./worker?worker&url",
+        "./missing.ts?inline",
+        "./user.service?inline",
         "./user.service",
     ] {
         let run = check(specifier);

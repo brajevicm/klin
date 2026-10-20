@@ -21,8 +21,8 @@ the version, so add the heading again after each release.
   path through a `paths` alias, or a `./styles.css` the tree does not hold, is
   no longer a hole. klin strips a `?query` suffix, and a path that ends in an
   asset extension, such as an SVG, PNG, CSS or JSON file, counts as external
-  or unsupported. So does any path with a `?raw`, `?url` or `?inline` query,
-  unless the query also asks for a worker.
+  or unsupported. So does any path with a `?raw` or `?url` query, unless the
+  query also asks for a worker.
   `./worker?worker` and a missing `./user.service` are still holes.
 
 ## 0.5.6

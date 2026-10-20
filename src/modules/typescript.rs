@@ -372,7 +372,7 @@ fn relative(specifier: &str) -> bool {
 fn asset(base: &str) -> bool {
     let (path, query) = base.split_once('?').unwrap_or((base, ""));
     let asks = |names: &[&str]| query.split('&').any(|part| names.contains(&part));
-    asks(&["raw", "url", "inline"]) && !asks(&["worker", "sharedworker"])
+    asks(&["raw", "url"]) && !asks(&["worker", "sharedworker"])
         || std::path::Path::new(path)
             .extension()
             .and_then(|extension| extension.to_str())
