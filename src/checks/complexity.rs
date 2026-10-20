@@ -21,6 +21,7 @@ use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
 use crate::sys::changed::Change;
 use crate::sys::error::Error;
 use crate::sys::record::{self, Values};
+use crate::sys::token;
 use crate::window::base;
 use crate::{facts::survey, sys::changed};
 
@@ -403,6 +404,13 @@ impl Ceilings {
         self.held.is_empty()
     }
 
+    /// Whether a ceiling klin derives is absent, which only a Stop skips. Spec 9.7.
+    fn skips_a_derived_one(&self) -> bool {
+        RULES
+            .iter()
+            .any(|rule| rule.derived.is_some() && !self.holds(rule.measure))
+    }
+
     fn named(&self) -> Vec<(&'static str, &Ceiling)> {
         self.held
             .iter()
@@ -510,10 +518,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         arrived: unjudged.1,
     };
     let tier = |values: &Values| spec.ceilings.tier(values);
+    let accepted = ratchet::accepted(&project.config, at.gate, &ACCEPTS)?;
     let code = evaluator(&spec, &tier).evaluate(
         now,
         before.found,
-        ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
+        judgeable(accepted, &sweep.functions, &spec.ceilings),
         at,
         Line::new(contract::check::Measured::Complexity(counts), said),
         out,
@@ -534,6 +543,28 @@ fn held_nothing(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         None,
     )));
     Ok(0)
+}
+
+/// The accepted entries this run can judge. A Stop that skipped a derived ceiling cannot tell
+/// whether a function it measured, and that no held ceiling finds, is over the skipped one, so
+/// it leaves that function's entry out of the match and does not call it unmatched. An entry
+/// for a function the run did not find stays in. Spec 7.6, 9.7.
+fn judgeable(accepted: Vec<Values>, functions: &[Function], ceilings: &Ceilings) -> Vec<Values> {
+    if !ceilings.skips_a_derived_one() {
+        return accepted;
+    }
+    let unjudged = |entry: &Values| {
+        let site = |key| entry.get(key).and_then(Value::as_str);
+        functions.iter().any(|function| {
+            !function.over(ceilings)
+                && site("file") == Some(&token::redact(&function.file))
+                && site("text") == Some(&token::redact(&function.text))
+        })
+    };
+    accepted
+        .into_iter()
+        .filter(|entry| !unjudged(entry))
+        .collect()
 }
 
 /// What the base holds over the ceilings, what it measured and what reading it cost, and the

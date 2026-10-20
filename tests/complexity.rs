@@ -2489,3 +2489,50 @@ fn under_an_empty_config_a_stop_does_not_call_an_accepted_entry_it_never_measure
         "{report}"
     );
 }
+
+/// A tree that pins `lines` and leaves `cc` to klin, so the Stop skips the derived `cc`, with an
+/// accepted entry the knot of `exported_knot` would or would not match.
+fn skipping_cc(text: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        &format!(
+            r#"{{ "complexity": {{ "in": "src", "lines": 60 }},
+                 "accepted": [{{"gate": "complexity", "file": "src/knot.rs",
+                                "text": "{text}", "cc": 11, "lines": 13}}] }}"#
+        ),
+    );
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/knot.rs", &exported_knot());
+    tree
+}
+
+fn stop_unmatched(tree: &Tree) -> usize {
+    let (run, report) = tree.stop_report();
+    assert_eq!(run.code, 0, "{}", run.out);
+    report["notes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|note| note["kind"] == "unmatched" && note["check"] == "complexity")
+        .count()
+}
+
+#[test]
+fn a_stop_that_skips_the_derived_cc_does_not_call_an_entry_it_could_not_judge_unmatched() {
+    let tree = skipping_cc("pub fn knot(a: i32) -> i32 {");
+
+    assert_eq!(stop_unmatched(&tree), 0);
+    assert!(
+        !tree.run(&["check", "complexity"]).says("matched nothing"),
+        "the entry matches at klin check"
+    );
+}
+
+#[test]
+fn a_stop_that_skips_the_derived_cc_still_notes_an_entry_for_a_function_that_is_gone() {
+    let tree = skipping_cc("fn vanished() {");
+
+    assert_eq!(stop_unmatched(&tree), 1);
+}
