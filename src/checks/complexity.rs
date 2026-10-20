@@ -502,24 +502,14 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let before = at_the_base(&spec, &tests, at)?;
     out.record(|records| records.work = Some(sweep.work + before.work));
     let unjudged = before.unjudged;
-    let tier = |values: &Values| spec.ceilings.tier(values);
-    let code = evaluator(&spec, &tier).evaluate(
-        now,
-        before.found,
-        ratchet::accepted(&project.config, at.gate, &ACCEPTS)?,
-        at,
-        Line::new(
-            contract::check::Measured::Complexity(contract::check::Complexity {
-                judged,
-                over: count,
-                steps: spec.ceilings.steps(),
-                unjudged: unjudged.0,
-                arrived: unjudged.1,
-            }),
-            said,
-        ),
-        out,
-    );
+    let counts = contract::check::Complexity {
+        judged,
+        over: count,
+        steps: spec.ceilings.steps(),
+        unjudged: unjudged.0,
+        arrived: unjudged.1,
+    };
+    let code = judge(&spec, at, (now, before.found), counts, said, out)?;
     let files = (&sweep.files, &before.files);
     holes::closed(files, &sweep.unparsed, at.only, at, out);
     Ok(code)
@@ -529,18 +519,31 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 /// derived ceiling. Spec 9.7.
 fn held_nothing(spec: &Spec, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     out.record(|records| records.work = Some(ContentCost::default()));
-    let tier = |values: &Values| spec.ceilings.tier(values);
-    Ok(evaluator(spec, &tier).evaluate(
-        Vec::new(),
-        Vec::new(),
-        ratchet::accepted(&at.project.config, at.gate, &ACCEPTS)?,
+    let nothing = (Vec::new(), Vec::new());
+    judge(
+        spec,
         at,
-        Line::new(
-            contract::check::Measured::Complexity(contract::check::Complexity::default()),
-            None,
-        ),
+        nothing,
+        contract::check::Complexity::default(),
+        None,
         out,
-    ))
+    )
+}
+
+/// One judgement of the ceilings in force, over what this run found now and at the base, so the
+/// Stop that holds no ceiling reads the accepted entries as every other run does. Spec 7.6, 9.7.
+fn judge(
+    spec: &Spec,
+    at: &Context,
+    found: (Vec<Finding>, Vec<Finding>),
+    counts: contract::check::Complexity,
+    said: Option<contract::coverage::Coverage>,
+    out: &mut Sink,
+) -> Result<u8, Error> {
+    let tier = |values: &Values| spec.ceilings.tier(values);
+    let accepted = ratchet::accepted(&at.project.config, at.gate, &ACCEPTS)?;
+    let line = Line::new(contract::check::Measured::Complexity(counts), said);
+    Ok(evaluator(spec, &tier).evaluate(found.0, found.1, accepted, at, line, out))
 }
 
 /// What the base holds over the ceilings, what it measured and what reading it cost, and the
