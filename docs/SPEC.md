@@ -804,9 +804,9 @@ default-branch commit). `session`, `prompt` and `stop` read HEAD, HEAD's
 symbolic ref, the default-branch ref and HEAD's reflog as files, after one
 `git rev-parse` finds the git directory. Where the repository stores refs in
 a reftable, klin asks git for them, HEAD's reflog included. `pre_tool` reads
-none of them. Only in a clone with remotes where no name of candidate 4
-resolves does klin start one `git for-each-ref` to find the one
-remote-tracking branch. klin starts `git merge-base` only when the pair changed, which
+none of them. Where no name of candidate 4 resolves, klin lists the
+remote-tracking refs from the same files to find the one remote-tracking
+branch, and a reftable repository asks git for them. klin starts `git merge-base` only when the pair changed, which
 happens on the first Stop or prompt after each commit. An advisory Stop adds
 a stamp capture to an ordinary Stop (section 14.4).
 

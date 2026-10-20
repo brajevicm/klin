@@ -511,7 +511,7 @@ fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
     };
     let jumped = || {
         here.reflog_since(stamp.history.reflog_position)
-            .is_some_and(|entries| entries.iter().any(stamp::Entry::jumped))
+            .is_some_and(|entries| entries.iter().any(stamp::ReflogEntry::jumped))
     };
     moved && (jumped() || abandoned(root, stamp))
 }
@@ -763,8 +763,6 @@ const GONE: &str = "the turn stamp and its ref are both gone, so klin wrote no f
 const GONE_ON_A_STOP: &str = "no turn stamp resolves, in the turn file or in the ref, so this \
                               stop judges the whole branch and writes the base it judged \
                               against as the stamp";
-/// Why a clone with remotes has no default branch for the advisory rules, and how to name one.
-/// Spec 6.6.
 pub const NO_DEFAULT: &str = "no default branch resolves among the remote-tracking refs, so a \
                               merge of it or a rewrite of it cannot make a stop advisory; `git \
                               remote set-head origin --auto` names it";

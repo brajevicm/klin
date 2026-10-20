@@ -682,6 +682,26 @@ fn with_no_default_branch_status_and_the_stop_say_so() {
 }
 
 #[test]
+fn with_no_main_a_stop_finds_the_one_remote_branch_without_asking_git() {
+    let remote = on_a_clone_without_main();
+    remote.tree.git(&["pack-refs", "--all"]);
+    let trace = remote.tree.path("trace.log");
+    let trace = trace.display().to_string();
+
+    let run = harness::feed_with(
+        remote.tree.root(),
+        &[("GIT_TRACE", trace.as_str())],
+        harness::AGENT,
+        A_STOP,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("no default branch"), "{}", run.out);
+    let traced = std::fs::read_to_string(&trace).unwrap_or_default();
+    assert!(traced.contains("git"), "nothing traced: {traced}");
+    assert!(!traced.contains("for-each-ref"), "{traced}");
+}
+
+#[test]
 fn with_one_remote_branch_and_no_main_a_pull_of_that_branch_is_advisory() {
     let remote = on_a_clone_without_main();
     let status = remote.tree.run(&["status", "--json"]).json();

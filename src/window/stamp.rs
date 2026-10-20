@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -224,19 +225,19 @@ pub struct Here {
     /// Whether any `refs/remotes/*` ref exists.
     pub remotes: bool,
     /// Each entry of HEAD's reflog, oldest first, and `None` without a reflog.
-    pub reflog: Option<Vec<Entry>>,
+    pub reflog: Option<Vec<ReflogEntry>>,
 }
 
 /// One entry of HEAD's reflog: the commit HEAD moved from, where git says, the commit it moved
 /// to, and the entry's message.
 #[derive(Debug)]
-pub struct Entry {
+pub struct ReflogEntry {
     pub from: Option<String>,
     pub to: String,
     pub said: String,
 }
 
-impl Entry {
+impl ReflogEntry {
     /// A `checkout:` entry that moved HEAD to another commit, which `git switch -c` at the same
     /// commit does not. Spec 6.6.
     pub fn jumped(&self) -> bool {
@@ -266,13 +267,10 @@ impl Here {
         Here {
             head: refs.resolve("HEAD"),
             head_ref: Some(head_ref.unwrap_or_else(|| "HEAD".to_string())),
-            default: default_candidates(refs.symbolic("refs/remotes/origin/HEAD"))
-                .chain(
-                    std::iter::once_with(|| remotes.then(|| only_remote(root)))
-                        .flatten()
-                        .flatten(),
-                )
-                .find_map(|name| Some((name.clone(), refs.resolve(&name)?))),
+            default: default_candidates(refs.symbolic("refs/remotes/origin/HEAD"), || {
+                remotes.then(|| only_remote(refs.remote_names())).flatten()
+            })
+            .find_map(|name| Some((name.clone(), refs.resolve(&name)?))),
             stacked: stacked.and_then(|name| Some((name.to_string(), refs.resolve(name)?))),
             remotes,
             reflog: std::fs::read_to_string(refs.dir.join("logs/HEAD"))
@@ -300,13 +298,12 @@ impl Here {
                     .or_else(|| symbolic("HEAD"))
                     .unwrap_or_else(|| "HEAD".to_string()),
             ),
-            default: default_candidates(symbolic("refs/remotes/origin/HEAD"))
-                .chain(
-                    std::iter::once_with(|| remotes.then(|| only_remote(root)))
-                        .flatten()
-                        .flatten(),
-                )
-                .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
+            default: default_candidates(symbolic("refs/remotes/origin/HEAD"), || {
+                let listed = remotes
+                    .then(|| repo.text(&["for-each-ref", "--format=%(refname)", "refs/remotes"]));
+                only_remote(listed??.lines().map(str::to_string))
+            })
+            .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
             stacked: stacked.and_then(|name| Some((name.to_string(), resolve(root, name)?))),
             remotes,
             reflog: repo
@@ -328,19 +325,22 @@ impl Here {
 
     /// The reflog messages after the position a stamp recorded, and `None` where either side
     /// has no reflog or the reflog is shorter than the position, so nothing can be compared.
-    pub fn reflog_since(&self, position: Option<ReflogPosition>) -> Option<&[Entry]> {
+    pub fn reflog_since(&self, position: Option<ReflogPosition>) -> Option<&[ReflogEntry]> {
         let entries = self.reflog.as_deref()?;
         entries.get(usize::try_from(position?.0).ok()?..)
     }
 }
 
 /// One line of a reflog file: the old and the new commit, the committer, and after a tab the
-/// message.
-fn logged(line: &str) -> Entry {
+/// message. The old commit of HEAD's first entry is the null commit, which moved from nothing.
+fn logged(line: &str) -> ReflogEntry {
     let (head, said) = line.split_once('\t').unwrap_or((line, ""));
     let mut commits = head.split(' ');
-    Entry {
-        from: commits.next().map(str::to_string),
+    ReflogEntry {
+        from: commits
+            .next()
+            .filter(|from| from.bytes().any(|byte| byte != b'0'))
+            .map(str::to_string),
         to: commits.next().unwrap_or_default().to_string(),
         said: said.to_string(),
     }
@@ -348,11 +348,11 @@ fn logged(line: &str) -> Entry {
 
 /// The reflog `git reflog show` prints newest first, oldest first. It prints only the commit
 /// each entry moved HEAD to, so the commit an entry moved from is the one before it.
-fn shown(log: &str) -> Vec<Entry> {
-    let mut entries: Vec<Entry> = Vec::new();
+fn shown(log: &str) -> Vec<ReflogEntry> {
+    let mut entries: Vec<ReflogEntry> = Vec::new();
     for line in log.lines().rev() {
         let (to, said) = line.split_once(' ').unwrap_or((line, ""));
-        entries.push(Entry {
+        entries.push(ReflogEntry {
             from: entries.last().map(|before| before.to.clone()),
             to: to.to_string(),
             said: said.to_string(),
@@ -372,10 +372,17 @@ fn rebasing(dir: &Path) -> Option<String> {
         .filter(|name| name.starts_with("refs/"))
 }
 
-fn default_candidates(named: Option<String>) -> impl Iterator<Item = String> {
+/// The default branch's names, in the order candidate 4 of B.6.3 tries them among
+/// remote-tracking refs, and then the one remote-tracking branch, which `only` finds only when
+/// every name before it failed to resolve. Spec 6.6.
+fn default_candidates(
+    named: Option<String>,
+    only: impl FnOnce() -> Option<String>,
+) -> impl Iterator<Item = String> {
     named
         .into_iter()
         .chain(["refs/remotes/origin/main", "refs/remotes/origin/master"].map(String::from))
+        .chain(std::iter::once_with(only).flatten())
 }
 
 /// Loose refs under the git directory, and the packed refs beside them.
@@ -419,16 +426,45 @@ impl Refs {
         (!commit.is_empty() && commit.bytes().all(|byte| byte.is_ascii_hexdigit()))
             .then_some(commit)
     }
+
+    /// The names of the remote-tracking refs, loose and packed.
+    fn remote_names(&self) -> impl Iterator<Item = String> {
+        let mut names = Vec::new();
+        ref_files(
+            &self.common.join("refs/remotes"),
+            "refs/remotes",
+            &mut names,
+        );
+        names.extend(self.packed.lines().filter_map(|line| {
+            let (_, named) = line.split_once(' ')?;
+            named
+                .starts_with("refs/remotes/")
+                .then(|| named.to_string())
+        }));
+        names.into_iter()
+    }
 }
 
-/// The one remote-tracking branch, past every `<remote>/HEAD`, which is the default branch of a
-/// clone where no candidate of B.6.3 resolves, and `None` where there are none or several. The
-/// readers ask git for it only when every candidate before it failed. Spec 6.6.
-fn only_remote(root: &Path) -> Option<String> {
-    let listed = Repo::at(root).text(&["for-each-ref", "--format=%(refname)", "refs/remotes"])?;
-    let mut branches = listed.lines().filter(|name| !name.ends_with("/HEAD"));
+/// The one remote-tracking branch among `names`, past every `<remote>/HEAD`, and `None` where
+/// there are none or several. Spec 6.6.
+fn only_remote(names: impl Iterator<Item = String>) -> Option<String> {
+    let branches: BTreeSet<String> = names.filter(|name| !name.ends_with("/HEAD")).collect();
+    let mut branches = branches.into_iter();
     let only = branches.next()?;
-    branches.next().is_none().then(|| only.to_string())
+    branches.next().is_none().then_some(only)
+}
+
+/// Every ref file under `dir`, named from `prefix`.
+fn ref_files(dir: &Path, prefix: &str, out: &mut Vec<String>) {
+    for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let name = format!("{prefix}/{}", entry.file_name().to_string_lossy());
+        let path = entry.path();
+        if path.is_dir() {
+            ref_files(&path, &name, out);
+        } else {
+            out.push(name);
+        }
+    }
 }
 
 fn any_file(dir: &Path) -> bool {
