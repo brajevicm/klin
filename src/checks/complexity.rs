@@ -737,21 +737,17 @@ fn ceilings(
     let mut ceilings = Ceilings::default();
     let mut provenance = Vec::new();
     for rule in &RULES {
-        let pin = section.get(rule.key.name);
-        let resolved = match pin {
-            Some(value) => Some(pinned(project, rule.key, value)?),
+        let resolved = match section.get(rule.key.name) {
+            Some(value) => Some((pinned(project, rule.key, value)?, Tier::Blocks)),
             None if caller == Caller::Hook => None,
-            None => derived(project, &sample, rule),
+            None => derived(project, &sample, rule).map(|found| (found, Tier::Reports)),
         };
-        if let Some((ceiling, said)) = resolved {
+        if let Some(((ceiling, said), tier)) = resolved {
             provenance.push(said);
             ceilings.held.push(Held {
                 rule,
                 ceiling,
-                tier: match pin {
-                    Some(_) => Tier::Blocks,
-                    None => Tier::Reports,
-                },
+                tier,
             });
         }
     }
